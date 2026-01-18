@@ -26,7 +26,14 @@
       "Bash(npm run db:seed:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: add database and Prisma setup \\(Story 1.2\\)\n\n- Add Docker Compose for PostgreSQL 16 dev environment\n- Initialize Prisma 7.2 with pg adapter for direct DB connection\n- Create User model with migration\n- Add seed script with test user\n- Add database scripts: db:start, db:stop, db:reset, db:migrate, db:seed\n- Update README with database documentation\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(npx shadcn@latest init:*)",
-      "Skill(frontend-design)"
+      "Skill(frontend-design)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: add Shadcn UI and dark theme foundation \\(Story 1.3\\)\n\n- Configure Shadcn UI with New York style and Zinc base color\n- Add dark theme with HSL CSS variables\n- Create responsive AppLayout with desktop sidebar and mobile bottom nav\n- Add PageHeader component with back button and actions support\n- Configure Inter and JetBrains Mono fonts via next/font\n- Add PWA metadata \\(viewport, theme-color, appleWebApp\\)\n- Create placeholder dashboard page with layout\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npx shadcn@latest add card input button label --yes)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run dev)",
+      "Bash(timeout:*)",
+      "Bash(curl:*)"
     ]
   }
 }
