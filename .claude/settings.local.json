@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(BMad:agents:architect)",
+      "Skill(BMad:agents:ux-expert)",
+      "Bash(grep:*)",
+      "Bash(xargs -I {} sh -c 'echo \"\"=== {} ===\"\" && head -30 \"\"{}\"\"')",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(npm install)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(timeout 15 npm run dev)",
+      "Bash(timeout 20 npm run dev)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
