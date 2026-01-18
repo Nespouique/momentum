@@ -63,4 +63,16 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Consistent input styling across the app */
+  input,
+  textarea,
+  select {
+    @apply text-sm;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-sm text-muted-foreground;
+  }
 }

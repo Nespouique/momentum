@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { Home, Dumbbell, TrendingUp, User } from "lucide-react";
 import { NavItem } from "./nav-item";
+import { useAuthStore } from "@/stores/auth";
 
 const navItems = [
   { href: "/", icon: Home, label: "Today" },
@@ -10,7 +12,18 @@ const navItems = [
   { href: "/profile", icon: User, label: "Profile" },
 ];
 
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export function DesktopSidebar() {
+  const user = useAuthStore((state) => state.user);
+
   return (
     <aside className="fixed inset-y-0 left-0 z-50 hidden w-60 flex-col border-r border-border bg-background lg:flex">
       {/* Logo */}
@@ -40,17 +53,22 @@ export function DesktopSidebar() {
 
       {/* User section */}
       <div className="border-t border-border p-4">
-        <div className="flex items-center gap-3 rounded-lg px-2 py-2">
+        <Link
+          href="/profile"
+          className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted"
+        >
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-sm font-medium">
-            U
+            {user ? getInitials(user.name) : "U"}
           </div>
           <div className="flex-1 truncate">
-            <p className="truncate text-sm font-medium">User</p>
+            <p className="truncate text-sm font-medium">
+              {user?.name || "User"}
+            </p>
             <p className="truncate text-xs text-muted-foreground">
               View profile
             </p>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   );

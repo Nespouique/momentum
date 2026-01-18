@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -18,7 +19,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PageHeader } from "@/components/layout";
@@ -160,9 +160,9 @@ export default function EditProfilePage() {
                 />
 
                 <div className="space-y-2">
-                  <FormLabel>Email</FormLabel>
+                  <label className="text-sm font-medium leading-none">Email</label>
                   <Input value={user?.email || ""} disabled className="bg-muted" />
-                  <FormDescription>Email cannot be changed</FormDescription>
+                  <p className="text-sm text-muted-foreground">Email cannot be changed</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -173,12 +173,14 @@ export default function EditProfilePage() {
                       <FormItem>
                         <FormLabel>Age</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
+                          <NumberInput
+                            min={1}
+                            max={120}
+                            step={1}
                             placeholder="30"
                             disabled={profileForm.formState.isSubmitting}
-                            {...field}
-                            value={field.value ?? ""}
+                            value={field.value}
+                            onChange={field.onChange}
                           />
                         </FormControl>
                         <FormMessage />
@@ -193,13 +195,14 @@ export default function EditProfilePage() {
                       <FormItem>
                         <FormLabel>Height (cm)</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            step="0.1"
+                          <NumberInput
+                            min={50}
+                            max={300}
+                            step={1}
                             placeholder="175"
                             disabled={profileForm.formState.isSubmitting}
-                            {...field}
-                            value={field.value ?? ""}
+                            value={field.value}
+                            onChange={field.onChange}
                           />
                         </FormControl>
                         <FormMessage />
