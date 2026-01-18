@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import type { HealthCheckResponse } from "@momentum/shared";
+import { prisma } from "./lib/prisma.js";
 import authRoutes from "./routes/auth.routes.js";
 import profileRoutes from "./routes/profile.routes.js";
 import measurementRoutes from "./routes/measurement.routes.js";
@@ -11,15 +12,21 @@ const app = express();
 const PORT = process.env["PORT"] || 3001;
 
 app.use(helmet());
+
+// Configure allowed origins for CORS
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:3002",
+];
+// Add production frontend URL if configured
+if (process.env["FRONTEND_URL"]) {
+  allowedOrigins.push(process.env["FRONTEND_URL"]);
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests from localhost on any port in development
-      const allowedOrigins = [
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:3002",
-      ];
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -36,12 +43,23 @@ app.use("/auth", authRoutes);
 app.use("/profile", profileRoutes);
 app.use("/measurements", measurementRoutes);
 
-app.get("/health", (_req, res) => {
-  const response: HealthCheckResponse = {
-    status: "ok",
-    timestamp: new Date().toISOString(),
-  };
-  res.json(response);
+app.get("/health", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    const response: HealthCheckResponse = {
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      database: "connected",
+    };
+    res.json(response);
+  } catch {
+    const response: HealthCheckResponse = {
+      status: "error",
+      timestamp: new Date().toISOString(),
+      database: "disconnected",
+    };
+    res.status(503).json(response);
+  }
 });
 
 app.get("/", (_req, res) => {

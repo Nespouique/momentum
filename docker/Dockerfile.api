@@ -1,0 +1,53 @@
+# Stage 1: Builder
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
+# Copy package files for all workspaces
+COPY package*.json ./
+COPY apps/api/package*.json ./apps/api/
+COPY packages/shared/package*.json ./packages/shared/
+
+# Install all dependencies (including devDependencies for build)
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build the API (includes prisma generate)
+RUN npm run build --workspace=@momentum/api
+
+# Stage 2: Runner
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Install OpenSSL for Prisma runtime
+RUN apk add --no-cache openssl
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 expressjs
+
+# Copy built application
+COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/apps/api/package.json ./
+COPY --from=builder /app/apps/api/prisma ./prisma
+
+# Copy node_modules (includes Prisma client and shared package)
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy the generated Prisma client
+COPY --from=builder /app/apps/api/src/generated ./src/generated
+
+# Set ownership
+RUN chown -R expressjs:nodejs /app
+
+USER expressjs
+
+EXPOSE 3001
+
+CMD ["node", "dist/index.js"]
