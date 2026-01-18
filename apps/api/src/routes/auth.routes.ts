@@ -52,11 +52,13 @@ router.post("/register", async (req: Request, res: Response) => {
         name: data.name,
         email: data.email,
         passwordHash,
+        birthDate: data.birthDate ? new Date(data.birthDate) : null,
       },
       select: {
         id: true,
         email: true,
         name: true,
+        birthDate: true,
         createdAt: true,
       },
     });

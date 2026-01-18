@@ -37,7 +37,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
         id: true,
         email: true,
         name: true,
-        age: true,
+        birthDate: true,
         height: true,
         goalDescription: true,
         createdAt: true,
@@ -74,7 +74,9 @@ router.patch("/", async (req: AuthRequest, res: Response) => {
       where: { id: req.userId },
       data: {
         ...(data.name !== undefined && { name: data.name }),
-        ...(data.age !== undefined && { age: data.age }),
+        ...(data.birthDate !== undefined && {
+          birthDate: data.birthDate ? new Date(data.birthDate) : null,
+        }),
         ...(data.height !== undefined && { height: data.height }),
         ...(data.goalDescription !== undefined && {
           goalDescription: data.goalDescription,
@@ -84,7 +86,7 @@ router.patch("/", async (req: AuthRequest, res: Response) => {
         id: true,
         email: true,
         name: true,
-        age: true,
+        birthDate: true,
         height: true,
         goalDescription: true,
         createdAt: true,

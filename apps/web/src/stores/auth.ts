@@ -34,7 +34,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, birthDate?: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;
 }
@@ -63,10 +63,10 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      register: async (name: string, email: string, password: string) => {
+      register: async (name: string, email: string, password: string, birthDate?: string) => {
         set({ isLoading: true });
         try {
-          const response = await apiRegister(name, email, password);
+          const response = await apiRegister(name, email, password, birthDate);
           set({
             user: response.user,
             token: response.accessToken,

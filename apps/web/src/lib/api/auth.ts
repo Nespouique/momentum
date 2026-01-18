@@ -66,14 +66,15 @@ export async function login(email: string, password: string): Promise<AuthRespon
 export async function register(
   name: string,
   email: string,
-  password: string
+  password: string,
+  birthDate?: string
 ): Promise<AuthResponse> {
   const response = await fetch(`${API_URL}/auth/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, email, password, birthDate }),
   });
 
   return handleResponse<AuthResponse>(response);

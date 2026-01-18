@@ -2,10 +2,7 @@ import { z } from "zod";
 
 export const updateProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  age: z.union([
-    z.number().int().min(10, "Age must be at least 10").max(120, "Age must be at most 120"),
-    z.null(),
-  ]).optional(),
+  birthDate: z.string().nullable().optional(),
   height: z.union([
     z.number().min(50, "Height must be at least 50 cm").max(300, "Height must be at most 300 cm"),
     z.null(),

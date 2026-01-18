@@ -4,7 +4,7 @@ export interface UserProfile {
   id: string;
   email: string;
   name: string;
-  age: number | null;
+  birthDate: string | null;
   height: number | null;
   goalDescription: string | null;
   createdAt: string;
@@ -12,7 +12,7 @@ export interface UserProfile {
 
 export interface UpdateProfileData {
   name?: string;
-  age?: number | null;
+  birthDate?: string | null;
   height?: number | null;
   goalDescription?: string | null;
 }

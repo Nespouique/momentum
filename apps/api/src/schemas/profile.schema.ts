@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const updateProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").optional(),
-  age: z.number().int().min(10).max(120).optional().nullable(),
+  birthDate: z.string().optional().nullable(), // ISO date string YYYY-MM-DD
   height: z.number().min(50).max(300).optional().nullable(),
   goalDescription: z.string().max(500).optional().nullable(),
 });

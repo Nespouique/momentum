@@ -5,10 +5,18 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { AlertCircle, Loader2, CalendarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Card,
   CardContent,
@@ -25,6 +33,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 import { registerSchema, RegisterFormData } from "@/lib/validations/auth";
 import { useAuthStore } from "@/stores/auth";
@@ -41,13 +50,14 @@ export default function RegisterPage() {
       email: "",
       password: "",
       confirmPassword: "",
+      birthDate: undefined,
     },
   });
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
       setError(null);
-      await register(data.name, data.email, data.password);
+      await register(data.name, data.email, data.password, data.birthDate);
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
@@ -112,6 +122,48 @@ export default function RegisterPage() {
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="birthDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Date de naissance (optionnel)</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full h-11 justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                          disabled={form.formState.isSubmitting}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value
+                            ? format(new Date(field.value), "d MMM yyyy", { locale: fr })
+                            : "Sélectionner une date"}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? new Date(field.value) : undefined}
+                        onSelect={(date) => field.onChange(date ? date.toISOString().split("T")[0] : undefined)}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                        captionLayout="dropdown-buttons"
+                        fromYear={1920}
+                        toYear={new Date().getFullYear()}
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}

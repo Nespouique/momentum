@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, AlertCircle, Lock } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { Loader2, AlertCircle, Lock, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +14,12 @@ import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Form,
   FormControl,
@@ -22,6 +30,7 @@ import {
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PageHeader } from "@/components/layout";
+import { cn } from "@/lib/utils";
 
 import {
   updateProfileSchema,
@@ -42,7 +51,7 @@ export default function EditProfilePage() {
     resolver: zodResolver(updateProfileSchema),
     defaultValues: {
       name: "",
-      age: null,
+      birthDate: null,
       height: null,
       goalDescription: "",
     },
@@ -66,7 +75,7 @@ export default function EditProfilePage() {
         const profile = await getProfile(token);
         profileForm.reset({
           name: profile.name,
-          age: profile.age,
+          birthDate: profile.birthDate,
           height: profile.height,
           goalDescription: profile.goalDescription || "",
         });
@@ -86,7 +95,7 @@ export default function EditProfilePage() {
       setProfileError(null);
       await updateProfile(token, {
         name: data.name,
-        age: data.age ?? null,
+        birthDate: data.birthDate ?? null,
         height: data.height ?? null,
         goalDescription: data.goalDescription || null,
       });
@@ -168,21 +177,41 @@ export default function EditProfilePage() {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={profileForm.control}
-                    name="age"
+                    name="birthDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Age</FormLabel>
-                        <FormControl>
-                          <NumberInput
-                            min={1}
-                            max={120}
-                            step={1}
-                            placeholder="30"
-                            disabled={profileForm.formState.isSubmitting}
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
+                        <FormLabel>Date de naissance</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={profileForm.formState.isSubmitting}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {field.value
+                                  ? format(new Date(field.value), "d MMM yyyy", { locale: fr })
+                                  : "Sélectionner"}
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value ? new Date(field.value) : undefined}
+                              onSelect={(date) => field.onChange(date ? date.toISOString().split("T")[0] : null)}
+                              disabled={(date) => date > new Date()}
+                              initialFocus
+                              captionLayout="dropdown-buttons"
+                              fromYear={1920}
+                              toYear={new Date().getFullYear()}
+                            />
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -193,7 +222,7 @@ export default function EditProfilePage() {
                     name="height"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Height (cm)</FormLabel>
+                        <FormLabel>Taille (cm)</FormLabel>
                         <FormControl>
                           <NumberInput
                             min={50}

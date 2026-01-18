@@ -11,15 +11,58 @@ datasource db {
 }
 
 model User {
-  id              String   @id @default(uuid())
-  email           String   @unique
-  passwordHash    String   @map("password_hash")
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
   name            String
-  age             Int?
-  height          Float?   // in cm
-  goalDescription String?  @map("goal_description")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  birthDate       DateTime? @map("birth_date") @db.Date
+  height          Float?    // in cm
+  goalDescription String?   @map("goal_description")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  measurements    Measurement[]
 
   @@map("users")
+}
+
+model Measurement {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id])
+  date          DateTime @db.Date
+
+  // Weight in kg
+  weight        Float?
+
+  // Upper body (cm)
+  neck          Float?
+  shoulders     Float?
+  chest         Float?
+
+  // Arms (cm) - bilateral
+  bicepsLeft    Float?   @map("biceps_left")
+  bicepsRight   Float?   @map("biceps_right")
+  forearmLeft   Float?   @map("forearm_left")
+  forearmRight  Float?   @map("forearm_right")
+  wristLeft     Float?   @map("wrist_left")
+  wristRight    Float?   @map("wrist_right")
+
+  // Core (cm)
+  waist         Float?
+  hips          Float?
+
+  // Legs (cm) - bilateral
+  thighLeft     Float?   @map("thigh_left")
+  thighRight    Float?   @map("thigh_right")
+  calfLeft      Float?   @map("calf_left")
+  calfRight     Float?   @map("calf_right")
+  ankleLeft     Float?   @map("ankle_left")
+  ankleRight    Float?   @map("ankle_right")
+
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, date])
+  @@map("measurements")
 }
