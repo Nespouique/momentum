@@ -12,7 +12,18 @@
       "Bash(timeout 15 npm run dev)",
       "Bash(timeout 20 npm run dev)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: initial project scaffolding \\(Story 1.1\\)\n\n- Monorepo setup with npm workspaces \\(apps/web, apps/api, packages/shared\\)\n- Next.js 14.2 frontend with App Router, TypeScript strict, Tailwind CSS\n- Express.js backend with TypeScript strict, helmet, cors\n- Shared package for cross-app TypeScript types\n- ESLint + Prettier configuration\n- Root scripts: dev, build, lint, format\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(gh repo create:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma init)",
+      "Bash(npm run db:start:*)",
+      "Bash(docker compose:*)",
+      "Bash(npx prisma migrate:*)",
+      "Bash(npm run db:seed:*)"
     ]
   }
 }

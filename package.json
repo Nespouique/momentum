@@ -13,7 +13,10 @@
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:start": "docker compose -f docker/docker-compose.dev.yml up -d",
+    "db:stop": "docker compose -f docker/docker-compose.dev.yml down",
+    "db:reset": "docker compose -f docker/docker-compose.dev.yml down -v && docker compose -f docker/docker-compose.dev.yml up -d"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
