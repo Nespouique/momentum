@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import type { HealthCheckResponse } from "@momentum/shared";
 import authRoutes from "./routes/auth.routes.js";
+import profileRoutes from "./routes/profile.routes.js";
 
 const app = express();
 const PORT = process.env["PORT"] || 3001;
@@ -19,6 +20,7 @@ app.use(express.json());
 
 // Routes
 app.use("/auth", authRoutes);
+app.use("/profile", profileRoutes);
 
 app.get("/health", (_req, res) => {
   const response: HealthCheckResponse = {

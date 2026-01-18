@@ -1,12 +1,9 @@
-import { AppLayout, PageHeader } from "@/components/layout";
+import { PageHeader } from "@/components/layout";
 
 export default function Home() {
   return (
-    <AppLayout>
-      <PageHeader
-        title="Today"
-        subtitle="Your daily dashboard"
-      />
+    <div>
+      <PageHeader title="Today" subtitle="Your daily dashboard" />
 
       <div className="space-y-6">
         {/* Placeholder content */}
@@ -30,12 +27,10 @@ export default function Home() {
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Today&apos;s Progress
             </p>
-            <p className="mt-1 text-3xl font-semibold font-mono">
-              0%
-            </p>
+            <p className="mt-1 text-3xl font-semibold font-mono">0%</p>
           </div>
         </div>
       </div>
-    </AppLayout>
+    </div>
   );
 }
