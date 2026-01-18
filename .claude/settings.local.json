@@ -23,7 +23,10 @@
       "Bash(npm run db:start:*)",
       "Bash(docker compose:*)",
       "Bash(npx prisma migrate:*)",
-      "Bash(npm run db:seed:*)"
+      "Bash(npm run db:seed:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: add database and Prisma setup \\(Story 1.2\\)\n\n- Add Docker Compose for PostgreSQL 16 dev environment\n- Initialize Prisma 7.2 with pg adapter for direct DB connection\n- Create User model with migration\n- Add seed script with test user\n- Add database scripts: db:start, db:stop, db:reset, db:migrate, db:seed\n- Update README with database documentation\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npx shadcn@latest init:*)",
+      "Skill(frontend-design)"
     ]
   }
 }
