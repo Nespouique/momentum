@@ -158,7 +158,7 @@ export default function RegisterPage() {
                         onSelect={(date) => field.onChange(date ? date.toISOString().split("T")[0] : undefined)}
                         disabled={(date) => date > new Date()}
                         initialFocus
-                        captionLayout="dropdown-buttons"
+                        captionLayout="dropdown"
                         fromYear={1920}
                         toYear={new Date().getFullYear()}
                       />

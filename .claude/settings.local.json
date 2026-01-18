@@ -33,7 +33,25 @@
       "Bash(git commit:*)",
       "Bash(npm run dev)",
       "Bash(timeout:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "mcp__shadcn__search_items_in_registries",
+      "mcp__shadcn__list_items_in_registries",
+      "mcp__shadcn__get_item_examples_from_registries",
+      "Bash(npx tsc:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(dir:*)",
+      "Bash(npm run dev:api:*)",
+      "Bash(npm run dev:web:*)",
+      "Bash(npm run test)",
+      "Bash(npx prisma db execute:*)",
+      "Bash(npx tsx:*)",
+      "Bash(node --loader ts-node/esm -e:*)",
+      "mcp__shadcn__view_items_in_registries",
+      "mcp__lucide-icons__search_icons",
+      "mcp__lucide-icons__fuzzy_search_icons",
+      "mcp__shadcn__get_add_command_for_items",
+      "Bash(npm run lint:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

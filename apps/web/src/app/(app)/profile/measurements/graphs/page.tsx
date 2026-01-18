@@ -263,6 +263,8 @@ export default function MeasurementsGraphsPage() {
     const first = validChartData[0];
     const last = validChartData[validChartData.length - 1];
 
+    if (!first || !last) return null;
+
     if (measurementDef.bilateral) {
       const leftFirst = first.left ?? 0;
       const leftLast = last.left ?? 0;
@@ -275,16 +277,16 @@ export default function MeasurementsGraphsPage() {
       const rightChangePercent = rightFirst !== 0 ? (rightChange / rightFirst) * 100 : 0;
 
       return {
-        bilateral: true,
+        bilateral: true as const,
         left: {
-          firstValue: first.left,
-          lastValue: last.left,
+          firstValue: first.left ?? null,
+          lastValue: last.left ?? null,
           change: leftChange,
           changePercent: leftChangePercent,
         },
         right: {
-          firstValue: first.right,
-          lastValue: last.right,
+          firstValue: first.right ?? null,
+          lastValue: last.right ?? null,
           change: rightChange,
           changePercent: rightChangePercent,
         },
@@ -297,10 +299,10 @@ export default function MeasurementsGraphsPage() {
       const changePercent = firstValue !== 0 ? (change / firstValue) * 100 : 0;
 
       return {
-        bilateral: false,
+        bilateral: false as const,
         single: {
-          firstValue: first.value,
-          lastValue: last.value,
+          firstValue: first.value ?? null,
+          lastValue: last.value ?? null,
           change,
           changePercent,
         },
@@ -336,7 +338,12 @@ export default function MeasurementsGraphsPage() {
     const padding = (max - min) * 0.1 || 1;
 
     const ticks = calculateNiceTicks(min - padding, max + padding);
-    const domain: [number, number] = [ticks[0], ticks[ticks.length - 1]];
+
+    if (ticks.length === 0) {
+      return { yAxisDomain: [0, 100] as [number, number], yAxisTicks: [0, 25, 50, 75, 100] };
+    }
+
+    const domain: [number, number] = [ticks[0]!, ticks[ticks.length - 1]!];
 
     return { yAxisDomain: domain, yAxisTicks: ticks };
   }, [validChartData, measurementDef]);

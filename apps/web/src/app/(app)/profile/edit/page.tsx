@@ -206,7 +206,7 @@ export default function EditProfilePage() {
                               onSelect={(date) => field.onChange(date ? date.toISOString().split("T")[0] : null)}
                               disabled={(date) => date > new Date()}
                               initialFocus
-                              captionLayout="dropdown-buttons"
+                              captionLayout="dropdown"
                               fromYear={1920}
                               toYear={new Date().getFullYear()}
                             />
