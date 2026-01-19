@@ -179,9 +179,14 @@ export default function EditProfilePage() {
                     control={profileForm.control}
                     name="birthDate"
                     render={({ field }) => {
-                      const dateValue = field.value && typeof field.value === "string"
-                        ? new Date(field.value + "T00:00:00")
-                        : undefined;
+                      // Handle both ISO format (from API) and date-only format
+                      const parseDate = (value: string | null | undefined) => {
+                        if (!value || typeof value !== "string") return undefined;
+                        // If already ISO format, use directly; otherwise add time component
+                        const dateStr = value.includes("T") ? value : value + "T00:00:00";
+                        return new Date(dateStr);
+                      };
+                      const dateValue = parseDate(field.value);
                       const isValidDate = dateValue && !isNaN(dateValue.getTime());
 
                       return (
