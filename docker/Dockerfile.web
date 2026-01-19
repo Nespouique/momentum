@@ -1,34 +1,19 @@
-# Stage 1: Dependencies
-FROM node:20-alpine AS deps
-WORKDIR /app
-
-# Copy all package files for workspaces (npm ci needs all workspace package.json)
-COPY package*.json ./
-COPY apps/web/package.json ./apps/web/
-COPY apps/api/package.json ./apps/api/
-COPY packages/shared/package.json ./packages/shared/
-
-# Install all dependencies (hoisted to root node_modules)
-# --ignore-scripts to skip postinstall (prisma generate) since we don't need it for web
-RUN npm ci --ignore-scripts
-
-# Stage 2: Builder
+# Stage 1: Builder (single stage to avoid node_modules sync issues)
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy node_modules from deps stage (all hoisted at root)
-COPY --from=deps /app/node_modules ./node_modules
-
-# Copy source code
+# Copy all source files first
 COPY . .
 
-# Disable telemetry
-ENV NEXT_TELEMETRY_DISABLED=1
+# Install dependencies (npm will create proper node_modules structure)
+# --ignore-scripts to skip postinstall (prisma generate) since we don't need it for web
+RUN npm ci --ignore-scripts
 
-# Build the app
+# Disable telemetry and build
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build --workspace=@momentum/web
 
-# Stage 3: Runner
+# Stage 2: Runner
 FROM node:20-alpine AS runner
 WORKDIR /app
 
