@@ -2,10 +2,6 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Build argument for API URL (injected at build time for NEXT_PUBLIC_* vars)
-ARG NEXT_PUBLIC_API_URL=http://localhost:3001
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-
 # Copy all source files first
 COPY . .
 
