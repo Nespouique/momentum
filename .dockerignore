@@ -1,0 +1,36 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+.next
+**/dist
+**/.next
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Docker files (avoid recursive copy)
+docker/
+Dockerfile*
+
+# Misc
+*.log
+npm-debug.log*
+.DS_Store
+coverage
+.nyc_output
+
+# Generated files
+apps/api/src/generated
