@@ -178,45 +178,52 @@ export default function EditProfilePage() {
                   <FormField
                     control={profileForm.control}
                     name="birthDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date de naissance</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full justify-start text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                disabled={profileForm.formState.isSubmitting}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value
-                                  ? format(new Date(field.value + "T00:00:00"), "d MMMM yyyy", { locale: fr })
-                                  : "Sélectionner"}
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              locale={fr}
-                              weekStartsOn={1}
-                              selected={field.value ? new Date(field.value + "T00:00:00") : undefined}
-                              onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : null)}
-                              disabled={(date) => date > new Date()}
-                              initialFocus
-                              captionLayout="dropdown"
-                              fromYear={1920}
-                              toYear={new Date().getFullYear()}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const dateValue = field.value && typeof field.value === "string"
+                        ? new Date(field.value + "T00:00:00")
+                        : undefined;
+                      const isValidDate = dateValue && !isNaN(dateValue.getTime());
+
+                      return (
+                        <FormItem>
+                          <FormLabel>Date de naissance</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !isValidDate && "text-muted-foreground"
+                                  )}
+                                  disabled={profileForm.formState.isSubmitting}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {isValidDate
+                                    ? format(dateValue, "d MMMM yyyy", { locale: fr })
+                                    : "Sélectionner"}
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                locale={fr}
+                                weekStartsOn={1}
+                                selected={isValidDate ? dateValue : undefined}
+                                onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : null)}
+                                disabled={(date) => date > new Date()}
+                                initialFocus
+                                captionLayout="dropdown"
+                                fromYear={1920}
+                                toYear={new Date().getFullYear()}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
 
                   <FormField
