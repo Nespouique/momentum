@@ -1,6 +1,6 @@
 services:
   web:
-    image: ${DOCKERHUB_USERNAME:-momentum}/momentum-web:${TAG:-latest}
+    image: ${DOCKERHUB_USERNAME:-nespouique}/momentum-web:${TAG:-latest}
     ports:
       - "3000:3000"
     environment:
@@ -15,11 +15,9 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
-    networks:
-      - momentum-network
 
   api:
-    image: ${DOCKERHUB_USERNAME:-momentum}/momentum-api:${TAG:-latest}
+    image: ${DOCKERHUB_USERNAME:-nespouique}/momentum-api:${TAG:-latest}
     ports:
       - "3001:3001"
     environment:
@@ -27,7 +25,6 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - NODE_ENV=production
-      - PORT=3001
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,8 +35,6 @@ services:
       retries: 3
       start_period: 10s
     restart: unless-stopped
-    networks:
-      - momentum-network
 
   postgres:
     image: postgres:16-alpine
@@ -55,12 +50,19 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    networks:
-      - momentum-network
+
+  prisma-studio:
+    image: ${DOCKERHUB_USERNAME:-nespouique}/momentum-api:${TAG:-latest}
+    container_name: momentum-prisma-studio
+    ports:
+      - "5555:5555"
+    environment:
+      - DATABASE_URL=postgresql://momentum:${DB_PASSWORD}@postgres:5432/momentum
+    command: npx prisma studio --port 5555 --browser none
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:
-
-networks:
-  momentum-network:
-    driver: bridge
