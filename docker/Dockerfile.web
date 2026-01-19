@@ -9,7 +9,8 @@ COPY apps/api/package.json ./apps/api/
 COPY packages/shared/package.json ./packages/shared/
 
 # Install all dependencies (hoisted to root node_modules)
-RUN npm ci
+# --ignore-scripts to skip postinstall (prisma generate) since we don't need it for web
+RUN npm ci --ignore-scripts
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
