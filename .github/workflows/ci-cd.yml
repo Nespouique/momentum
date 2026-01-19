@@ -79,6 +79,8 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/momentum-web:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/momentum-web:${{ steps.sha.outputs.short }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.API_URL || 'https://api.momentum.hallais.bzh' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
