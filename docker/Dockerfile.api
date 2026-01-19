@@ -31,6 +31,7 @@ RUN adduser --system --uid 1001 expressjs
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/package.json ./
 COPY --from=builder /app/apps/api/prisma ./prisma
+COPY --from=builder /app/apps/api/prisma.config.ts ./
 
 # Copy node_modules (includes Prisma client and shared package)
 COPY --from=builder /app/node_modules ./node_modules
