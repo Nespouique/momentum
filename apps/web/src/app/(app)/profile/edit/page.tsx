@@ -194,7 +194,7 @@ export default function EditProfilePage() {
                               >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {field.value
-                                  ? format(new Date(field.value), "d MMM yyyy", { locale: fr })
+                                  ? format(new Date(field.value + "T00:00:00"), "d MMMM yyyy", { locale: fr })
                                   : "Sélectionner"}
                               </Button>
                             </FormControl>
@@ -202,8 +202,10 @@ export default function EditProfilePage() {
                           <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                               mode="single"
-                              selected={field.value ? new Date(field.value) : undefined}
-                              onSelect={(date) => field.onChange(date ? date.toISOString().split("T")[0] : null)}
+                              locale={fr}
+                              weekStartsOn={1}
+                              selected={field.value ? new Date(field.value + "T00:00:00") : undefined}
+                              onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : null)}
                               disabled={(date) => date > new Date()}
                               initialFocus
                               captionLayout="dropdown"
