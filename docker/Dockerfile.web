@@ -2,22 +2,20 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Copy package files for all workspaces
+# Copy all package files for workspaces
 COPY package*.json ./
-COPY apps/web/package*.json ./apps/web/
-COPY packages/shared/package*.json ./packages/shared/
+COPY apps/web/package.json ./apps/web/
+COPY packages/shared/package.json ./packages/shared/
 
-# Install dependencies
+# Install all dependencies (hoisted to root node_modules)
 RUN npm ci
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy dependencies from deps stage
+# Copy node_modules from deps stage (all hoisted at root)
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
 
 # Copy source code
 COPY . .
