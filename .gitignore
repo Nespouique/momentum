@@ -25,13 +25,17 @@ yarn-error.log*
 .idea
 .vscode/*
 !.vscode/extensions.json
-!.vscode/settings.json
 *.swp
 *.swo
 
 # OS
 .DS_Store
 Thumbs.db
+nul
+
+# Claude Code local settings
+.claude/settings.local.json
+.claude/*.ps1
 
 # Testing
 coverage
