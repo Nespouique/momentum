@@ -7,6 +7,7 @@ import { prisma } from "./lib/prisma.js";
 import authRoutes from "./routes/auth.routes.js";
 import profileRoutes from "./routes/profile.routes.js";
 import measurementRoutes from "./routes/measurement.routes.js";
+import exerciseRoutes from "./routes/exercise.routes.js";
 
 const app = express();
 const PORT = process.env["PORT"] || 3001;
@@ -42,6 +43,7 @@ app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/profile", profileRoutes);
 app.use("/measurements", measurementRoutes);
+app.use("/exercises", exerciseRoutes);
 
 app.get("/health", async (_req, res) => {
   try {

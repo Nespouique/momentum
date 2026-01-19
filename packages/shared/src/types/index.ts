@@ -17,3 +17,28 @@ export interface HealthCheckResponse {
   timestamp: string;
   database?: "connected" | "disconnected";
 }
+
+// Muscle Groups for Exercise Library
+export const MUSCLE_GROUPS = [
+  "abdos",
+  "biceps",
+  "dos",
+  "epaules",
+  "fessiers",
+  "ischios",
+  "lombaires",
+  "mollets",
+  "pecs",
+  "quadriceps",
+  "trapezes",
+  "triceps",
+] as const;
+
+export type MuscleGroup = (typeof MUSCLE_GROUPS)[number];
+
+export interface Exercise {
+  id: string;
+  name: string;
+  muscleGroups: MuscleGroup[];
+  createdAt: Date;
+}

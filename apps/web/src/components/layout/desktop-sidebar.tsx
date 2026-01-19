@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Home, Dumbbell, TrendingUp, User } from "lucide-react";
+import { Home, Dumbbell, Library, User } from "lucide-react";
 import { NavItem } from "./nav-item";
 import { useAuthStore } from "@/stores/auth";
 
 const navItems = [
   { href: "/", icon: Home, label: "Today" },
   { href: "/workouts", icon: Dumbbell, label: "Workouts" },
-  { href: "/progress", icon: TrendingUp, label: "Progress" },
+  { href: "/exercises", icon: Library, label: "Exercices" },
   { href: "/profile", icon: User, label: "Profile" },
 ];
 

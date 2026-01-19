@@ -67,3 +67,12 @@ model Measurement {
   @@unique([userId, date])
   @@map("measurements")
 }
+
+model Exercise {
+  id           String   @id @default(uuid())
+  name         String
+  muscleGroups String[] @map("muscle_groups")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("exercises")
+}
