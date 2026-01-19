@@ -5,18 +5,13 @@ WORKDIR /app
 # Install OpenSSL for Prisma
 RUN apk add --no-cache openssl
 
-# Copy package files for all workspaces
-COPY package*.json ./
-COPY apps/api/package*.json ./apps/api/
-COPY packages/shared/package*.json ./packages/shared/
-
-# Install all dependencies (including devDependencies for build)
-RUN npm ci
-
-# Copy source code
+# Copy all source files first (needed for prisma generate during npm ci)
 COPY . .
 
-# Build the API (includes prisma generate)
+# Install all dependencies (includes postinstall → prisma generate)
+RUN npm ci
+
+# Build the API
 RUN npm run build --workspace=@momentum/api
 
 # Stage 2: Runner
