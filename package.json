@@ -10,7 +10,7 @@
     "dev": "concurrently \"npm run dev -w @momentum/api\" \"npm run dev -w @momentum/web\"",
     "dev:api": "npm run dev -w @momentum/api",
     "dev:web": "npm run dev -w @momentum/web",
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build -w @momentum/shared && npm run build -w @momentum/api && npm run build -w @momentum/web",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
