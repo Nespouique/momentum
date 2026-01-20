@@ -14,19 +14,18 @@ import {
   User,
   History,
   ChartLine,
-  Pencil,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useAuthStore } from "@/stores/auth";
 import { getProfile, type UserProfile } from "@/lib/api/profile";
 import {
@@ -212,9 +211,9 @@ function BilateralRow({
             </div>
           </div>
         </div>
-        {/* Droit */}
+        {/* Droite */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground/60">Droit</span>
+          <span className="text-xs text-muted-foreground/60">Droite</span>
           <div className="flex items-center gap-3">
             <Evolution current={rightValue} previous={prevRightValue} />
             <div className="flex items-baseline gap-1 min-w-[60px] justify-end">
@@ -520,61 +519,52 @@ export default function MeasurementsPage() {
         </div>
       )}
 
-      {/* History drawer */}
-      <Drawer open={showHistory} onOpenChange={setShowHistory}>
-        <DrawerContent>
-          <div className="mx-auto w-full max-w-md">
-            <DrawerHeader>
-              <DrawerTitle>Historique des mesures</DrawerTitle>
-              <DrawerDescription>
-                {measurements.length} mesure{measurements.length > 1 ? "s" : ""} enregistrée{measurements.length > 1 ? "s" : ""}
-              </DrawerDescription>
-            </DrawerHeader>
-            <div className="px-4 pb-6 max-h-[60vh] overflow-y-auto">
-              <div className="space-y-2">
-                {measurements.map((measurement) => (
-                  <div
-                    key={measurement.id}
-                    className="flex items-center justify-between py-3 px-3 rounded-lg bg-secondary/30"
-                  >
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">
-                        {formatDate(measurement.date)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {measurement.weight ? `${measurement.weight.toFixed(1)} kg` : "Poids non renseigné"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setShowHistory(false);
-                          router.push(`/profile/measurements/${measurement.id}`);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/20"
-                        onClick={() => {
-                          setShowHistory(false);
-                          setDeleteId(measurement.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+      {/* History sheet */}
+      <Sheet open={showHistory} onOpenChange={setShowHistory}>
+        <SheetContent side="bottom" className="max-h-[85vh] flex flex-col">
+          <SheetHeader className="shrink-0">
+            <SheetTitle>Historique des mesures</SheetTitle>
+            <SheetDescription>
+              {measurements.length} mesure{measurements.length > 1 ? "s" : ""} enregistrée{measurements.length > 1 ? "s" : ""}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 overflow-y-auto flex-1">
+            <div className="space-y-2 pb-4">
+              {measurements.map((measurement) => (
+                <div
+                  key={measurement.id}
+                  onClick={() => {
+                    setShowHistory(false);
+                    router.push(`/profile/measurements/${measurement.id}`);
+                  }}
+                  className="flex items-center justify-between py-3 px-3 rounded-lg bg-secondary/30 cursor-pointer hover:bg-secondary/50 transition-colors"
+                >
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">
+                      {formatDate(measurement.date)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {measurement.weight ? `${measurement.weight.toFixed(1)} kg` : "Poids non renseigné"}
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/20"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowHistory(false);
+                      setDeleteId(measurement.id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
-        </DrawerContent>
-      </Drawer>
+        </SheetContent>
+      </Sheet>
 
       {/* Delete confirmation dialog */}
       <ConfirmDeleteDialog

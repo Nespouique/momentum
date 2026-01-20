@@ -12,6 +12,7 @@ export const registerSchema = z
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
     birthDate: z.string().optional(),
+    height: z.number().int().min(50).max(300).optional().nullable(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",

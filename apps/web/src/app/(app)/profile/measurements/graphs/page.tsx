@@ -80,7 +80,7 @@ const chartConfigBilateral: ChartConfig = {
     color: "hsl(var(--accent-orange))",
   },
   right: {
-    label: "Droit",
+    label: "Droite",
     color: "hsl(217 91% 60%)",
   },
 };
@@ -472,7 +472,7 @@ export default function MeasurementsGraphsPage() {
                       <Line
                         type="monotone"
                         dataKey="right"
-                        name="Droit"
+                        name="Droite"
                         stroke="var(--color-right)"
                         strokeWidth={2.5}
                         dot={{ r: 4, fill: "var(--color-right)", strokeWidth: 0 }}
@@ -505,7 +505,7 @@ export default function MeasurementsGraphsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-[hsl(217_91%_60%)]" />
-                  <span className="text-xs text-muted-foreground">Droit</span>
+                  <span className="text-xs text-muted-foreground">Droite</span>
                 </div>
               </div>
             )}
@@ -544,7 +544,7 @@ export default function MeasurementsGraphsPage() {
                     color="orange"
                   />
                   <TrendCard
-                    label="Droit"
+                    label="Droite"
                     firstValue={trends.right.firstValue}
                     lastValue={trends.right.lastValue}
                     change={trends.right.change}

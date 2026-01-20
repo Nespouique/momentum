@@ -5,6 +5,7 @@ export const registerSchema = z.object({
   email: z.string().email("Please enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   birthDate: z.string().optional(), // ISO date string YYYY-MM-DD
+  height: z.number().int().min(50).max(300).optional(), // Height in cm
 });
 
 export const loginSchema = z.object({

@@ -80,7 +80,7 @@ export default function EditProfilePage() {
           goalDescription: profile.goalDescription || "",
         });
       } catch (err) {
-        setProfileError(err instanceof Error ? err.message : "Failed to load profile");
+        setProfileError(err instanceof Error ? err.message : "Erreur lors du chargement du profil");
       } finally {
         setIsLoading(false);
       }
@@ -100,9 +100,9 @@ export default function EditProfilePage() {
         goalDescription: data.goalDescription || null,
       });
       await checkAuth();
-      toast.success("Profile updated successfully");
+      toast.success("Profil mis à jour avec succès");
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : "Failed to update profile");
+      setProfileError(err instanceof Error ? err.message : "Erreur lors de la mise à jour du profil");
     }
   };
 
@@ -116,9 +116,9 @@ export default function EditProfilePage() {
         newPassword: data.newPassword,
       });
       passwordForm.reset();
-      toast.success("Password changed successfully");
+      toast.success("Mot de passe modifié avec succès");
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : "Failed to change password");
+      setPasswordError(err instanceof Error ? err.message : "Erreur lors du changement de mot de passe");
     }
   };
 
@@ -132,13 +132,13 @@ export default function EditProfilePage() {
 
   return (
     <div>
-      <PageHeader title="Edit Profile" showBack />
+      <PageHeader title="Modifier le profil" showBack />
 
       <div className="space-y-6">
         {/* Profile Form */}
         <Card>
           <CardHeader>
-            <CardTitle>Profile Information</CardTitle>
+            <CardTitle>Informations</CardTitle>
           </CardHeader>
           <CardContent>
             {profileError && (
@@ -155,10 +155,10 @@ export default function EditProfilePage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Name</FormLabel>
+                      <FormLabel>Nom</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Your name"
+                          placeholder="Votre nom"
                           disabled={profileForm.formState.isSubmitting}
                           {...field}
                         />
@@ -171,10 +171,10 @@ export default function EditProfilePage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium leading-none">Email</label>
                   <Input value={user?.email || ""} disabled className="bg-muted" />
-                  <p className="text-sm text-muted-foreground">Email cannot be changed</p>
+                  <p className="text-sm text-muted-foreground">L'email ne peut pas être modifié</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={profileForm.control}
                     name="birthDate"
@@ -259,10 +259,10 @@ export default function EditProfilePage() {
                   name="goalDescription"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Fitness Goal</FormLabel>
+                      <FormLabel>Objectifs</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Describe your fitness goals..."
+                          placeholder="Décrivez vos objectifs de fitness..."
                           className="resize-none"
                           rows={3}
                           disabled={profileForm.formState.isSubmitting}
@@ -283,10 +283,10 @@ export default function EditProfilePage() {
                   {profileForm.formState.isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Saving...
+                      Enregistrement...
                     </>
                   ) : (
-                    "Save Changes"
+                    "Enregistrer les modifications"
                   )}
                 </Button>
               </form>
@@ -301,7 +301,7 @@ export default function EditProfilePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lock className="w-5 h-5" />
-              Change Password
+              Changer le mot de passe
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -319,11 +319,11 @@ export default function EditProfilePage() {
                   name="currentPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Current Password</FormLabel>
+                      <FormLabel>Mot de passe actuel</FormLabel>
                       <FormControl>
                         <Input
                           type="password"
-                          placeholder="Enter current password"
+                          placeholder="Entrez le mot de passe actuel"
                           autoComplete="current-password"
                           disabled={passwordForm.formState.isSubmitting}
                           {...field}
@@ -339,11 +339,11 @@ export default function EditProfilePage() {
                   name="newPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>New Password</FormLabel>
+                      <FormLabel>Nouveau mot de passe</FormLabel>
                       <FormControl>
                         <Input
                           type="password"
-                          placeholder="Enter new password"
+                          placeholder="Entrez le nouveau mot de passe"
                           autoComplete="new-password"
                           disabled={passwordForm.formState.isSubmitting}
                           {...field}
@@ -359,11 +359,11 @@ export default function EditProfilePage() {
                   name="confirmNewPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Confirm New Password</FormLabel>
+                      <FormLabel>Confirmer le nouveau mot de passe</FormLabel>
                       <FormControl>
                         <Input
                           type="password"
-                          placeholder="Confirm new password"
+                          placeholder="Confirmez le nouveau mot de passe"
                           autoComplete="new-password"
                           disabled={passwordForm.formState.isSubmitting}
                           {...field}
@@ -383,10 +383,10 @@ export default function EditProfilePage() {
                   {passwordForm.formState.isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Changing Password...
+                      Changement du mot de passe...
                     </>
                   ) : (
-                    "Change Password"
+                    "Changer le mot de passe"
                   )}
                 </Button>
               </form>

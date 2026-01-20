@@ -60,10 +60,6 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       <p className="mb-4 max-w-xs text-sm text-muted-foreground">
         Commencez par ajouter des exercices à votre séance
       </p>
-      <Button onClick={onAdd} variant="outline" className="gap-2">
-        <Plus className="h-4 w-4" />
-        Ajouter exercice
-      </Button>
     </div>
   );
 }
@@ -456,23 +452,8 @@ export function WorkoutBuilder({ workout, mode }: WorkoutBuilderProps) {
   return (
     <div className="pb-24">
       <PageHeader
-        title={mode === "create" ? "Nouveau" : "Modifier"}
+        title={mode === "create" ? "Nouvelle séance" : "Modifier la séance"}
         showBack
-        actions={
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={!isValid || isSaving}
-            className="gap-1.5"
-          >
-            {isSaving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
-            Sauvegarder
-          </Button>
-        }
       />
 
       {/* Name input */}
@@ -556,6 +537,28 @@ export function WorkoutBuilder({ workout, mode }: WorkoutBuilderProps) {
             </SortableContext>
           </DndContext>
         )}
+      </div>
+
+      {/* Save button */}
+      <div className="mt-8">
+        <Button
+          size="lg"
+          onClick={handleSave}
+          disabled={!isValid || isSaving}
+          className="w-full gap-2"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Enregistrement...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              {mode === "create" ? "Créer le programme" : "Enregistrer"}
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Add item dialog */}

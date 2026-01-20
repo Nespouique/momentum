@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Exercise } from "@/lib/api/exercises";
@@ -16,8 +16,9 @@ interface ExerciseCardProps {
 export function ExerciseCard({ exercise, onEdit, onDelete }: ExerciseCardProps) {
   return (
     <div
+      onClick={onEdit}
       className={cn(
-        "rounded-lg border border-zinc-800 bg-zinc-900/50 p-4",
+        "rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 cursor-pointer",
         "transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-900"
       )}
     >
@@ -40,22 +41,16 @@ export function ExerciseCard({ exercise, onEdit, onDelete }: ExerciseCardProps) 
           </div>
         </div>
 
-        {/* Action buttons - always visible */}
-        <div className="flex items-center gap-1 shrink-0">
+        {/* Delete button */}
+        <div className="flex items-center shrink-0">
           <Button
             variant="ghost"
             size="icon"
-            onClick={onEdit}
-            className="h-8 w-8 text-zinc-400 hover:text-zinc-100"
-          >
-            <Pencil className="h-4 w-4" />
-            <span className="sr-only">Modifier</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onDelete}
-            className="h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete?.();
+            }}
+            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/20"
           >
             <Trash2 className="h-4 w-4" />
             <span className="sr-only">Supprimer</span>

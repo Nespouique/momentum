@@ -11,6 +11,7 @@ import { AlertCircle, Loader2, CalendarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -51,13 +52,14 @@ export default function RegisterPage() {
       password: "",
       confirmPassword: "",
       birthDate: undefined,
+      height: null,
     },
   });
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
       setError(null);
-      await register(data.name, data.email, data.password, data.birthDate);
+      await register(data.name, data.email, data.password, data.birthDate, data.height);
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
@@ -127,49 +129,74 @@ export default function RegisterPage() {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="birthDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Date de naissance (optionnel)</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full h-11 justify-start text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                          disabled={form.formState.isSubmitting}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {field.value
-                            ? format(new Date(field.value + "T00:00:00"), "d MMMM yyyy", { locale: fr })
-                            : "Sélectionner une date"}
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        locale={fr}
-                        weekStartsOn={1}
-                        selected={field.value ? new Date(field.value + "T00:00:00") : undefined}
-                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : undefined)}
-                        disabled={(date) => date > new Date()}
-                        initialFocus
-                        captionLayout="dropdown"
-                        fromYear={1920}
-                        toYear={new Date().getFullYear()}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="birthDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date de naissance</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full h-11 justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            disabled={form.formState.isSubmitting}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value
+                              ? format(new Date(field.value + "T00:00:00"), "d MMMM yyyy", { locale: fr })
+                              : "Sélectionner"}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          locale={fr}
+                          weekStartsOn={1}
+                          selected={field.value ? new Date(field.value + "T00:00:00") : undefined}
+                          onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : undefined)}
+                          disabled={(date) => date > new Date()}
+                          initialFocus
+                          captionLayout="dropdown"
+                          fromYear={1920}
+                          toYear={new Date().getFullYear()}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="height"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Taille (cm)</FormLabel>
+                    <FormControl>
+                      <NumberInput
+                        min={50}
+                        max={300}
+                        step={1}
+                        placeholder="175"
+                        className="h-11"
+                        disabled={form.formState.isSubmitting}
+                        value={field.value}
+                        onChange={field.onChange}
                       />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}

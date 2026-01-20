@@ -106,7 +106,7 @@ function WorkoutCard({
           <Button
             size="sm"
             onClick={onStart}
-            className="h-8 gap-1.5 bg-orange-600 hover:bg-orange-500 text-white"
+            className="h-8 gap-1.5"
           >
             <Play className="h-3.5 w-3.5" />
             Start
@@ -135,7 +135,7 @@ function WorkoutCard({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={onDelete}
-                className="text-red-400 focus:text-red-400 focus:bg-red-500/10"
+                className="text-destructive focus:text-destructive focus:bg-destructive/20"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Supprimer
@@ -252,15 +252,7 @@ export default function WorkoutsPage() {
   if (isLoading) {
     return (
       <div className="pb-24">
-        <PageHeader
-          title="Séances"
-          actions={
-            <Button size="sm" disabled>
-              <Plus className="h-4 w-4 mr-1" />
-              Nouveau
-            </Button>
-          }
-        />
+        <PageHeader title="Séances" />
         <div className="space-y-4">
           {/* Start workout button skeleton */}
           <div className="h-14 animate-pulse rounded-lg bg-secondary/50" />
@@ -284,15 +276,7 @@ export default function WorkoutsPage() {
 
   return (
     <div className="pb-24">
-      <PageHeader
-        title="Séances"
-        actions={
-          <Button size="sm" onClick={handleAddClick}>
-            <Plus className="h-4 w-4 mr-1" />
-            Nouveau
-          </Button>
-        }
-      />
+      <PageHeader title="Séances" />
 
       {workouts.length === 0 ? (
         <EmptyState onAdd={handleAddClick} />
@@ -336,6 +320,19 @@ export default function WorkoutsPage() {
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
       />
+
+      {/* Floating Add Button */}
+      {workouts.length > 0 && (
+        <div className="fixed bottom-20 right-4 z-50">
+          <Button
+            size="lg"
+            onClick={handleAddClick}
+            className="h-14 w-14 rounded-full shadow-lg shadow-black/30 p-0"
+          >
+            <Plus className="h-6 w-6" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

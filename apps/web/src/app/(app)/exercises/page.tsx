@@ -196,15 +196,7 @@ export default function ExercisesPage() {
   if (isLoading) {
     return (
       <div className="pb-24">
-        <PageHeader
-          title="Exercices"
-          actions={
-            <Button size="sm" disabled>
-              <Plus className="h-4 w-4 mr-1" />
-              Ajouter
-            </Button>
-          }
-        />
+        <PageHeader title="Exercices" />
         <div className="space-y-4">
           <div className="h-10 animate-pulse rounded-lg bg-secondary/50" />
           <div className="h-10 animate-pulse rounded-lg bg-secondary/50" />
@@ -220,15 +212,7 @@ export default function ExercisesPage() {
 
   return (
     <div className="pb-24">
-      <PageHeader
-        title="Exercices"
-        actions={
-          <Button size="sm" onClick={handleAddClick}>
-            <Plus className="h-4 w-4 mr-1" />
-            Ajouter
-          </Button>
-        }
-      />
+      <PageHeader title="Exercices" />
 
       {/* Search bar */}
       <div className="relative mb-4">
@@ -310,6 +294,19 @@ export default function ExercisesPage() {
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
       />
+
+      {/* Floating Add Button */}
+      {exercises.length > 0 && (
+        <div className="fixed bottom-20 right-4 z-50">
+          <Button
+            size="lg"
+            onClick={handleAddClick}
+            className="h-14 w-14 rounded-full shadow-lg shadow-black/30 p-0"
+          >
+            <Plus className="h-6 w-6" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

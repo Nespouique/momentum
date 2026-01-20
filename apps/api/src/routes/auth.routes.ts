@@ -53,6 +53,7 @@ router.post("/register", async (req: Request, res: Response) => {
         email: data.email,
         passwordHash,
         birthDate: data.birthDate ? new Date(data.birthDate) : null,
+        height: data.height ?? null,
       },
       select: {
         id: true,

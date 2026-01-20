@@ -52,7 +52,7 @@ export function ExerciseItemCard({ item, onEdit, onDelete, dragHandleProps }: Ex
           variant="ghost"
           size="icon"
           onClick={onDelete}
-          className="shrink-0 h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
+          className="shrink-0 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/20"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -110,7 +110,7 @@ export function SupersetItemCard({
           variant="ghost"
           size="icon"
           onClick={onDelete}
-          className="shrink-0 h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
+          className="shrink-0 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/20"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
