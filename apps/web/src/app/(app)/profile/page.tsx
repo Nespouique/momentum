@@ -33,7 +33,7 @@ export default function ProfilePage() {
 
   return (
     <div className="pb-8">
-      <PageHeader title="Profile" />
+      <PageHeader title="Profil" />
 
       {/* User Header Card */}
       <div className="relative mb-8">
@@ -51,36 +51,36 @@ export default function ProfilePage() {
 
       {/* Menu Sections */}
       <div className="space-y-6">
-        <MenuSection title="Body & Progress">
+        <MenuSection title="Mensurations & Progrès">
           <MenuItem
             href="/profile/measurements"
             icon={Ruler}
-            label="Measurements"
-            description="Track weight, body fat & more"
+            label="Mensurations"
+            description="Suivre le poids, les mesures & plus"
             isFirst
           />
           <MenuItem
             href="/settings/trackables"
             icon={BarChart3}
-            label="Tracking Config"
-            description="Customize what you track"
+            label="Configuration du suivi"
+            description="Personnaliser ce que vous suivez"
             isLast
           />
         </MenuSection>
 
-        <MenuSection title="Account">
+        <MenuSection title="Compte">
           <MenuItem
             href="/profile/edit"
             icon={User}
-            label="Edit Profile"
-            description="Name, age, height & goals"
+            label="Modifier le profil"
+            description="Nom, âge, taille & objectifs"
             isFirst
           />
           <MenuItem
             href="/settings"
             icon={Settings}
-            label="Settings"
-            description="App preferences"
+            label="Paramètres"
+            description="Préférences de l'application"
             isLast
           />
         </MenuSection>
@@ -94,7 +94,7 @@ export default function ProfilePage() {
           onClick={handleLogout}
         >
           <LogOut className="h-4 w-4 mr-2" />
-          Sign Out
+          Déconnexion
         </Button>
       </div>
     </div>

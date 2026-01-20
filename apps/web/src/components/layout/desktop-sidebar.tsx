@@ -6,10 +6,10 @@ import { NavItem } from "./nav-item";
 import { useAuthStore } from "@/stores/auth";
 
 const navItems = [
-  { href: "/", icon: Home, label: "Today" },
-  { href: "/workouts", icon: Dumbbell, label: "Workouts" },
+  { href: "/", icon: Home, label: "Accueil" },
+  { href: "/workouts", icon: Dumbbell, label: "Séances" },
   { href: "/exercises", icon: Library, label: "Exercices" },
-  { href: "/profile", icon: User, label: "Profile" },
+  { href: "/profile", icon: User, label: "Profil" },
 ];
 
 function getInitials(name: string): string {

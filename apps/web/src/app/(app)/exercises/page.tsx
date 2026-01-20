@@ -197,7 +197,7 @@ export default function ExercisesPage() {
     return (
       <div className="pb-24">
         <PageHeader
-          title="Bibliothèque"
+          title="Exercices"
           actions={
             <Button size="sm" disabled>
               <Plus className="h-4 w-4 mr-1" />
@@ -221,7 +221,7 @@ export default function ExercisesPage() {
   return (
     <div className="pb-24">
       <PageHeader
-        title="Bibliothèque"
+        title="Exercices"
         actions={
           <Button size="sm" onClick={handleAddClick}>
             <Plus className="h-4 w-4 mr-1" />

@@ -219,18 +219,18 @@ router.delete("/:id", async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Note: When WorkoutExercise model is added in Story 2.3, add check here:
-    // const usedInWorkouts = await prisma.workoutExercise.count({
-    //   where: { exerciseId: id }
-    // });
-    // if (usedInWorkouts > 0) {
-    //   return res.status(409).json({
-    //     error: {
-    //       code: ErrorCodes.CONFLICT,
-    //       message: "Cannot delete exercise used in workout programs",
-    //     },
-    //   });
-    // }
+    // Check if exercise is used in any workout
+    const usedInWorkouts = await prisma.workoutItemExercise.count({
+      where: { exerciseId: id }
+    });
+    if (usedInWorkouts > 0) {
+      return res.status(409).json({
+        error: {
+          code: ErrorCodes.CONFLICT,
+          message: "Cannot delete exercise used in workout programs",
+        },
+      });
+    }
 
     await prisma.exercise.delete({
       where: { id },

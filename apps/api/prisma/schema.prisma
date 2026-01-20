@@ -23,6 +23,7 @@ model User {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   measurements    Measurement[]
+  workouts        Workout[]
 
   @@map("users")
 }
@@ -74,5 +75,63 @@ model Exercise {
   muscleGroups String[] @map("muscle_groups")
   createdAt    DateTime @default(now()) @map("created_at")
 
+  workoutItemExercises WorkoutItemExercise[]
+
   @@map("exercises")
+}
+
+model Workout {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id])
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  items WorkoutItem[]
+
+  @@map("workouts")
+}
+
+model WorkoutItem {
+  id        String  @id @default(uuid())
+  workoutId String  @map("workout_id")
+  workout   Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  type      String  // 'exercise' | 'superset'
+  position  Int     // order in workout
+  rounds    Int     @default(1) // number of rounds (1 for simple exercise, N for superset)
+  restAfter Int     @map("rest_after") // seconds, rest after this item
+
+  exercises WorkoutItemExercise[]
+
+  @@index([workoutId, position])
+  @@map("workout_items")
+}
+
+model WorkoutItemExercise {
+  id              String      @id @default(uuid())
+  workoutItemId   String      @map("workout_item_id")
+  workoutItem     WorkoutItem @relation(fields: [workoutItemId], references: [id], onDelete: Cascade)
+  exerciseId      String      @map("exercise_id")
+  exercise        Exercise    @relation(fields: [exerciseId], references: [id])
+  position        Int         // order in item (1 for simple, 1-N for superset)
+  restBetweenSets Int         @map("rest_between_sets") // seconds
+
+  sets WorkoutSet[]
+
+  @@index([workoutItemId, position])
+  @@map("workout_item_exercises")
+}
+
+model WorkoutSet {
+  id                    String              @id @default(uuid())
+  workoutItemExerciseId String              @map("workout_item_exercise_id")
+  workoutItemExercise   WorkoutItemExercise @relation(fields: [workoutItemExerciseId], references: [id], onDelete: Cascade)
+  setNumber             Int                 @map("set_number")
+  targetReps            Int                 @map("target_reps")
+  targetWeight          Float?              @map("target_weight") // kg, nullable
+
+  @@index([workoutItemExerciseId, setNumber])
+  @@map("workout_sets")
 }
