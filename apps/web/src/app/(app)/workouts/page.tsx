@@ -6,7 +6,6 @@ import {
   Plus,
   Play,
   MoreVertical,
-  Pencil,
   Trash2,
   Copy,
   Dumbbell,
@@ -53,63 +52,82 @@ function WorkoutCard({
     return acc + item.exercises.length;
   }, 0);
 
-  // Extract unique muscle groups from all exercises
-  const muscleGroups = Array.from(
-    new Set(
-      workout.items.flatMap((item) =>
-        item.exercises.flatMap((ex) => ex.exercise.muscleGroups)
-      )
-    )
-  ).sort((a, b) => a.localeCompare(b, "fr")) as MuscleGroup[];
+  // Extract muscle groups sorted by frequency (most used first)
+  const allMuscleGroups = workout.items.flatMap((item) =>
+    item.exercises.flatMap((ex) => ex.exercise.muscleGroups)
+  );
+  const muscleGroupCounts = allMuscleGroups.reduce((acc, group) => {
+    acc[group] = (acc[group] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const muscleGroups = Object.entries(muscleGroupCounts)
+    .sort((a, b) => b[1] - a[1]) // Sort by count descending
+    .map(([group]) => group as MuscleGroup);
 
   // TODO: Get last execution date from workout sessions when implemented
   const lastExecutionDate: string | null = null;
 
+  // Show max 4 muscle groups, then "+X"
+  const visibleGroups = muscleGroups.slice(0, 4);
+  const hiddenCount = muscleGroups.length - 4;
+
   return (
     <div
+      onClick={onEdit}
       className={cn(
-        "group rounded-lg border border-zinc-800 bg-zinc-900/50 p-4",
-        "transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-900"
+        "group relative rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-4 cursor-pointer",
+        "transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-900/70"
       )}
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 min-w-0 cursor-pointer" onClick={onEdit}>
+      {/* Main content */}
+      <div className="flex items-start justify-between gap-4">
+        {/* Left: Info */}
+        <div className="flex-1 min-w-0">
           {/* Name */}
-          <h3 className="font-semibold text-zinc-100 truncate">
+          <h3 className="font-semibold text-zinc-100 truncate text-base">
             {workout.name}
           </h3>
 
-          {/* Stats */}
-          <div className="flex items-center gap-4 mt-1 text-xs text-zinc-500">
-            <span className="flex items-center gap-1.5">
-              <Dumbbell className="h-3.5 w-3.5" />
-              {exerciseCount} exercice{exerciseCount > 1 ? "s" : ""}
+          {/* Stats row */}
+          <div className="flex items-center gap-3 mt-1.5 text-xs text-zinc-500">
+            <span className="flex items-center gap-1">
+              <Dumbbell className="h-3 w-3" />
+              {exerciseCount}
             </span>
-            <span className="flex items-center gap-1.5">
-              <CalendarClock className="h-3.5 w-3.5" />
-              {lastExecutionDate ?? "Jamais"}
+            <span className="text-zinc-700">•</span>
+            <span className="flex items-center gap-1">
+              <CalendarClock className="h-3 w-3" />
+              {lastExecutionDate ?? "Jamais exécuté"}
             </span>
           </div>
 
-          {/* Muscle groups */}
+          {/* Muscle groups - compact inline */}
           {muscleGroups.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {muscleGroups.map((group) => (
+            <div className="flex items-center gap-1.5 mt-3">
+              {visibleGroups.map((group) => (
                 <MuscleGroupBadge key={group} group={group} size="sm" />
               ))}
+              {hiddenCount > 0 && (
+                <span className="text-[10px] text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded">
+                  +{hiddenCount}
+                </span>
+              )}
             </div>
           )}
         </div>
 
-        {/* Actions */}
+        {/* Right: Actions */}
         <div className="flex items-center gap-1 shrink-0">
           <Button
             size="sm"
-            onClick={onStart}
-            className="h-8 gap-1.5"
+            onClick={(e) => {
+              e.stopPropagation();
+              onStart();
+            }}
+            className="h-9 px-4 gap-2 font-medium"
           >
             <Play className="h-3.5 w-3.5" />
-            Start
+            Démarrer
           </Button>
 
           <DropdownMenu>
@@ -117,17 +135,14 @@ function WorkoutCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-zinc-400 hover:text-zinc-100"
+                onClick={(e) => e.stopPropagation()}
+                className="h-9 w-9 text-zinc-500 hover:text-zinc-100"
               >
                 <MoreVertical className="h-4 w-4" />
                 <span className="sr-only">Menu</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={onEdit}>
-                <Pencil className="h-4 w-4 mr-2" />
-                Modifier
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={onDuplicate}>
                 <Copy className="h-4 w-4 mr-2" />
                 Dupliquer
@@ -282,7 +297,7 @@ export default function WorkoutsPage() {
         <EmptyState onAdd={handleAddClick} />
       ) : (
         <>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {workouts.map((workout) => (
               <WorkoutCard
                 key={workout.id}

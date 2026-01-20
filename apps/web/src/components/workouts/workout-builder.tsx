@@ -50,7 +50,7 @@ import {
 } from "./types";
 
 // Empty state component
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+function EmptyState({ onAdd: _onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/20 to-transparent border border-orange-500/20">
@@ -464,7 +464,7 @@ export function WorkoutBuilder({ workout, mode }: WorkoutBuilderProps) {
         <Input
           value={formData.name}
           onChange={(e) => handleNameChange(e.target.value)}
-          placeholder="Ex: Push Day"
+          placeholder="Ex : Séance Push"
           className="bg-zinc-900/50 border-zinc-800"
         />
       </div>

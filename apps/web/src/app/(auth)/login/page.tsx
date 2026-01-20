@@ -48,7 +48,7 @@ export default function LoginPage() {
       await login(data.email, data.password);
       router.push("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : "Échec de connexion");
     }
   };
 
@@ -58,9 +58,9 @@ export default function LoginPage() {
         <div className="mx-auto mb-4">
           <h1 className="text-3xl font-bold tracking-tight">MOMENTUM</h1>
         </div>
-        <CardTitle className="text-xl">Welcome back</CardTitle>
+        <CardTitle className="text-xl">Prêt à t’entraîner ?</CardTitle>
         <CardDescription>
-          Enter your credentials to access your account
+          Entrez vos identifiants pour accéder à votre compte
         </CardDescription>
       </CardHeader>
 
@@ -79,11 +79,11 @@ export default function LoginPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>E-mail</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
-                      placeholder="you@example.com"
+                      placeholder="vous@exemple.com"
                       autoComplete="email"
                       className="h-11"
                       disabled={form.formState.isSubmitting}
@@ -100,11 +100,11 @@ export default function LoginPage() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>Mot de passe</FormLabel>
                   <FormControl>
                     <Input
                       type="password"
-                      placeholder="Enter your password"
+                      placeholder="Entrez votre mot de passe"
                       autoComplete="current-password"
                       className="h-11"
                       disabled={form.formState.isSubmitting}
@@ -124,10 +124,10 @@ export default function LoginPage() {
               {form.formState.isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Logging in...
+                  Connexion...
                 </>
               ) : (
-                "Log in"
+                "Se connecter"
               )}
             </Button>
           </form>
@@ -135,12 +135,12 @@ export default function LoginPage() {
 
         <div className="text-center text-sm">
           <p className="text-muted-foreground">
-            Don&apos;t have an account?{" "}
+            Pas encore de compte ?{" "}
             <Link
               href="/register"
               className="text-primary font-medium hover:underline"
             >
-              Sign up
+              S&apos;inscrire
             </Link>
           </p>
         </div>

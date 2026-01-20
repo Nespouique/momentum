@@ -62,7 +62,7 @@ export default function RegisterPage() {
       await register(data.name, data.email, data.password, data.birthDate, data.height);
       router.push("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : "Échec de l'inscription");
     }
   };
 
@@ -72,9 +72,9 @@ export default function RegisterPage() {
         <div className="mx-auto mb-4">
           <h1 className="text-3xl font-bold tracking-tight">MOMENTUM</h1>
         </div>
-        <CardTitle className="text-xl">Create your account</CardTitle>
+        <CardTitle className="text-xl">Créer votre compte</CardTitle>
         <CardDescription>
-          Start tracking your fitness journey today
+          Commencez à suivre votre progression dès aujourd&apos;hui
         </CardDescription>
       </CardHeader>
 
@@ -93,10 +93,10 @@ export default function RegisterPage() {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel>Nom</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Your name"
+                      placeholder="Votre nom"
                       autoComplete="name"
                       className="h-11"
                       disabled={form.formState.isSubmitting}
@@ -113,11 +113,11 @@ export default function RegisterPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>E-mail</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
-                      placeholder="you@example.com"
+                      placeholder="vous@exemple.com"
                       autoComplete="email"
                       className="h-11"
                       disabled={form.formState.isSubmitting}
@@ -203,11 +203,11 @@ export default function RegisterPage() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>Mot de passe</FormLabel>
                   <FormControl>
                     <Input
                       type="password"
-                      placeholder="Create a password"
+                      placeholder="Créez un mot de passe"
                       autoComplete="new-password"
                       className="h-11"
                       disabled={form.formState.isSubmitting}
@@ -224,11 +224,11 @@ export default function RegisterPage() {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
+                  <FormLabel>Confirmer le mot de passe</FormLabel>
                   <FormControl>
                     <Input
                       type="password"
-                      placeholder="Confirm your password"
+                      placeholder="Confirmez votre mot de passe"
                       autoComplete="new-password"
                       className="h-11"
                       disabled={form.formState.isSubmitting}
@@ -248,10 +248,10 @@ export default function RegisterPage() {
               {form.formState.isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Creating account...
+                  Création du compte...
                 </>
               ) : (
-                "Create Account"
+                "Créer le compte"
               )}
             </Button>
           </form>
@@ -259,12 +259,12 @@ export default function RegisterPage() {
 
         <div className="text-center text-sm">
           <p className="text-muted-foreground">
-            Already have an account?{" "}
+            Déjà un compte ?{" "}
             <Link
               href="/login"
               className="text-primary font-medium hover:underline"
             >
-              Log in
+              Se connecter
             </Link>
           </p>
         </div>

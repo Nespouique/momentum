@@ -1,7 +1,7 @@
 {
   "name": "Momentum",
   "short_name": "Momentum",
-  "description": "Track your fitness journey",
+  "description": "Suivez votre progression fitness",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",

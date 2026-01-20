@@ -103,7 +103,7 @@ export function ExerciseFormModal({
                   <FormLabel>Nom de l&apos;exercice</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="ex: Bulgarian Split Squat"
+                      placeholder="ex : Bulgarian Split Squat"
                       {...field}
                       autoFocus
                     />

@@ -36,8 +36,10 @@ import { PageHeader } from "@/components/layout";
 import { useAuthStore } from "@/stores/auth";
 import {
   getMeasurement,
+  getLatestMeasurement,
   createMeasurement,
   updateMeasurement,
+  type Measurement,
   type MeasurementInput,
 } from "@/lib/api/measurements";
 import {
@@ -136,8 +138,9 @@ export default function MeasurementFormPage() {
   const { token } = useAuthStore();
   const isNew = id === "new";
 
-  const [isLoading, setIsLoading] = useState(!isNew);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [previousValues, setPreviousValues] = useState<Measurement | null>(null);
   const [openSections, setOpenSections] = useState({
     upperBody: false,
     arms: false,
@@ -177,47 +180,65 @@ export default function MeasurementFormPage() {
   });
 
   useEffect(() => {
-    if (isNew || !token) return;
+    if (!token) return;
 
-    const loadMeasurement = async () => {
+    const loadData = async () => {
       try {
-        const measurement = await getMeasurement(token, id);
-        reset({
-          date: new Date(measurement.date),
-          weight: measurement.weight,
-          neck: measurement.neck,
-          shoulders: measurement.shoulders,
-          chest: measurement.chest,
-          bicepsLeft: measurement.bicepsLeft,
-          bicepsRight: measurement.bicepsRight,
-          forearmLeft: measurement.forearmLeft,
-          forearmRight: measurement.forearmRight,
-          wristLeft: measurement.wristLeft,
-          wristRight: measurement.wristRight,
-          waist: measurement.waist,
-          hips: measurement.hips,
-          thighLeft: measurement.thighLeft,
-          thighRight: measurement.thighRight,
-          calfLeft: measurement.calfLeft,
-          calfRight: measurement.calfRight,
-          ankleLeft: measurement.ankleLeft,
-          ankleRight: measurement.ankleRight,
-          notes: measurement.notes,
-        });
+        if (isNew) {
+          // For new measurements, load previous values as placeholders
+          const latest = await getLatestMeasurement(token);
+          if (latest) {
+            setPreviousValues(latest);
+          }
+        } else {
+          // For editing, load the specific measurement
+          const measurement = await getMeasurement(token, id);
+          reset({
+            date: new Date(measurement.date),
+            weight: measurement.weight,
+            neck: measurement.neck,
+            shoulders: measurement.shoulders,
+            chest: measurement.chest,
+            bicepsLeft: measurement.bicepsLeft,
+            bicepsRight: measurement.bicepsRight,
+            forearmLeft: measurement.forearmLeft,
+            forearmRight: measurement.forearmRight,
+            wristLeft: measurement.wristLeft,
+            wristRight: measurement.wristRight,
+            waist: measurement.waist,
+            hips: measurement.hips,
+            thighLeft: measurement.thighLeft,
+            thighRight: measurement.thighRight,
+            calfLeft: measurement.calfLeft,
+            calfRight: measurement.calfRight,
+            ankleLeft: measurement.ankleLeft,
+            ankleRight: measurement.ankleRight,
+            notes: measurement.notes,
+          });
+        }
       } catch (error) {
         console.error("Failed to load measurement:", error);
-        toast.error("Erreur lors du chargement");
-        router.push("/profile/measurements");
+        if (!isNew) {
+          toast.error("Erreur lors du chargement");
+          router.push("/profile/measurements");
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadMeasurement();
+    loadData();
   }, [id, isNew, token, reset, router]);
 
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // Get placeholder from previous measurement (only for new measurements)
+  const getPlaceholder = (field: keyof Measurement): string | undefined => {
+    if (!isNew || !previousValues) return undefined;
+    const value = previousValues[field];
+    return value !== null && value !== undefined ? String(value) : undefined;
   };
 
   const onSubmit = async (data: MeasurementFormData) => {
@@ -351,7 +372,7 @@ export default function MeasurementFormPage() {
                   min={20}
                   max={500}
                   step={0.1}
-                  placeholder="75.0"
+                  placeholder={getPlaceholder("weight") ?? "75.0"}
                   className="flex-1"
                 />
               )}
@@ -390,7 +411,7 @@ export default function MeasurementFormPage() {
                         min={20}
                         max={100}
                         step={0.5}
-                        placeholder="38"
+                        placeholder={getPlaceholder("neck") ?? "38"}
                         className="w-full"
                       />
                     )}
@@ -407,7 +428,7 @@ export default function MeasurementFormPage() {
                         min={50}
                         max={200}
                         step={0.5}
-                        placeholder="115"
+                        placeholder={getPlaceholder("shoulders") ?? "115"}
                         className="w-full"
                       />
                     )}
@@ -424,7 +445,7 @@ export default function MeasurementFormPage() {
                         min={50}
                         max={200}
                         step={0.5}
-                        placeholder="100"
+                        placeholder={getPlaceholder("chest") ?? "100"}
                         className="w-full"
                       />
                     )}
@@ -466,7 +487,7 @@ export default function MeasurementFormPage() {
                           min={15}
                           max={80}
                           step={0.5}
-                          placeholder="35"
+                          placeholder={getPlaceholder("bicepsLeft") ?? "35"}
                           className="w-full"
                         />
                       )}
@@ -483,7 +504,7 @@ export default function MeasurementFormPage() {
                           min={15}
                           max={80}
                           step={0.5}
-                          placeholder="35"
+                          placeholder={getPlaceholder("bicepsRight") ?? "35"}
                           className="w-full"
                         />
                       )}
@@ -504,7 +525,7 @@ export default function MeasurementFormPage() {
                           min={15}
                           max={60}
                           step={0.5}
-                          placeholder="28"
+                          placeholder={getPlaceholder("forearmLeft") ?? "28"}
                           className="w-full"
                         />
                       )}
@@ -521,7 +542,7 @@ export default function MeasurementFormPage() {
                           min={15}
                           max={60}
                           step={0.5}
-                          placeholder="28"
+                          placeholder={getPlaceholder("forearmRight") ?? "28"}
                           className="w-full"
                         />
                       )}
@@ -542,7 +563,7 @@ export default function MeasurementFormPage() {
                           min={10}
                           max={30}
                           step={0.5}
-                          placeholder="17"
+                          placeholder={getPlaceholder("wristLeft") ?? "17"}
                           className="w-full"
                         />
                       )}
@@ -559,7 +580,7 @@ export default function MeasurementFormPage() {
                           min={10}
                           max={30}
                           step={0.5}
-                          placeholder="17"
+                          placeholder={getPlaceholder("wristRight") ?? "17"}
                           className="w-full"
                         />
                       )}
@@ -599,7 +620,7 @@ export default function MeasurementFormPage() {
                         min={40}
                         max={200}
                         step={0.5}
-                        placeholder="82"
+                        placeholder={getPlaceholder("waist") ?? "82"}
                         className="w-full"
                       />
                     )}
@@ -616,7 +637,7 @@ export default function MeasurementFormPage() {
                         min={50}
                         max={200}
                         step={0.5}
-                        placeholder="95"
+                        placeholder={getPlaceholder("hips") ?? "95"}
                         className="w-full"
                       />
                     )}
@@ -658,7 +679,7 @@ export default function MeasurementFormPage() {
                           min={30}
                           max={100}
                           step={0.5}
-                          placeholder="58"
+                          placeholder={getPlaceholder("thighLeft") ?? "58"}
                           className="w-full"
                         />
                       )}
@@ -675,7 +696,7 @@ export default function MeasurementFormPage() {
                           min={30}
                           max={100}
                           step={0.5}
-                          placeholder="58"
+                          placeholder={getPlaceholder("thighRight") ?? "58"}
                           className="w-full"
                         />
                       )}
@@ -696,7 +717,7 @@ export default function MeasurementFormPage() {
                           min={20}
                           max={70}
                           step={0.5}
-                          placeholder="38"
+                          placeholder={getPlaceholder("calfLeft") ?? "38"}
                           className="w-full"
                         />
                       )}
@@ -713,7 +734,7 @@ export default function MeasurementFormPage() {
                           min={20}
                           max={70}
                           step={0.5}
-                          placeholder="38"
+                          placeholder={getPlaceholder("calfRight") ?? "38"}
                           className="w-full"
                         />
                       )}
@@ -734,7 +755,7 @@ export default function MeasurementFormPage() {
                           min={15}
                           max={40}
                           step={0.5}
-                          placeholder="23"
+                          placeholder={getPlaceholder("ankleLeft") ?? "23"}
                           className="w-full"
                         />
                       )}
@@ -751,7 +772,7 @@ export default function MeasurementFormPage() {
                           min={15}
                           max={40}
                           step={0.5}
-                          placeholder="23"
+                          placeholder={getPlaceholder("ankleRight") ?? "23"}
                           className="w-full"
                         />
                       )}

@@ -62,10 +62,10 @@ export function DesktopSidebar() {
           </div>
           <div className="flex-1 truncate">
             <p className="truncate text-sm font-medium">
-              {user?.name || "User"}
+              {user?.name || "Utilisateur"}
             </p>
             <p className="truncate text-xs text-muted-foreground">
-              View profile
+              Voir le profil
             </p>
           </div>
         </Link>
