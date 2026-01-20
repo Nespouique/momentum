@@ -11,7 +11,8 @@ COPY . .
 # Install all dependencies (includes postinstall → prisma generate)
 RUN npm ci
 
-# Build the API
+# Build shared package first, then the API
+RUN npm run build --workspace=@momentum/shared
 RUN npm run build --workspace=@momentum/api
 
 # Stage 2: Runner
@@ -33,8 +34,12 @@ COPY --from=builder /app/apps/api/package.json ./
 COPY --from=builder /app/apps/api/prisma ./prisma
 COPY --from=builder /app/apps/api/prisma.config.ts ./
 
-# Copy node_modules (includes Prisma client and shared package)
+# Copy node_modules (will contain broken symlink for @momentum/shared)
 COPY --from=builder /app/node_modules ./node_modules
+
+# Replace the workspace symlink with actual compiled shared package
+COPY --from=builder /app/packages/shared/dist ./node_modules/@momentum/shared/dist
+COPY --from=builder /app/packages/shared/package.json ./node_modules/@momentum/shared/
 
 # Copy the generated Prisma client
 COPY --from=builder /app/apps/api/src/generated ./src/generated
