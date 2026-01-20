@@ -11,6 +11,7 @@ RUN npm ci --ignore-scripts
 
 # Disable telemetry and build
 ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build --workspace=@momentum/shared
 RUN npm run build --workspace=@momentum/web
 
 # Stage 2: Runner
