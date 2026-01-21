@@ -25,7 +25,7 @@ export default function EditWorkoutPage() {
         setWorkout(data);
       } catch (error) {
         console.error("Failed to load workout:", error);
-        toast.error("Programme non trouvé");
+        toast.error("Séance non trouvée");
         router.push("/workouts");
       } finally {
         setIsLoading(false);

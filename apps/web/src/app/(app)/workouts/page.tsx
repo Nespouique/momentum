@@ -159,16 +159,13 @@ function WorkoutCard({
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/20 to-transparent border border-orange-500/20">
-        <Dumbbell className="h-8 w-8 text-orange-400" />
-      </div>
-      <h3 className="mb-2 text-lg font-semibold">Aucun programme</h3>
+      <h3 className="mb-2 text-lg font-semibold">Aucune séance</h3>
       <p className="mb-6 max-w-xs text-sm text-muted-foreground">
-        Créez votre premier programme d&apos;entraînement pour commencer
+        Créez votre première séance d&apos;entraînement pour commencer
       </p>
       <Button onClick={onAdd} className="gap-2">
         <Plus className="h-4 w-4" />
-        Créer un programme
+        Créer une séance
       </Button>
     </div>
   );
@@ -197,7 +194,7 @@ export default function WorkoutsPage() {
       setWorkouts(sorted);
     } catch (error) {
       console.error("Failed to load workouts:", error);
-      toast.error("Erreur lors du chargement des programmes");
+      toast.error("Erreur lors du chargement des séances");
     } finally {
       setIsLoading(false);
     }
@@ -226,7 +223,7 @@ export default function WorkoutsPage() {
     setIsDeleting(true);
     try {
       await deleteWorkout(token, deletingWorkout.id);
-      toast.success("Programme supprimé");
+      toast.success("Séance supprimée");
       setDeletingWorkout(null);
       loadWorkouts();
     } catch (error) {
@@ -242,7 +239,7 @@ export default function WorkoutsPage() {
 
     try {
       await duplicateWorkout(token, workout.id);
-      toast.success("Programme dupliqué");
+      toast.success("Séance dupliquée");
       loadWorkouts();
     } catch (error) {
       console.error("Failed to duplicate workout:", error);
@@ -260,22 +257,13 @@ export default function WorkoutsPage() {
     return (
       <div className="pb-24">
         <PageHeader title="Séances" />
-        <div className="space-y-4">
-          {/* Start workout button skeleton */}
-          <div className="h-14 animate-pulse rounded-lg bg-secondary/50" />
-
-          {/* Section header skeleton */}
-          <div className="h-5 w-32 animate-pulse rounded bg-secondary/50 mt-6" />
-
-          {/* Cards skeleton */}
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-28 animate-pulse rounded-lg bg-secondary/50"
-              />
-            ))}
-          </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-[122px] animate-pulse rounded-xl border border-zinc-800/80 bg-zinc-900/40"
+            />
+          ))}
         </div>
       </div>
     );
@@ -304,7 +292,7 @@ export default function WorkoutsPage() {
 
           {/* Counter */}
           <p className="text-center text-xs text-muted-foreground mt-6">
-            {workouts.length} programme{workouts.length > 1 ? "s" : ""}
+            {workouts.length} séance{workouts.length > 1 ? "s" : ""}
           </p>
         </>
       )}
@@ -315,7 +303,7 @@ export default function WorkoutsPage() {
         onOpenChange={(open) => {
           if (!open) setDeletingWorkout(null);
         }}
-        title="Supprimer le programme"
+        title="Supprimer la séance"
         description={
           <>
             Êtes-vous sûr de vouloir supprimer{" "}

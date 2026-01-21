@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Plus, Search, X, Dumbbell } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout";
@@ -47,9 +47,6 @@ function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-zinc-500/20 to-transparent border border-zinc-500/20">
-        <Dumbbell className="h-8 w-8 text-zinc-400" />
-      </div>
       <h3 className="mb-2 text-lg font-semibold">
         {hasFilter || searchQuery ? "Aucun résultat" : "Aucun exercice"}
       </h3>

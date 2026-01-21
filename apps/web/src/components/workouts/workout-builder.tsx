@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Dumbbell, Save, Loader2 } from "lucide-react";
+import { Plus, Save, Loader2 } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -53,11 +53,8 @@ import {
 function EmptyState({ onAdd: _onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/20 to-transparent border border-orange-500/20">
-        <Dumbbell className="h-7 w-7 text-orange-400" />
-      </div>
       <h3 className="mb-2 text-base font-semibold">Aucun exercice</h3>
-      <p className="mb-4 max-w-xs text-sm text-muted-foreground">
+      <p className="max-w-xs text-sm text-muted-foreground">
         Commencez par ajouter des exercices à votre séance
       </p>
     </div>
@@ -450,10 +447,10 @@ export function WorkoutBuilder({ workout, mode }: WorkoutBuilderProps) {
 
       if (mode === "edit" && workout) {
         await updateWorkout(token, workout.id, data);
-        toast.success("Programme mis à jour");
+        toast.success("Séance mise à jour");
       } else {
         await createWorkout(token, data);
-        toast.success("Programme créé");
+        toast.success("Séance créée");
       }
 
       router.push("/workouts");
@@ -475,7 +472,7 @@ export function WorkoutBuilder({ workout, mode }: WorkoutBuilderProps) {
       {/* Name input */}
       <div className="mb-4">
         <label className="text-sm font-medium mb-2 block">
-          Nom du programme <span className="text-red-400">*</span>
+          Nom de la séance <span className="text-red-400">*</span>
         </label>
         <Input
           value={formData.name}
