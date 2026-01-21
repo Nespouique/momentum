@@ -9,7 +9,7 @@
 - [x] Remplacer l'historique des mesure drawer par sheet
 - [x] Mettre ischios au lieu de ischio-jambiers
 - [x] Bug clic sur supprimer séance ça propage le clic dessous
-- [ ] Pouvoir modifier l'ordre des exos dans un superset
+- [x] Pouvoir modifier l'ordre des exos dans un superset
 - [x] Passer l'édition d'un exo en sheet
 - [x] Voir pour la suppression dans la sheet au lieu du bouton icon ?
 - [x] Enlever le menu contextuel pour avoir la corbeille partout

@@ -1,6 +1,24 @@
 "use client";
 
 import { GripVertical, Trash2, Repeat } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -61,11 +79,70 @@ export function ExerciseItemCard({ item, onEdit, onDelete, dragHandleProps }: Ex
   );
 }
 
+// Sortable exercise item within a superset
+interface SortableExerciseInSupersetProps {
+  exercise: WorkoutItemExerciseFormData;
+  onEdit: () => void;
+}
+
+function SortableExerciseInSuperset({ exercise, onEdit }: SortableExerciseInSupersetProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: exercise.id });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1 : 0,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center gap-2 p-3",
+        "transition-colors hover:bg-zinc-800/50",
+        isDragging && "bg-zinc-800/70"
+      )}
+    >
+      {/* Content - clickable to edit */}
+      <button
+        type="button"
+        onClick={onEdit}
+        className="flex-1 min-w-0 text-left"
+      >
+        <p className="font-medium">{exercise.exercise.name}</p>
+        <p className="text-sm text-muted-foreground">
+          {formatExerciseSummary(exercise)}
+        </p>
+      </button>
+
+      {/* Drag handle on the right */}
+      <button
+        type="button"
+        className="shrink-0 p-1 cursor-grab active:cursor-grabbing touch-none"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4 text-zinc-500" />
+      </button>
+    </div>
+  );
+}
+
 interface SupersetItemCardProps {
   item: WorkoutItemFormData;
   onEdit: () => void;
   onDelete: () => void;
   onEditExercise: (exercise: WorkoutItemExerciseFormData) => void;
+  onReorderExercises?: (itemId: string, exercises: WorkoutItemExerciseFormData[]) => void;
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
 }
 
@@ -74,8 +151,33 @@ export function SupersetItemCard({
   onEdit,
   onDelete,
   onEditExercise,
+  onReorderExercises,
   dragHandleProps,
 }: SupersetItemCardProps) {
+  // DnD sensors for internal exercise reordering
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end for reordering exercises within superset
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = item.exercises.findIndex((ex) => ex.id === active.id);
+      const newIndex = item.exercises.findIndex((ex) => ex.id === over.id);
+
+      const reorderedExercises = arrayMove(item.exercises, oldIndex, newIndex).map(
+        (ex, index) => ({ ...ex, position: index + 1 })
+      );
+
+      onReorderExercises?.(item.id, reorderedExercises);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -85,7 +187,7 @@ export function SupersetItemCard({
     >
       {/* Header */}
       <div className="flex items-center gap-2 p-3 border-b border-zinc-800">
-        {/* Drag handle */}
+        {/* Drag handle for whole superset */}
         <button
           type="button"
           className="shrink-0 p-1 -ml-1 cursor-grab active:cursor-grabbing touch-none"
@@ -116,26 +218,28 @@ export function SupersetItemCard({
         </Button>
       </div>
 
-      {/* Exercises list */}
-      <div className="divide-y divide-zinc-800">
-        {item.exercises.map((exercise) => (
-          <button
-            key={exercise.id}
-            onClick={() => onEditExercise(exercise)}
-            className={cn(
-              "w-full p-3 text-left",
-              "transition-colors hover:bg-zinc-800/50"
-            )}
-          >
-            <p className="font-medium">
-              {exercise.exercise.name}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {formatExerciseSummary(exercise)}
-            </p>
-          </button>
-        ))}
-      </div>
+      {/* Exercises list with internal drag & drop */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={item.exercises.map((ex) => ex.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="divide-y divide-zinc-800">
+            {item.exercises.map((exercise) => (
+              <SortableExerciseInSuperset
+                key={exercise.id}
+                exercise={exercise}
+                onEdit={() => onEditExercise(exercise)}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }

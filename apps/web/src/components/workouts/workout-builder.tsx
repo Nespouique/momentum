@@ -70,6 +70,7 @@ interface SortableWorkoutItemProps {
   onEdit: () => void;
   onDelete: () => void;
   onEditExercise: (exercise: WorkoutItemExerciseFormData) => void;
+  onReorderExercises: (itemId: string, exercises: WorkoutItemExerciseFormData[]) => void;
 }
 
 function SortableWorkoutItem({
@@ -77,6 +78,7 @@ function SortableWorkoutItem({
   onEdit,
   onDelete,
   onEditExercise,
+  onReorderExercises,
 }: SortableWorkoutItemProps) {
   const {
     attributes,
@@ -113,6 +115,7 @@ function SortableWorkoutItem({
           onEdit={onEdit}
           onDelete={onDelete}
           onEditExercise={onEditExercise}
+          onReorderExercises={onReorderExercises}
           dragHandleProps={dragHandleProps}
         />
       )}
@@ -318,6 +321,19 @@ export function WorkoutBuilder({ workout, mode }: WorkoutBuilderProps) {
     }
   };
 
+  // Reorder exercises within a superset
+  const handleReorderExercises = (
+    itemId: string,
+    reorderedExercises: WorkoutItemExerciseFormData[]
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      items: prev.items.map((item) =>
+        item.id === itemId ? { ...item, exercises: reorderedExercises } : item
+      ),
+    }));
+  };
+
   // Edit exercise
   const handleEditExercise = (
     item: WorkoutItemFormData,
@@ -521,6 +537,7 @@ export function WorkoutBuilder({ workout, mode }: WorkoutBuilderProps) {
                       }
                       onDelete={() => handleDeleteItem(item.id)}
                       onEditExercise={(exercise) => handleEditExercise(item, exercise)}
+                      onReorderExercises={handleReorderExercises}
                     />
                     {/* Rest time picker between items - outside draggable */}
                     {index < formData.items.length - 1 && (
