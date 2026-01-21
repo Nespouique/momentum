@@ -238,10 +238,10 @@ function BilateralRow({
 function SectionHeader({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-2 pt-4 pb-2">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--accent-orange))]">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-primary">
         {title}
       </h3>
-      <div className="flex-1 h-px bg-gradient-to-r from-[hsl(var(--accent-orange))]/30 to-transparent" />
+      <div className="flex-1 h-px bg-gradient-to-r from-primary/30 to-transparent" />
     </div>
   );
 }

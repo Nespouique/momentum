@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Plus,
   Play,
-  MoreVertical,
   Trash2,
   Copy,
   Dumbbell,
@@ -13,13 +12,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { MuscleGroupBadge } from "@/components/exercises";
 import { MuscleGroup } from "@/lib/constants/muscle-groups";
@@ -79,86 +71,86 @@ function WorkoutCard({
         "transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-900/70"
       )}
     >
-      {/* Main content */}
-      <div className="flex items-start justify-between gap-4">
-        {/* Left: Info */}
-        <div className="flex-1 min-w-0">
-          {/* Name */}
-          <h3 className="font-semibold text-zinc-100 truncate text-base">
-            {workout.name}
-          </h3>
+      {/* Header: Name + Actions */}
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-semibold text-zinc-100 truncate text-base flex-1 min-w-0">
+          {workout.name}
+        </h3>
 
-          {/* Stats row */}
-          <div className="flex items-center gap-3 mt-1.5 text-xs text-zinc-500">
-            <span className="flex items-center gap-1">
-              <Dumbbell className="h-3 w-3" />
-              {exerciseCount}
-            </span>
-            <span className="text-zinc-700">•</span>
-            <span className="flex items-center gap-1">
-              <CalendarClock className="h-3 w-3" />
-              {lastExecutionDate ?? "Jamais exécuté"}
-            </span>
-          </div>
-
-          {/* Muscle groups - compact inline */}
-          {muscleGroups.length > 0 && (
-            <div className="flex items-center gap-1.5 mt-3">
-              {visibleGroups.map((group) => (
-                <MuscleGroupBadge key={group} group={group} size="sm" />
-              ))}
-              {hiddenCount > 0 && (
-                <span className="text-[10px] text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded">
-                  +{hiddenCount}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Right: Actions */}
+        {/* Action buttons */}
         <div className="flex items-center gap-1 shrink-0">
           <Button
-            size="sm"
+            size="icon"
             onClick={(e) => {
               e.stopPropagation();
               onStart();
             }}
-            className="h-9 px-4 gap-2 font-medium"
+            className="h-8 w-8"
+            title="Démarrer la séance"
           >
-            <Play className="h-3.5 w-3.5" />
-            Démarrer
+            <Play className="h-4 w-4" />
+            <span className="sr-only">Démarrer</span>
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => e.stopPropagation()}
-                className="h-9 w-9 text-zinc-500 hover:text-zinc-100"
-              >
-                <MoreVertical className="h-4 w-4" />
-                <span className="sr-only">Menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={onDuplicate}>
-                <Copy className="h-4 w-4 mr-2" />
-                Dupliquer
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={onDelete}
-                className="text-destructive focus:text-destructive focus:bg-destructive/20"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Supprimer
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate();
+            }}
+            className="h-8 w-8 text-zinc-400 hover:text-zinc-100"
+            title="Dupliquer la séance"
+          >
+            <Copy className="h-4 w-4" />
+            <span className="sr-only">Dupliquer</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+            title="Supprimer la séance"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="sr-only">Supprimer</span>
+          </Button>
         </div>
       </div>
+
+      {/* Separator */}
+      <div className="h-px bg-gradient-to-r from-primary/30 to-transparent my-3" />
+
+      {/* Stats row */}
+      <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <span className="flex items-center gap-1.5">
+          <Dumbbell className="h-3.5 w-3.5" />
+          {exerciseCount} exercice{exerciseCount > 1 ? "s" : ""}
+        </span>
+        <span className="text-zinc-700">·</span>
+        <span className="flex items-center gap-1.5">
+          <CalendarClock className="h-3.5 w-3.5" />
+          {lastExecutionDate ?? "Jamais réalisée"}
+        </span>
+      </div>
+
+      {/* Muscle groups */}
+      {muscleGroups.length > 0 && (
+        <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+          {visibleGroups.map((group) => (
+            <MuscleGroupBadge key={group} group={group} size="sm" />
+          ))}
+          {hiddenCount > 0 && (
+            <span className="text-[10px] text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded">
+              +{hiddenCount}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,16 @@
-[] Améliorer la login/register page
-[] Settings globaux de l'app
-[x] Traduction en français de tous les éléments
-[] Imports depuis bdd Hercules
-[x] Mettre par défaut les mesures de la fois précédente
-[x] Le date picker dans l'edit profile dépasse en mode mobile
-[x] Mettre partout où on a l'icon corbeille en rouge identique
-[x] Remplacer sets par séries partout
-[x] Remplacer l'historique des mesure drawer par sheet
+- [ ] Améliorer la login/register page
+- [ ] Settings globaux de l'app (avec modification de la couleur d'accentuation)
+- [x] Traduction en français de tous les éléments
+- [ ] Imports depuis bdd Hercules
+- [x] Mettre par défaut les mesures de la fois précédente
+- [x] Le date picker dans l'edit profile dépasse en mode mobile
+- [x] Mettre partout où on a l'icon corbeille en rouge identique
+- [x] Remplacer sets par séries partout
+- [x] Remplacer l'historique des mesure drawer par sheet
+- [x] Mettre ischios au lieu de ischio-jambiers
+- [x] Bug clic sur supprimer séance ça propage le clic dessous
+- [ ] Pouvoir modifier l'ordre des exos dans un superset
+- [x] Passer l'édition d'un exo en sheet
+- [x] Voir pour la suppression dans la sheet au lieu du bouton icon ?
+- [x] Enlever le menu contextuel pour avoir la corbeille partout
+- [x] Faire en sorte que l'accentuation du tab sélectionné dans la navbar soit de la même couleur que les CTA principaux

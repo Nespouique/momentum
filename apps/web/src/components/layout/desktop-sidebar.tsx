@@ -29,7 +29,7 @@ export function DesktopSidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center border-b border-border px-6">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-blue to-accent-blue/50">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/50">
             <span className="text-sm font-bold text-background">M</span>
           </div>
           <span className="text-lg font-semibold tracking-tight">

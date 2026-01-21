@@ -30,12 +30,12 @@ export function NavItem({ href, icon: Icon, label, variant = "mobile" }: NavItem
         <Icon
           className={cn(
             "h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110",
-            isActive && "text-accent-blue"
+            isActive && "text-primary"
           )}
         />
         <span>{label}</span>
         {isActive && (
-          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent-blue" />
+          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
         )}
       </Link>
     );
@@ -50,7 +50,7 @@ export function NavItem({ href, icon: Icon, label, variant = "mobile" }: NavItem
       )}
     >
       {isActive && (
-        <span className="absolute -top-0.5 h-0.5 w-8 rounded-full bg-accent-blue" />
+        <span className="absolute -top-0.5 h-0.5 w-8 rounded-full bg-primary" />
       )}
       <Icon
         className={cn(

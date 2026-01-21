@@ -9,13 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Form,
   FormControl,
@@ -79,110 +77,100 @@ export function ExerciseFormModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="h-[85vh] flex flex-col">
+        <SheetHeader className="shrink-0">
+          <SheetTitle>
             {isEditing ? "Modifier l'exercice" : "Nouvel exercice"}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Modifiez les informations de votre exercice personnalisé."
-              : "Créez un exercice personnalisé pour vos entraînements."}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetTitle>
+        </SheetHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            {/* Name field */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nom de l&apos;exercice</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="ex : Bulgarian Split Squat"
-                      {...field}
-                      autoFocus
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col flex-1 min-h-0">
+            <div className="flex-1 overflow-y-auto py-4 px-1 -mx-1 space-y-6">
+              {/* Name field */}
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nom de l&apos;exercice</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="ex : Bulgarian Split Squat"
+                        {...field}
+                        autoFocus
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {/* Muscle groups field */}
-            <FormField
-              control={form.control}
-              name="muscleGroups"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Groupes musculaires</FormLabel>
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    {MUSCLE_GROUPS.map((group) => {
-                      const isChecked = field.value.includes(group);
-                      const colors = getMuscleGroupColors(group);
+              {/* Muscle groups field */}
+              <FormField
+                control={form.control}
+                name="muscleGroups"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Groupes musculaires</FormLabel>
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      {MUSCLE_GROUPS.map((group) => {
+                        const isChecked = field.value.includes(group);
+                        const colors = getMuscleGroupColors(group);
 
-                      return (
-                        <label
-                          key={group}
-                          className={cn(
-                            "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all",
-                            isChecked
-                              ? cn(colors.bg, colors.border)
-                              : "border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/50"
-                          )}
-                        >
-                          <Checkbox
-                            checked={isChecked}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                field.onChange([...field.value, group]);
-                              } else {
-                                field.onChange(
-                                  field.value.filter((g) => g !== group)
-                                );
-                              }
-                            }}
-                          />
-                          <span
+                        return (
+                          <label
+                            key={group}
                             className={cn(
-                              "text-sm font-medium",
-                              isChecked ? colors.text : "text-zinc-300"
+                              "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all",
+                              isChecked
+                                ? cn(colors.bg, colors.border)
+                                : "border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/50"
                             )}
                           >
-                            {getMuscleGroupLabel(group)}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  field.onChange([...field.value, group]);
+                                } else {
+                                  field.onChange(
+                                    field.value.filter((g) => g !== group)
+                                  );
+                                }
+                              }}
+                            />
+                            <span
+                              className={cn(
+                                "text-sm font-medium",
+                                isChecked ? colors.text : "text-zinc-300"
+                              )}
+                            >
+                              {getMuscleGroupLabel(group)}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Annuler
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
+            {/* Footer */}
+            <div className="shrink-0 pt-4 border-t border-zinc-800">
+              <Button type="submit" disabled={isSubmitting} className="w-full">
                 {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 {isEditing ? "Enregistrer" : "Créer"}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

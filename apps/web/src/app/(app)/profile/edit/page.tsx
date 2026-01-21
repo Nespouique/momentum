@@ -198,7 +198,7 @@ export default function EditProfilePage() {
                                 <Button
                                   variant="outline"
                                   className={cn(
-                                    "w-full justify-start text-left font-normal",
+                                    "w-full justify-center sm:justify-start text-left font-normal",
                                     !isValidDate && "text-muted-foreground"
                                   )}
                                   disabled={profileForm.formState.isSubmitting}

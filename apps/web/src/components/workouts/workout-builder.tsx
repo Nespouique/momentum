@@ -555,7 +555,7 @@ export function WorkoutBuilder({ workout, mode }: WorkoutBuilderProps) {
           ) : (
             <>
               <Save className="h-4 w-4" />
-              {mode === "create" ? "Créer le programme" : "Enregistrer"}
+              Enregistrer
             </>
           )}
         </Button>
