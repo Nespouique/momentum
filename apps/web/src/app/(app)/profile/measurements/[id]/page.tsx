@@ -11,11 +11,10 @@ import {
   ChevronDown,
   Scale,
   User,
-  Dumbbell,
-  Activity,
   Footprints,
   Save,
   Loader2,
+  BicepsFlexed,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -144,7 +143,6 @@ export default function MeasurementFormPage() {
   const [openSections, setOpenSections] = useState({
     upperBody: false,
     arms: false,
-    core: false,
     legs: false,
   });
 
@@ -319,7 +317,7 @@ export default function MeasurementFormPage() {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
+                      "w-full justify-center text-left font-normal",
                       !field.value && "text-muted-foreground"
                     )}
                   >
@@ -349,10 +347,10 @@ export default function MeasurementFormPage() {
         </div>
 
         {/* Weight - Always visible */}
-        <div className="rounded-xl border border-[hsl(var(--accent-orange))]/30 bg-gradient-to-br from-[hsl(var(--accent-orange))]/5 to-transparent p-4">
+        <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-4">
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(var(--accent-orange))]/10">
-              <Scale className="h-5 w-5 text-[hsl(var(--accent-orange))]" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <Scale className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h3 className="font-semibold">Poids</h3>
@@ -451,6 +449,40 @@ export default function MeasurementFormPage() {
                     )}
                   />
                 </FieldRow>
+                <FieldRow label="Taille" unit="cm">
+                  <Controller
+                    name="waist"
+                    control={control}
+                    render={({ field }) => (
+                      <NumberInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        min={40}
+                        max={200}
+                        step={0.5}
+                        placeholder={getPlaceholder("waist") ?? "82"}
+                        className="w-full"
+                      />
+                    )}
+                  />
+                </FieldRow>
+                <FieldRow label="Hanches" unit="cm">
+                  <Controller
+                    name="hips"
+                    control={control}
+                    render={({ field }) => (
+                      <NumberInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        min={50}
+                        max={200}
+                        step={0.5}
+                        placeholder={getPlaceholder("hips") ?? "95"}
+                        className="w-full"
+                      />
+                    )}
+                  />
+                </FieldRow>
               </div>
             </CollapsibleContent>
           </div>
@@ -465,7 +497,7 @@ export default function MeasurementFormPage() {
             <CollapsibleTrigger asChild>
               <button type="button" className="w-full px-4 hover:bg-secondary/50 transition-colors">
                 <SectionHeader
-                  icon={Dumbbell}
+                  icon={BicepsFlexed}
                   title="Bras"
                   isOpen={openSections.arms ?? false}
                 />
@@ -587,62 +619,6 @@ export default function MeasurementFormPage() {
                     />
                   }
                 />
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-
-        {/* Core Section */}
-        <Collapsible
-          open={openSections.core}
-          onOpenChange={() => toggleSection("core")}
-        >
-          <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <CollapsibleTrigger asChild>
-              <button type="button" className="w-full px-4 hover:bg-secondary/50 transition-colors">
-                <SectionHeader
-                  icon={Activity}
-                  title="Tronc"
-                  isOpen={openSections.core ?? false}
-                />
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="border-t border-border/60 px-4 pb-4">
-                <FieldRow label="Taille" unit="cm">
-                  <Controller
-                    name="waist"
-                    control={control}
-                    render={({ field }) => (
-                      <NumberInput
-                        value={field.value}
-                        onChange={field.onChange}
-                        min={40}
-                        max={200}
-                        step={0.5}
-                        placeholder={getPlaceholder("waist") ?? "82"}
-                        className="w-full"
-                      />
-                    )}
-                  />
-                </FieldRow>
-                <FieldRow label="Hanches" unit="cm">
-                  <Controller
-                    name="hips"
-                    control={control}
-                    render={({ field }) => (
-                      <NumberInput
-                        value={field.value}
-                        onChange={field.onChange}
-                        min={50}
-                        max={200}
-                        step={0.5}
-                        placeholder={getPlaceholder("hips") ?? "95"}
-                        className="w-full"
-                      />
-                    )}
-                  />
-                </FieldRow>
               </div>
             </CollapsibleContent>
           </div>

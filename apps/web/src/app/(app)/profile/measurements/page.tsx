@@ -66,6 +66,14 @@ function formatDate(dateStr: string): string {
   return format(new Date(dateStr), "d MMM yyyy", { locale: fr });
 }
 
+function formatDateShort(dateStr: string): string {
+  return format(new Date(dateStr), "d MMM", { locale: fr }).replace(".", "");
+}
+
+function getYear(dateStr: string): string {
+  return format(new Date(dateStr), "yyyy");
+}
+
 // Stat Card Component
 function StatCard({
   icon: Icon,
@@ -74,6 +82,7 @@ function StatCard({
   unit,
   subtitle,
   accentColor = "orange",
+  gap = 1,
 }: {
   icon: React.ElementType;
   label: string;
@@ -81,6 +90,7 @@ function StatCard({
   unit?: string;
   subtitle?: string;
   accentColor?: "orange" | "emerald" | "blue" | "zinc";
+  gap?: 1 | 2;
 }) {
   const colorClasses = {
     orange: "from-[hsl(var(--accent-orange))]/20 to-transparent text-[hsl(var(--accent-orange))]",
@@ -99,7 +109,7 @@ function StatCard({
             {label}
           </span>
         </div>
-        <div className="flex items-baseline gap-1">
+        <div className={cn("flex items-baseline", gap === 1 ? "gap-1" : "gap-2")}>
           <span className="text-2xl font-bold tabular-nums tracking-tight">
             {value ?? "—"}
           </span>
@@ -250,9 +260,6 @@ function SectionHeader({ title }: { title: string }) {
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[hsl(var(--accent-orange))]/20 to-transparent border border-[hsl(var(--accent-orange))]/20">
-        <Scale className="h-8 w-8 text-[hsl(var(--accent-orange))]" />
-      </div>
       <h3 className="mb-2 text-lg font-semibold">Aucune mesure</h3>
       <p className="mb-6 max-w-xs text-sm text-muted-foreground">
         Commencez à suivre vos mensurations pour visualiser votre progression.
@@ -394,9 +401,11 @@ export default function MeasurementsPage() {
           <div className="grid grid-cols-2 gap-3 mb-6">
             <StatCard
               icon={Calendar}
-              label="Dernière mesure"
-              value={formatDate(latest.date)}
+              label="Mesure"
+              value={formatDateShort(latest.date)}
+              unit={getYear(latest.date)}
               accentColor="zinc"
+              gap={2}
             />
             <StatCard
               icon={User}
@@ -440,8 +449,20 @@ export default function MeasurementsPage() {
               value={latest.chest}
               previousValue={previous?.chest ?? null}
             />
+            <MeasurementRow
+              label="Taille"
+              value={latest.waist}
+              previousValue={previous?.waist ?? null}
+              inverse
+            />
+            <MeasurementRow
+              label="Hanches"
+              value={latest.hips}
+              previousValue={previous?.hips ?? null}
+            />
 
             {/* Arms */}
+            <div className="mt-8" />
             <SectionHeader title="Bras" />
             <BilateralRow
               label="Biceps"
@@ -465,21 +486,8 @@ export default function MeasurementsPage() {
               prevRightValue={previous?.wristRight ?? null}
             />
 
-            {/* Core */}
-            <SectionHeader title="Tronc" />
-            <MeasurementRow
-              label="Taille"
-              value={latest.waist}
-              previousValue={previous?.waist ?? null}
-              inverse
-            />
-            <MeasurementRow
-              label="Hanches"
-              value={latest.hips}
-              previousValue={previous?.hips ?? null}
-            />
-
             {/* Legs */}
+            <div className="mt-8" />
             <SectionHeader title="Jambes" />
             <BilateralRow
               label="Cuisse"
