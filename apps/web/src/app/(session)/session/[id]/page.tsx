@@ -19,7 +19,7 @@ import { useTimerAudio } from "@/hooks/use-timer-audio";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { ExerciseSelector } from "@/components/workouts/exercise-selector";
 import { MuscleGroup } from "@/lib/constants/muscle-groups";
-import { updateSet } from "@/lib/api/sessions";
+import { updateSet, replaceSuperset } from "@/lib/api/sessions";
 
 import {
   SessionOverviewScreen,
@@ -85,6 +85,7 @@ export default function SessionPage({ params }: SessionPageProps) {
   const [showAbandonDialog, setShowAbandonDialog] = useState(false);
   const [showReorderScreen, setShowReorderScreen] = useState(false);
   const [showSubstituteSheet, setShowSubstituteSheet] = useState(false);
+  const [showSupersetReplaceSheet, setShowSupersetReplaceSheet] = useState(false);
   const [showOverviewReorderScreen, setShowOverviewReorderScreen] = useState(false);
   const [showOverviewSubstituteSheet, setShowOverviewSubstituteSheet] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -116,12 +117,12 @@ export default function SessionPage({ params }: SessionPageProps) {
 
   // Pause/resume timer when sheets open/close
   useEffect(() => {
-    if (showReorderScreen || showSubstituteSheet || showOverviewReorderScreen || showOverviewSubstituteSheet) {
+    if (showReorderScreen || showSubstituteSheet || showSupersetReplaceSheet || showOverviewReorderScreen || showOverviewSubstituteSheet) {
       pauseTimer();
     } else {
       resumeTimer();
     }
-  }, [showReorderScreen, showSubstituteSheet, showOverviewReorderScreen, showOverviewSubstituteSheet, pauseTimer, resumeTimer]);
+  }, [showReorderScreen, showSubstituteSheet, showSupersetReplaceSheet, showOverviewReorderScreen, showOverviewSubstituteSheet, pauseTimer, resumeTimer]);
 
   // Play countdown beeps
   useEffect(() => {
@@ -182,8 +183,13 @@ export default function SessionPage({ params }: SessionPageProps) {
   }, []);
 
   const handleSubstituteExercise = useCallback(() => {
-    setShowSubstituteSheet(true);
-  }, []);
+    // Check if next exercise is part of a superset
+    if (nextExercise?.workoutItem?.type === "superset") {
+      setShowSupersetReplaceSheet(true);
+    } else {
+      setShowSubstituteSheet(true);
+    }
+  }, [nextExercise]);
 
   const handleConfirmReorder = useCallback(
     async (exerciseIds: string[]) => {
@@ -206,6 +212,29 @@ export default function SessionPage({ params }: SessionPageProps) {
       setShowSubstituteSheet(false);
     },
     [token, substituteExercise]
+  );
+
+  const handleConfirmSupersetReplace = useCallback(
+    async (exercises: { id: string }[]) => {
+      if (!token || !session || !nextExercise?.workoutItem?.id || exercises.length === 0) return;
+      setIsSubmitting(true);
+      try {
+        await replaceSuperset(
+          token,
+          session.id,
+          nextExercise.workoutItem.id,
+          exercises.map((e) => e.id)
+        );
+        // Reload session to get updated exercises
+        await loadSession(token, session.id);
+      } catch (error) {
+        console.error("Failed to replace superset:", error);
+      } finally {
+        setIsSubmitting(false);
+        setShowSupersetReplaceSheet(false);
+      }
+    },
+    [token, session, nextExercise, loadSession]
   );
 
   const handleAbandon = useCallback(async () => {
@@ -874,6 +903,22 @@ export default function SessionPage({ params }: SessionPageProps) {
           ) || []
         }
         footerMessage="Substitution pour cette séance uniquement"
+      />
+
+      {/* Replace superset sheet (multi-select) */}
+      <ExerciseSelector
+        open={showSupersetReplaceSheet}
+        onOpenChange={setShowSupersetReplaceSheet}
+        mode="multi"
+        minSelection={1}
+        onSelect={handleConfirmSupersetReplace}
+        title="Remplacer le superset"
+        initialMuscleGroups={
+          nextExercise?.exercise.muscleGroups.filter(
+            (g): g is MuscleGroup => typeof g === "string"
+          ) || []
+        }
+        footerMessage="1 exercice = standard, 2+ = nouveau superset"
       />
 
       {/* Overview reorder exercises sheet */}

@@ -214,7 +214,6 @@ export function TransitionScreen(props: TransitionScreenProps) {
                 onSkip={onSkipExercise}
                 onPostpone={onPostponeExercise}
                 onSubstitute={onSubstituteExercise}
-                showSubstitute={!isNextSuperset}
               />
             </div>
           )}

@@ -36,6 +36,11 @@ export const reorderExercisesSchema = z.object({
   exerciseIds: z.array(z.string().uuid()).min(1, "At least 1 exercise ID required"),
 });
 
+// Replace superset (can be replaced by 1 exercise = standard, or multiple = new superset)
+export const replaceSupersetSchema = z.object({
+  exerciseIds: z.array(z.string().uuid()).min(1, "At least 1 exercise ID required"),
+});
+
 // Record set result
 export const recordSetResultSchema = z.object({
   setNumber: z.number().int().positive("Set number must be positive"),
@@ -63,6 +68,7 @@ export type SessionQueryInput = z.infer<typeof sessionQuerySchema>;
 export type UpdateSessionExerciseInput = z.infer<typeof updateSessionExerciseSchema>;
 export type SubstituteExerciseInput = z.infer<typeof substituteExerciseSchema>;
 export type ReorderExercisesInput = z.infer<typeof reorderExercisesSchema>;
+export type ReplaceSupersetInput = z.infer<typeof replaceSupersetSchema>;
 export type RecordSetResultInput = z.infer<typeof recordSetResultSchema>;
 export type UpdateSetInput = z.infer<typeof updateSetSchema>;
 export type LastSessionQueryInput = z.infer<typeof lastSessionQuerySchema>;

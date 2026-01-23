@@ -8,6 +8,7 @@ import {
   updateSessionExerciseSchema,
   substituteExerciseSchema,
   reorderExercisesSchema,
+  replaceSupersetSchema,
   recordSetResultSchema,
   updateSetSchema,
   lastSessionQuerySchema,
@@ -737,6 +738,164 @@ router.put("/:id/exercises/reorder", async (req: AuthRequest, res: Response) => 
       });
     }
     console.error("Reorder exercises error:", error);
+    return res.status(500).json({
+      error: {
+        code: ErrorCodes.INTERNAL_ERROR,
+        message: "An unexpected error occurred",
+      },
+    });
+  }
+});
+
+// POST /sessions/:id/superset/:workoutItemId/replace - Replace superset with new exercises
+router.post("/:id/superset/:workoutItemId/replace", async (req: AuthRequest, res: Response) => {
+  try {
+    const sessionId = req.params["id"] as string;
+    const workoutItemId = req.params["workoutItemId"] as string;
+    const data = replaceSupersetSchema.parse(req.body);
+    const userId = req.userId!;
+
+    // Verify session exists, is active, and belongs to user
+    const session = await prisma.workoutSession.findFirst({
+      where: { id: sessionId, userId },
+    });
+
+    if (!session) {
+      return res.status(404).json({
+        error: {
+          code: ErrorCodes.NOT_FOUND,
+          message: "Session not found",
+        },
+      });
+    }
+
+    if (session.status !== "in_progress") {
+      return res.status(400).json({
+        error: {
+          code: ErrorCodes.SESSION_NOT_ACTIVE,
+          message: "Session is not active",
+        },
+      });
+    }
+
+    // Find all session exercises belonging to this workoutItem (the superset)
+    const supersetExercises = await prisma.sessionExercise.findMany({
+      where: {
+        sessionId,
+        workoutItemId,
+        status: { notIn: ["substituted", "skipped"] },
+      },
+      include: {
+        sets: { orderBy: { setNumber: "asc" } },
+      },
+      orderBy: { position: "asc" },
+    });
+
+    if (supersetExercises.length === 0) {
+      return res.status(404).json({
+        error: {
+          code: ErrorCodes.NOT_FOUND,
+          message: "No active exercises found for this superset",
+        },
+      });
+    }
+
+    // Verify all new exercises exist
+    const newExercises = await prisma.exercise.findMany({
+      where: { id: { in: data.exerciseIds } },
+    });
+
+    if (newExercises.length !== data.exerciseIds.length) {
+      return res.status(404).json({
+        error: {
+          code: ErrorCodes.NOT_FOUND,
+          message: "One or more exercises not found",
+        },
+      });
+    }
+
+    // Get the first exercise for reference (we know it exists from the length check above)
+    const firstSupersetExercise = supersetExercises[0]!;
+
+    // Get the position of the first exercise in the superset (to place new exercises there)
+    const basePosition = firstSupersetExercise.position;
+
+    // Use sets from the first exercise of the superset as template
+    const templateSets = firstSupersetExercise.sets;
+
+    // Transaction: mark all superset exercises as substituted and create new ones
+    const result = await prisma.$transaction(async (tx) => {
+      // Mark all existing superset exercises as substituted
+      await tx.sessionExercise.updateMany({
+        where: {
+          id: { in: supersetExercises.map((e) => e.id) },
+        },
+        data: { status: "substituted" },
+      });
+
+      // Create new exercises (keeping same position order)
+      const createdExercises = [];
+      for (const [i, exerciseId] of data.exerciseIds.entries()) {
+        const created = await tx.sessionExercise.create({
+          data: {
+            sessionId,
+            exerciseId,
+            workoutItemId, // Keep the same workoutItemId to maintain grouping
+            position: basePosition + i * 0.001, // Use fractional position to keep them together
+            substitutedFromId: firstSupersetExercise.id,
+            sets: {
+              create: templateSets.map((set) => ({
+                setNumber: set.setNumber,
+                targetReps: set.targetReps,
+                targetWeight: set.targetWeight,
+              })),
+            },
+          },
+          include: {
+            exercise: {
+              select: { id: true, name: true, muscleGroups: true },
+            },
+            workoutItem: {
+              select: { id: true, type: true, rounds: true, restAfter: true },
+            },
+            sets: { orderBy: { setNumber: "asc" } },
+          },
+        });
+        createdExercises.push(created);
+      }
+
+      // Reorder all exercises to clean up positions
+      const allActiveExercises = await tx.sessionExercise.findMany({
+        where: {
+          sessionId,
+          status: { notIn: ["substituted"] },
+        },
+        orderBy: { position: "asc" },
+      });
+
+      // Update positions to be clean integers
+      for (const [i, exercise] of allActiveExercises.entries()) {
+        await tx.sessionExercise.update({
+          where: { id: exercise.id },
+          data: { position: i },
+        });
+      }
+
+      return createdExercises;
+    });
+
+    return res.status(201).json({ data: result });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        error: {
+          code: ErrorCodes.VALIDATION_ERROR,
+          message: "Validation failed",
+          details: formatZodError(error),
+        },
+      });
+    }
+    console.error("Replace superset error:", error);
     return res.status(500).json({
       error: {
         code: ErrorCodes.INTERNAL_ERROR,

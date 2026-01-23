@@ -295,6 +295,24 @@ export async function reorderExercises(
   return handleResponse<{ data: SessionExercise[] }>(response);
 }
 
+export async function replaceSuperset(
+  token: string,
+  sessionId: string,
+  workoutItemId: string,
+  exerciseIds: string[]
+): Promise<{ data: SessionExercise[] }> {
+  const response = await fetch(`${API_URL}/sessions/${sessionId}/superset/${workoutItemId}/replace`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ exerciseIds }),
+  });
+
+  return handleResponse<{ data: SessionExercise[] }>(response);
+}
+
 // Set endpoints
 export async function recordSetResult(
   token: string,
