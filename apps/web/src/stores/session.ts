@@ -1074,9 +1074,26 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const currentExercise = state.session?.exercises.find((e) => e.id === exerciseId);
     if (!currentExercise) return null;
 
-    const lastExercise = state.lastSession.exercises.find(
+    // First try to match by workoutItemExerciseId (for original exercises)
+    let lastExercise = state.lastSession.exercises.find(
       (e) => e.workoutItemExercise?.id === currentExercise.workoutItemExercise?.id
     );
+
+    // If not found and exercise was substituted, try to match by exerciseId
+    // This handles cases where user substituted with same exercise they did before
+    if (!lastExercise && currentExercise.substitutedFromId) {
+      lastExercise = state.lastSession.exercises.find(
+        (e) => e.exerciseId === currentExercise.exerciseId
+      );
+    }
+
+    // Also try by exerciseId for exercises that were never in the workout template
+    // but might have been done in previous sessions
+    if (!lastExercise) {
+      lastExercise = state.lastSession.exercises.find(
+        (e) => e.exerciseId === currentExercise.exerciseId
+      );
+    }
 
     if (!lastExercise) return null;
 
