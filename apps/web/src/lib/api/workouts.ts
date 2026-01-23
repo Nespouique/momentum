@@ -37,6 +37,7 @@ export interface Workout {
   items: WorkoutItem[];
   createdAt: string;
   updatedAt: string;
+  lastCompletedAt: string | null;
 }
 
 export interface WorkoutListResponse {

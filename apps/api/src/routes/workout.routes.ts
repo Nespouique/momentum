@@ -80,13 +80,29 @@ router.get("/", async (req: AuthRequest, res: Response) => {
               },
             },
           },
+          // Include the last completed session
+          sessions: {
+            where: { status: "completed" },
+            orderBy: { completedAt: "desc" },
+            take: 1,
+            select: { completedAt: true },
+          },
         },
       }),
       prisma.workout.count({ where }),
     ]);
 
+    // Transform to include lastCompletedAt at the top level
+    const workoutsWithLastSession = workouts.map((workout) => {
+      const { sessions, ...rest } = workout;
+      return {
+        ...rest,
+        lastCompletedAt: sessions[0]?.completedAt ?? null,
+      };
+    });
+
     return res.json({
-      data: workouts,
+      data: workoutsWithLastSession,
       total,
     });
   } catch (error) {
