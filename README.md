@@ -1,6 +1,15 @@
 # Momentum
 
-A fitness tracking application built with Next.js and Express.
+A full-featured fitness tracking application for managing workouts, tracking body measurements, and recording active workout sessions with real-time performance comparison.
+
+## Features
+
+- **Exercise Library**: Custom exercise database with muscle group categorization
+- **Workout Builder**: Create workout templates with supersets and customizable sets
+- **Active Sessions**: Real-time workout tracking with timer, rest periods, and set logging
+- **Historical Comparison**: Compare current performance with previous sessions
+- **Body Measurements**: Track and visualize body measurements over time
+- **Dark Mode**: Full dark theme support
 
 ## Tech Stack
 
