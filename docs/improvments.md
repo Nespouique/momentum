@@ -16,6 +16,7 @@
 - [x] Faire en sorte que l'accentuation du tab sélectionné dans la navbar soit de la même couleur que les CTA principaux
 - [x] Le "jamais réalisé" dans la liste des séances alors que la séance a été réalisée
 - [x] Mettre une page avant le démarrage de la séance pour indiquer les exercices et pouvoir accéder aux éléments Passer, Réorganiser, Remplacer
-- [ ] Voir le fonctionnement de la séance avec les supersets
+- [x] Voir le fonctionnement de la séance avec les supersets
 - [x] Revoir et tester l'écran de récapitulatif de la séance (avec confettis)
-- [ ] Supprimer l'icon ou la mettre en blanc sur la preview de l'exercice
+- [x] Supprimer l'icon ou la mettre en blanc sur la preview de l'exercice
+- [ ] Ajouter une icon statistiques sur les cartes des exercices dans la liste des exercices
