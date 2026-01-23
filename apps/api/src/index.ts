@@ -9,6 +9,7 @@ import profileRoutes from "./routes/profile.routes.js";
 import measurementRoutes from "./routes/measurement.routes.js";
 import exerciseRoutes from "./routes/exercise.routes.js";
 import workoutRoutes from "./routes/workout.routes.js";
+import sessionRoutes from "./routes/session.routes.js";
 
 const app = express();
 const PORT = process.env["PORT"] || 3001;
@@ -46,6 +47,7 @@ app.use("/profile", profileRoutes);
 app.use("/measurements", measurementRoutes);
 app.use("/exercises", exerciseRoutes);
 app.use("/workouts", workoutRoutes);
+app.use("/sessions", sessionRoutes);
 
 app.get("/health", async (_req, res) => {
   try {

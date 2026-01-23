@@ -24,6 +24,7 @@ model User {
 
   measurements    Measurement[]
   workouts        Workout[]
+  workoutSessions WorkoutSession[]
 
   @@map("users")
 }
@@ -76,6 +77,7 @@ model Exercise {
   createdAt    DateTime @default(now()) @map("created_at")
 
   workoutItemExercises WorkoutItemExercise[]
+  sessionExercises     SessionExercise[]
 
   @@map("exercises")
 }
@@ -89,7 +91,8 @@ model Workout {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  items WorkoutItem[]
+  items    WorkoutItem[]
+  sessions WorkoutSession[]
 
   @@map("workouts")
 }
@@ -103,7 +106,8 @@ model WorkoutItem {
   rounds    Int     @default(1) // number of rounds (1 for simple exercise, N for superset)
   restAfter Int     @map("rest_after") // seconds, rest after this item
 
-  exercises WorkoutItemExercise[]
+  exercises        WorkoutItemExercise[]
+  sessionExercises SessionExercise[]
 
   @@index([workoutId, position])
   @@map("workout_items")
@@ -118,7 +122,8 @@ model WorkoutItemExercise {
   position        Int         // order in item (1 for simple, 1-N for superset)
   restBetweenSets Int         @map("rest_between_sets") // seconds
 
-  sets WorkoutSet[]
+  sets             WorkoutSet[]
+  sessionExercises SessionExercise[]
 
   @@index([workoutItemId, position])
   @@map("workout_item_exercises")
@@ -134,4 +139,83 @@ model WorkoutSet {
 
   @@index([workoutItemExerciseId, setNumber])
   @@map("workout_sets")
+}
+
+// ============================================
+// WORKOUT SESSION MODELS (Story 2.5)
+// ============================================
+
+enum SessionStatus {
+  in_progress
+  completed
+  abandoned
+}
+
+enum SessionExerciseStatus {
+  pending
+  in_progress
+  completed
+  skipped
+  substituted
+}
+
+model WorkoutSession {
+  id          String        @id @default(uuid())
+  userId      String        @map("user_id")
+  user        User          @relation(fields: [userId], references: [id])
+  workoutId   String        @map("workout_id")
+  workout     Workout       @relation(fields: [workoutId], references: [id])
+  status      SessionStatus @default(in_progress)
+  startedAt   DateTime      @default(now()) @map("started_at")
+  completedAt DateTime?     @map("completed_at")
+  notes       String?
+
+  exercises SessionExercise[]
+
+  @@index([userId, status])
+  @@index([workoutId])
+  @@map("workout_sessions")
+}
+
+model SessionExercise {
+  id                    String                @id @default(uuid())
+  sessionId             String                @map("session_id")
+  session               WorkoutSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  workoutItemExerciseId String?               @map("workout_item_exercise_id")
+  workoutItemExercise   WorkoutItemExercise?  @relation(fields: [workoutItemExerciseId], references: [id])
+  exerciseId            String                @map("exercise_id")
+  exercise              Exercise              @relation(fields: [exerciseId], references: [id])
+  status                SessionExerciseStatus @default(pending)
+  position              Int                   // Order in session (modifiable via drag & drop)
+  substitutedFromId     String?               @map("substituted_from_id") // ID of original exercise if substituted
+
+  // For supersets: reference to parent WorkoutItem
+  workoutItemId String?      @map("workout_item_id")
+  workoutItem   WorkoutItem? @relation(fields: [workoutItemId], references: [id])
+
+  sets SessionSet[]
+
+  @@index([sessionId, position])
+  @@map("session_exercises")
+}
+
+model SessionSet {
+  id                String          @id @default(uuid())
+  sessionExerciseId String          @map("session_exercise_id")
+  sessionExercise   SessionExercise @relation(fields: [sessionExerciseId], references: [id], onDelete: Cascade)
+  setNumber         Int             @map("set_number")
+
+  // Targets (copied from WorkoutSet at session start)
+  targetReps   Int    @map("target_reps")
+  targetWeight Float? @map("target_weight")
+
+  // Actual results (entered by user)
+  actualReps   Int?   @map("actual_reps")
+  actualWeight Float? @map("actual_weight")
+
+  rpe         Int?      // Rate of Perceived Exertion 1-10
+  completedAt DateTime? @map("completed_at")
+
+  @@index([sessionExerciseId, setNumber])
+  @@map("session_sets")
 }
