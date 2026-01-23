@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Search, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,8 @@ interface ExerciseSelectorProps {
   title?: string;
   minSelection?: number;
   initialSelection?: Exercise[];
+  initialMuscleGroups?: MuscleGroup[];
+  footerMessage?: string;
 }
 
 export function ExerciseSelector({
@@ -36,6 +38,8 @@ export function ExerciseSelector({
   title,
   minSelection = mode === "multi" ? 2 : 1,
   initialSelection = [],
+  initialMuscleGroups = [],
+  footerMessage,
 }: ExerciseSelectorProps) {
   const { token } = useAuthStore();
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -60,14 +64,19 @@ export function ExerciseSelector({
     }
   }, [token]);
 
+  // Track previous open state to only reset on open transition (not on prop reference changes)
+  const wasOpenRef = useRef(false);
+
   useEffect(() => {
-    if (open) {
+    // Only reset state when transitioning from closed to open
+    if (open && !wasOpenRef.current) {
       loadExercises();
       setSelectedExercises(initialSelection);
       setSearchQuery("");
-      setSelectedMuscleGroups([]);
+      setSelectedMuscleGroups(initialMuscleGroups);
     }
-  }, [open, loadExercises, initialSelection]);
+    wasOpenRef.current = open;
+  }, [open, loadExercises, initialSelection, initialMuscleGroups]);
 
   // Filter exercises - AND logic for muscle groups (must have ALL selected groups)
   const filteredExercises = useMemo(() => {
@@ -92,8 +101,8 @@ export function ExerciseSelector({
   // Handle exercise toggle
   const handleExerciseToggle = (exercise: Exercise) => {
     if (mode === "single") {
+      // Don't close here - let the parent handle closing after async work completes
       onSelect([exercise]);
-      onOpenChange(false);
     } else {
       setSelectedExercises((prev) => {
         const isSelected = prev.some((e) => e.id === exercise.id);
@@ -220,6 +229,13 @@ export function ExerciseSelector({
             </div>
           )}
         </div>
+
+        {/* Footer message (for substitute flow) */}
+        {footerMessage && (
+          <div className="shrink-0 mt-4 px-4 py-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
+            <p className="text-sm text-zinc-400 text-center">{footerMessage}</p>
+          </div>
+        )}
 
         {/* Footer for multi-select */}
         {mode === "multi" && (

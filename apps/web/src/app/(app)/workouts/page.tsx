@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
+  X,
   Plus,
   Play,
   Trash2,
@@ -22,6 +23,13 @@ import {
   duplicateWorkout,
   type Workout,
 } from "@/lib/api/workouts";
+import {
+  startSession,
+  getActiveSession,
+  updateSession,
+  SessionError,
+  type WorkoutSession,
+} from "@/lib/api/sessions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -32,12 +40,14 @@ function WorkoutCard({
   onDelete,
   onDuplicate,
   onStart,
+  startDisabled = false,
 }: {
   workout: Workout;
   onEdit: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
   onStart: () => void;
+  startDisabled?: boolean;
 }) {
   // Count total exercises across all items
   const exerciseCount = workout.items.reduce((acc, item) => {
@@ -56,8 +66,25 @@ function WorkoutCard({
     .sort((a, b) => b[1] - a[1]) // Sort by count descending
     .map(([group]) => group as MuscleGroup);
 
-  // TODO: Get last execution date from workout sessions when implemented
-  const lastExecutionDate: string | null = null;
+  // Format last execution date
+  const formatLastExecutionDate = (dateStr: string | null): string | null => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "Aujourd'hui";
+    if (diffDays === 1) return "Hier";
+    if (diffDays < 7) return `Il y a ${diffDays} jours`;
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `Il y a ${weeks} semaine${weeks > 1 ? "s" : ""}`;
+    }
+    // Format as date for older sessions
+    return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  };
+  const lastExecutionDate = formatLastExecutionDate(workout.lastCompletedAt);
 
   // Show max 4 muscle groups, then "+X"
   const visibleGroups = muscleGroups.slice(0, 4);
@@ -85,6 +112,7 @@ function WorkoutCard({
               e.stopPropagation();
               onStart();
             }}
+            disabled={startDisabled}
             className="h-8 w-8"
             title="Démarrer la séance"
           >
@@ -179,6 +207,8 @@ export default function WorkoutsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [deletingWorkout, setDeletingWorkout] = useState<Workout | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeSession, setActiveSession] = useState<WorkoutSession | null>(null);
+  const [isAbandoningSession, setIsAbandoningSession] = useState(false);
 
   // Load workouts
   const loadWorkouts = useCallback(async () => {
@@ -200,9 +230,21 @@ export default function WorkoutsPage() {
     }
   }, [token]);
 
+  // Load active session
+  const loadActiveSession = useCallback(async () => {
+    if (!token) return;
+    try {
+      const result = await getActiveSession(token);
+      setActiveSession(result.data);
+    } catch (error) {
+      console.error("Failed to load active session:", error);
+    }
+  }, [token]);
+
   useEffect(() => {
     loadWorkouts();
-  }, [loadWorkouts]);
+    loadActiveSession();
+  }, [loadWorkouts, loadActiveSession]);
 
   // Handlers
   const handleAddClick = () => {
@@ -247,9 +289,47 @@ export default function WorkoutsPage() {
     }
   };
 
-  const handleStartClick = (_workout: Workout) => {
-    // TODO: Navigate to workout session page
-    toast.info("Fonctionnalité à venir");
+  const handleStartClick = async (workout: Workout) => {
+    if (!token || activeSession) return;
+
+    try {
+      const result = await startSession(token, workout.id);
+      router.push(`/session/${result.data.id}`);
+    } catch (error) {
+      if (error instanceof SessionError) {
+        if (error.code === "SESSION_ALREADY_ACTIVE" && error.activeSessionId) {
+          // Refresh active session state
+          loadActiveSession();
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        console.error("Failed to start session:", error);
+        toast.error("Erreur lors du démarrage de la séance");
+      }
+    }
+  };
+
+  const handleResumeSession = () => {
+    if (activeSession) {
+      router.push(`/session/${activeSession.id}`);
+    }
+  };
+
+  const handleAbandonSession = async () => {
+    if (!token || !activeSession) return;
+
+    setIsAbandoningSession(true);
+    try {
+      await updateSession(token, activeSession.id, { status: "abandoned" });
+      setActiveSession(null);
+      toast.success("Séance abandonnée");
+    } catch (error) {
+      console.error("Failed to abandon session:", error);
+      toast.error("Erreur lors de l'abandon de la séance");
+    } finally {
+      setIsAbandoningSession(false);
+    }
   };
 
   // Loading skeleton
@@ -273,6 +353,52 @@ export default function WorkoutsPage() {
     <div className="pb-24">
       <PageHeader title="Séances" />
 
+      {/* Active session banner */}
+      {activeSession && (
+        <>
+          <div className="mb-6 flex items-center gap-3 py-3 border-l-2 border-primary pl-4 bg-gradient-to-r from-primary/5 to-transparent">
+            {/* Pulsing indicator */}
+            <div className="relative shrink-0">
+              <div className="h-2.5 w-2.5 rounded-full bg-primary" />
+              <div className="absolute inset-0 h-2.5 w-2.5 rounded-full bg-primary animate-ping opacity-75" />
+            </div>
+
+            {/* Session info */}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">En cours</p>
+              <p className="font-medium text-zinc-100 truncate">
+                {activeSession.workout?.name || "Workout"}
+              </p>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                size="icon"
+                onClick={handleResumeSession}
+                className="h-9 w-9"
+                title="Reprendre la séance"
+              >
+                <Play className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleAbandonSession}
+                disabled={isAbandoningSession}
+                className="h-9 w-9 text-zinc-500 hover:text-red-400 hover:bg-red-500/10"
+                title="Arrêter la séance"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Separator */}
+          <div className="mb-4 border-b border-zinc-800/50" />
+        </>
+      )}
+
       {workouts.length === 0 ? (
         <EmptyState onAdd={handleAddClick} />
       ) : (
@@ -286,6 +412,7 @@ export default function WorkoutsPage() {
                 onDelete={() => handleDeleteClick(workout)}
                 onDuplicate={() => handleDuplicateClick(workout)}
                 onStart={() => handleStartClick(workout)}
+                startDisabled={!!activeSession}
               />
             ))}
           </div>
