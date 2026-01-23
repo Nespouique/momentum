@@ -86,7 +86,6 @@ export function SessionOverviewScreen({
                 onPostpone={onReorder}
                 onSubstitute={onSubstituteFirst}
                 disabled={isSubmitting}
-                showSubstitute={firstItem.type === "exercise"}
               />
             </div>
           )}

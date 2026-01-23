@@ -188,7 +188,7 @@ export function ExerciseSelector({
                     "w-full rounded-lg border p-4 text-left",
                     "transition-all duration-200",
                     isSelected(exercise)
-                      ? "bg-orange-500/10 border-orange-500/50"
+                      ? "bg-zinc-100/10 border-zinc-100/50"
                       : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900"
                   )}
                 >
@@ -198,12 +198,12 @@ export function ExerciseSelector({
                         className={cn(
                           "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0",
                           isSelected(exercise)
-                            ? "bg-orange-500 border-orange-500"
+                            ? "bg-zinc-100 border-zinc-100"
                             : "border-zinc-600"
                         )}
                       >
                         {isSelected(exercise) && (
-                          <Check className="h-3 w-3 text-white" />
+                          <Check className="h-3 w-3 text-zinc-900" />
                         )}
                       </div>
                     )}

@@ -88,6 +88,7 @@ export default function SessionPage({ params }: SessionPageProps) {
   const [showSupersetReplaceSheet, setShowSupersetReplaceSheet] = useState(false);
   const [showOverviewReorderScreen, setShowOverviewReorderScreen] = useState(false);
   const [showOverviewSubstituteSheet, setShowOverviewSubstituteSheet] = useState(false);
+  const [showOverviewSupersetReplaceSheet, setShowOverviewSupersetReplaceSheet] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Audio hook
@@ -117,12 +118,12 @@ export default function SessionPage({ params }: SessionPageProps) {
 
   // Pause/resume timer when sheets open/close
   useEffect(() => {
-    if (showReorderScreen || showSubstituteSheet || showSupersetReplaceSheet || showOverviewReorderScreen || showOverviewSubstituteSheet) {
+    if (showReorderScreen || showSubstituteSheet || showSupersetReplaceSheet || showOverviewReorderScreen || showOverviewSubstituteSheet || showOverviewSupersetReplaceSheet) {
       pauseTimer();
     } else {
       resumeTimer();
     }
-  }, [showReorderScreen, showSubstituteSheet, showSupersetReplaceSheet, showOverviewReorderScreen, showOverviewSubstituteSheet, pauseTimer, resumeTimer]);
+  }, [showReorderScreen, showSubstituteSheet, showSupersetReplaceSheet, showOverviewReorderScreen, showOverviewSubstituteSheet, showOverviewSupersetReplaceSheet, pauseTimer, resumeTimer]);
 
   // Play countdown beeps
   useEffect(() => {
@@ -293,8 +294,14 @@ export default function SessionPage({ params }: SessionPageProps) {
   }, []);
 
   const handleOverviewSubstitute = useCallback(() => {
-    setShowOverviewSubstituteSheet(true);
-  }, []);
+    // Check if first exercise is part of a superset
+    const firstExercise = activeExercises[0];
+    if (firstExercise?.workoutItem?.type === "superset") {
+      setShowOverviewSupersetReplaceSheet(true);
+    } else {
+      setShowOverviewSubstituteSheet(true);
+    }
+  }, [activeExercises]);
 
   const handleOverviewConfirmReorder = useCallback(
     async (exerciseIds: string[]) => {
@@ -317,6 +324,31 @@ export default function SessionPage({ params }: SessionPageProps) {
       setShowOverviewSubstituteSheet(false);
     },
     [token, substituteFirstExercise]
+  );
+
+  const handleOverviewConfirmSupersetReplace = useCallback(
+    async (exercises: { id: string }[]) => {
+      const firstExercise = activeExercises[0];
+      if (!token || !session || !firstExercise?.workoutItem?.id || exercises.length === 0) return;
+      setIsSubmitting(true);
+      try {
+        await replaceSuperset(
+          token,
+          session.id,
+          firstExercise.workoutItem.id,
+          exercises.map((e) => e.id)
+        );
+        // Reload session to get updated exercises
+        await loadSession(token, session.id);
+        // Stay on overview screen after reload
+      } catch (error) {
+        console.error("Failed to replace superset:", error);
+      } finally {
+        setIsSubmitting(false);
+        setShowOverviewSupersetReplaceSheet(false);
+      }
+    },
+    [token, session, activeExercises, loadSession]
   );
 
   // Loading state
@@ -943,6 +975,22 @@ export default function SessionPage({ params }: SessionPageProps) {
           ) || []
         }
         footerMessage="Substitution pour cette séance uniquement"
+      />
+
+      {/* Overview replace superset sheet (multi-select) */}
+      <ExerciseSelector
+        open={showOverviewSupersetReplaceSheet}
+        onOpenChange={setShowOverviewSupersetReplaceSheet}
+        mode="multi"
+        minSelection={1}
+        onSelect={handleOverviewConfirmSupersetReplace}
+        title="Remplacer le superset"
+        initialMuscleGroups={
+          activeExercises[0]?.exercise.muscleGroups.filter(
+            (g): g is MuscleGroup => typeof g === "string"
+          ) || []
+        }
+        footerMessage="1 exercice = standard, 2+ = nouveau superset"
       />
     </div>
   );
