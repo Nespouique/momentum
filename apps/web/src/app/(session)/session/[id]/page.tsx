@@ -79,16 +79,15 @@ export default function SessionPage({ params }: SessionPageProps) {
     getNextSet,
     getLastSessionSet,
     getActiveExercises,
+    fetchLastPerformance,
   } = useSessionStore();
 
   // UI state
   const [showAbandonDialog, setShowAbandonDialog] = useState(false);
   const [showReorderScreen, setShowReorderScreen] = useState(false);
   const [showSubstituteSheet, setShowSubstituteSheet] = useState(false);
-  const [showSupersetReplaceSheet, setShowSupersetReplaceSheet] = useState(false);
   const [showOverviewReorderScreen, setShowOverviewReorderScreen] = useState(false);
   const [showOverviewSubstituteSheet, setShowOverviewSubstituteSheet] = useState(false);
-  const [showOverviewSupersetReplaceSheet, setShowOverviewSupersetReplaceSheet] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Audio hook
@@ -118,12 +117,12 @@ export default function SessionPage({ params }: SessionPageProps) {
 
   // Pause/resume timer when sheets open/close
   useEffect(() => {
-    if (showReorderScreen || showSubstituteSheet || showSupersetReplaceSheet || showOverviewReorderScreen || showOverviewSubstituteSheet || showOverviewSupersetReplaceSheet) {
+    if (showReorderScreen || showSubstituteSheet || showOverviewReorderScreen || showOverviewSubstituteSheet) {
       pauseTimer();
     } else {
       resumeTimer();
     }
-  }, [showReorderScreen, showSubstituteSheet, showSupersetReplaceSheet, showOverviewReorderScreen, showOverviewSubstituteSheet, showOverviewSupersetReplaceSheet, pauseTimer, resumeTimer]);
+  }, [showReorderScreen, showSubstituteSheet, showOverviewReorderScreen, showOverviewSubstituteSheet, pauseTimer, resumeTimer]);
 
   // Play countdown beeps
   useEffect(() => {
@@ -184,13 +183,8 @@ export default function SessionPage({ params }: SessionPageProps) {
   }, []);
 
   const handleSubstituteExercise = useCallback(() => {
-    // Check if next exercise is part of a superset
-    if (nextExercise?.workoutItem?.type === "superset") {
-      setShowSupersetReplaceSheet(true);
-    } else {
-      setShowSubstituteSheet(true);
-    }
-  }, [nextExercise]);
+    setShowSubstituteSheet(true);
+  }, []);
 
   const handleConfirmReorder = useCallback(
     async (exerciseIds: string[]) => {
@@ -205,37 +199,30 @@ export default function SessionPage({ params }: SessionPageProps) {
 
   const handleConfirmSubstitute = useCallback(
     async (exercises: { id: string }[]) => {
-      const firstExercise = exercises[0];
-      if (!token || !firstExercise) return;
-      setIsSubmitting(true);
-      await substituteExercise(token, firstExercise.id);
-      setIsSubmitting(false);
-      setShowSubstituteSheet(false);
-    },
-    [token, substituteExercise]
-  );
-
-  const handleConfirmSupersetReplace = useCallback(
-    async (exercises: { id: string }[]) => {
       if (!token || !session || !nextExercise?.workoutItem?.id || exercises.length === 0) return;
       setIsSubmitting(true);
       try {
-        await replaceSuperset(
-          token,
-          session.id,
-          nextExercise.workoutItem.id,
-          exercises.map((e) => e.id)
-        );
-        // Reload session to get updated exercises
+        const exerciseIds = exercises.map((e) => e.id);
+        // Fetch last performance for all exercises in parallel with API call
+        await Promise.all([
+          replaceSuperset(
+            token,
+            session.id,
+            nextExercise.workoutItem.id,
+            exerciseIds
+          ),
+          ...exerciseIds.map((id) => fetchLastPerformance(token, id)),
+        ]);
+        // Reload session to get updated exercises (cache is already populated)
         await loadSession(token, session.id);
       } catch (error) {
-        console.error("Failed to replace superset:", error);
+        console.error("Failed to substitute exercise:", error);
       } finally {
         setIsSubmitting(false);
-        setShowSupersetReplaceSheet(false);
+        setShowSubstituteSheet(false);
       }
     },
-    [token, session, nextExercise, loadSession]
+    [token, session, nextExercise, loadSession, fetchLastPerformance]
   );
 
   const handleAbandon = useCallback(async () => {
@@ -294,14 +281,8 @@ export default function SessionPage({ params }: SessionPageProps) {
   }, []);
 
   const handleOverviewSubstitute = useCallback(() => {
-    // Check if first exercise is part of a superset
-    const firstExercise = activeExercises[0];
-    if (firstExercise?.workoutItem?.type === "superset") {
-      setShowOverviewSupersetReplaceSheet(true);
-    } else {
-      setShowOverviewSubstituteSheet(true);
-    }
-  }, [activeExercises]);
+    setShowOverviewSubstituteSheet(true);
+  }, []);
 
   const handleOverviewConfirmReorder = useCallback(
     async (exerciseIds: string[]) => {
@@ -316,39 +297,31 @@ export default function SessionPage({ params }: SessionPageProps) {
 
   const handleOverviewConfirmSubstitute = useCallback(
     async (exercises: { id: string }[]) => {
-      const selectedExercise = exercises[0];
-      if (!token || !selectedExercise) return;
-      setIsSubmitting(true);
-      await substituteFirstExercise(token, selectedExercise.id);
-      setIsSubmitting(false);
-      setShowOverviewSubstituteSheet(false);
-    },
-    [token, substituteFirstExercise]
-  );
-
-  const handleOverviewConfirmSupersetReplace = useCallback(
-    async (exercises: { id: string }[]) => {
       const firstExercise = activeExercises[0];
       if (!token || !session || !firstExercise?.workoutItem?.id || exercises.length === 0) return;
       setIsSubmitting(true);
       try {
-        await replaceSuperset(
-          token,
-          session.id,
-          firstExercise.workoutItem.id,
-          exercises.map((e) => e.id)
-        );
-        // Reload session to get updated exercises
+        const exerciseIds = exercises.map((e) => e.id);
+        // Fetch last performance for all exercises in parallel with API call
+        await Promise.all([
+          replaceSuperset(
+            token,
+            session.id,
+            firstExercise.workoutItem.id,
+            exerciseIds
+          ),
+          ...exerciseIds.map((id) => fetchLastPerformance(token, id)),
+        ]);
+        // Reload session to get updated exercises (cache is already populated)
         await loadSession(token, session.id);
-        // Stay on overview screen after reload
       } catch (error) {
-        console.error("Failed to replace superset:", error);
+        console.error("Failed to substitute exercise:", error);
       } finally {
         setIsSubmitting(false);
-        setShowOverviewSupersetReplaceSheet(false);
+        setShowOverviewSubstituteSheet(false);
       }
     },
-    [token, session, activeExercises, loadSession]
+    [token, session, activeExercises, loadSession, fetchLastPerformance]
   );
 
   // Loading state
@@ -378,33 +351,54 @@ export default function SessionPage({ params }: SessionPageProps) {
 
     for (const ex of remaining) {
       const workoutItem = ex.workoutItem;
+      const workoutItemId = workoutItem?.id;
 
-      if (workoutItem?.type === "superset") {
-        if (processedWorkoutItemIds.has(workoutItem.id)) continue;
-        processedWorkoutItemIds.add(workoutItem.id);
+      // Check if this workoutItemId has multiple exercises (superset detection by count)
+      if (workoutItemId) {
+        if (processedWorkoutItemIds.has(workoutItemId)) continue;
+        processedWorkoutItemIds.add(workoutItemId);
 
         const supersetExercises = remaining.filter(
-          (e) => e.workoutItem?.id === workoutItem.id
+          (e) => e.workoutItem?.id === workoutItemId
         );
 
-        items.push({
-          type: "superset",
-          data: {
-            workoutItemId: workoutItem.id,
-            rounds: workoutItem.rounds,
-            exercises: supersetExercises.map((e) => ({
-              id: e.id,
-              name: e.exercise.name,
-              muscleGroups: e.exercise.muscleGroups,
-              totalSets: e.sets.length,
+        // If multiple exercises share the same workoutItemId, it's a superset
+        if (supersetExercises.length > 1) {
+          items.push({
+            type: "superset",
+            data: {
+              workoutItemId: workoutItemId,
+              rounds: supersetExercises[0]?.sets.length || workoutItem?.rounds || 1,
+              exercises: supersetExercises.map((e) => ({
+                id: e.id,
+                name: e.exercise.name,
+                muscleGroups: e.exercise.muscleGroups,
+                totalSets: e.sets.length,
+                firstSetTarget: {
+                  reps: e.sets[0]?.targetReps || 0,
+                  weight: e.sets[0]?.targetWeight ?? null,
+                },
+              })),
+            },
+          });
+        } else {
+          // Single exercise
+          items.push({
+            type: "exercise",
+            data: {
+              id: ex.id,
+              name: ex.exercise.name,
+              muscleGroups: ex.exercise.muscleGroups,
+              totalSets: ex.sets.length,
               firstSetTarget: {
-                reps: e.sets[0]?.targetReps || 0,
-                weight: e.sets[0]?.targetWeight ?? null,
+                reps: ex.sets[0]?.targetReps || 0,
+                weight: ex.sets[0]?.targetWeight ?? null,
               },
-            })),
-          },
-        });
+            },
+          });
+        }
       } else {
+        // No workoutItem - treat as single exercise
         items.push({
           type: "exercise",
           data: {
@@ -431,33 +425,54 @@ export default function SessionPage({ params }: SessionPageProps) {
 
     for (const ex of activeExercises) {
       const workoutItem = ex.workoutItem;
+      const workoutItemId = workoutItem?.id;
 
-      if (workoutItem?.type === "superset") {
-        if (processedWorkoutItemIds.has(workoutItem.id)) continue;
-        processedWorkoutItemIds.add(workoutItem.id);
+      // Check if this workoutItemId has multiple exercises (superset detection by count)
+      if (workoutItemId) {
+        if (processedWorkoutItemIds.has(workoutItemId)) continue;
+        processedWorkoutItemIds.add(workoutItemId);
 
         const supersetExercises = activeExercises.filter(
-          (e) => e.workoutItem?.id === workoutItem.id
+          (e) => e.workoutItem?.id === workoutItemId
         );
 
-        items.push({
-          type: "superset",
-          data: {
-            workoutItemId: workoutItem.id,
-            rounds: workoutItem.rounds,
-            exercises: supersetExercises.map((e) => ({
-              id: e.id,
-              name: e.exercise.name,
-              muscleGroups: e.exercise.muscleGroups,
-              totalSets: e.sets.length,
+        // If multiple exercises share the same workoutItemId, it's a superset
+        if (supersetExercises.length > 1) {
+          items.push({
+            type: "superset",
+            data: {
+              workoutItemId: workoutItemId,
+              rounds: supersetExercises[0]?.sets.length || workoutItem?.rounds || 1,
+              exercises: supersetExercises.map((e) => ({
+                id: e.id,
+                name: e.exercise.name,
+                muscleGroups: e.exercise.muscleGroups,
+                totalSets: e.sets.length,
+                firstSetTarget: {
+                  reps: e.sets[0]?.targetReps || 0,
+                  weight: e.sets[0]?.targetWeight ?? null,
+                },
+              })),
+            },
+          });
+        } else {
+          // Single exercise
+          items.push({
+            type: "exercise",
+            data: {
+              id: ex.id,
+              name: ex.exercise.name,
+              muscleGroups: ex.exercise.muscleGroups,
+              totalSets: ex.sets.length,
               firstSetTarget: {
-                reps: e.sets[0]?.targetReps || 0,
-                weight: e.sets[0]?.targetWeight ?? null,
+                reps: ex.sets[0]?.targetReps || 0,
+                weight: ex.sets[0]?.targetWeight ?? null,
               },
-            })),
-          },
-        });
+            },
+          });
+        }
       } else {
+        // No workoutItem - treat as single exercise
         items.push({
           type: "exercise",
           data: {
@@ -487,10 +502,17 @@ export default function SessionPage({ params }: SessionPageProps) {
       ? getLastSessionSet(currentExercise.id, nextSet.setNumber)
       : null;
 
-  // Check if next exercise is start of a superset
+  // Check if next exercise is start of a superset (with multiple exercises)
   const isNextExerciseSuperset = () => {
     if (!nextExercise) return false;
-    return nextExercise.workoutItem?.type === "superset";
+    // Check if there are multiple exercises sharing the same workoutItemId
+    // This handles both original supersets and dynamically created ones (from replacement)
+    const workoutItemId = nextExercise.workoutItem?.id;
+    if (!workoutItemId) return false;
+    const supersetExerciseCount = activeExercises.filter(
+      (ex) => ex.workoutItem?.id === workoutItemId
+    ).length;
+    return supersetExerciseCount > 1;
   };
 
   // Build next exercise data for transition screens (only for single exercises)
@@ -568,36 +590,54 @@ export default function SessionPage({ params }: SessionPageProps) {
 
     for (const ex of activeExercises) {
       const workoutItem = ex.workoutItem;
+      const workoutItemId = workoutItem?.id;
 
-      if (workoutItem?.type === "superset") {
-        // Skip if already processed this superset
-        if (processedWorkoutItemIds.has(workoutItem.id)) continue;
-        processedWorkoutItemIds.add(workoutItem.id);
+      // Check if this workoutItemId has multiple exercises (superset detection by count)
+      if (workoutItemId) {
+        if (processedWorkoutItemIds.has(workoutItemId)) continue;
+        processedWorkoutItemIds.add(workoutItemId);
 
-        // Get all exercises in this superset
         const supersetExercises = activeExercises.filter(
-          (e) => e.workoutItem?.id === workoutItem.id
+          (e) => e.workoutItem?.id === workoutItemId
         );
 
-        items.push({
-          type: "superset",
-          data: {
-            workoutItemId: workoutItem.id,
-            rounds: workoutItem.rounds,
-            exercises: supersetExercises.map((e) => ({
-              id: e.id,
-              name: e.exercise.name,
-              muscleGroups: e.exercise.muscleGroups,
-              totalSets: e.sets.length,
+        // If multiple exercises share the same workoutItemId, it's a superset
+        if (supersetExercises.length > 1) {
+          items.push({
+            type: "superset",
+            data: {
+              workoutItemId: workoutItemId,
+              rounds: supersetExercises[0]?.sets.length || workoutItem?.rounds || 1,
+              exercises: supersetExercises.map((e) => ({
+                id: e.id,
+                name: e.exercise.name,
+                muscleGroups: e.exercise.muscleGroups,
+                totalSets: e.sets.length,
+                firstSetTarget: {
+                  reps: e.sets[0]?.targetReps || 0,
+                  weight: e.sets[0]?.targetWeight ?? null,
+                },
+              })),
+            },
+          });
+        } else {
+          // Single exercise
+          items.push({
+            type: "exercise",
+            data: {
+              id: ex.id,
+              name: ex.exercise.name,
+              muscleGroups: ex.exercise.muscleGroups,
+              totalSets: ex.sets.length,
               firstSetTarget: {
-                reps: e.sets[0]?.targetReps || 0,
-                weight: e.sets[0]?.targetWeight ?? null,
+                reps: ex.sets[0]?.targetReps || 0,
+                weight: ex.sets[0]?.targetWeight ?? null,
               },
-            })),
-          },
-        });
+            },
+          });
+        }
       } else {
-        // Single exercise
+        // No workoutItem - treat as single exercise
         items.push({
           type: "exercise",
           data: {
@@ -642,7 +682,8 @@ export default function SessionPage({ params }: SessionPageProps) {
 
     // Exercise active screen (with or without superset header)
     if (currentScreen === "exercise" || currentScreen === "superset-exercise") {
-      const totalRounds = currentExercise.workoutItem?.rounds || 1;
+      // For dynamically created supersets, rounds = sets.length
+      const totalRounds = currentExercise.sets.length || currentExercise.workoutItem?.rounds || 1;
 
       return (
         <div className="flex flex-col h-full">
@@ -750,7 +791,8 @@ export default function SessionPage({ params }: SessionPageProps) {
 
     // Superset rest screen (between rounds)
     if (currentScreen === "superset-rest") {
-      const totalRounds = currentExercise.workoutItem?.rounds || 1;
+      // For dynamically created supersets, rounds = sets.length
+      const totalRounds = currentExercise.sets.length || currentExercise.workoutItem?.rounds || 1;
 
       // Get first exercise in superset for next set preview
       const firstSupersetExId = supersetExerciseIds[0];
@@ -799,7 +841,8 @@ export default function SessionPage({ params }: SessionPageProps) {
       const nextSupersetData = buildNextSupersetData();
       const hasNextItem = nextExData || nextSupersetData;
 
-      const totalRounds = currentExercise.workoutItem?.rounds || 1;
+      // For dynamically created supersets, rounds = sets.length
+      const totalRounds = currentExercise.sets.length || currentExercise.workoutItem?.rounds || 1;
 
       return (
         <div className="flex-1 px-4 py-4 overflow-y-auto">
@@ -922,29 +965,14 @@ export default function SessionPage({ params }: SessionPageProps) {
         isSubmitting={isSubmitting}
       />
 
-      {/* Substitute exercise sheet */}
+      {/* Substitute exercise sheet (multi-select to allow creating superset) */}
       <ExerciseSelector
         open={showSubstituteSheet}
         onOpenChange={setShowSubstituteSheet}
-        mode="single"
-        onSelect={handleConfirmSubstitute}
-        title="Substituer l'exercice"
-        initialMuscleGroups={
-          nextExercise?.exercise.muscleGroups.filter(
-            (g): g is MuscleGroup => typeof g === "string"
-          ) || []
-        }
-        footerMessage="Substitution pour cette séance uniquement"
-      />
-
-      {/* Replace superset sheet (multi-select) */}
-      <ExerciseSelector
-        open={showSupersetReplaceSheet}
-        onOpenChange={setShowSupersetReplaceSheet}
         mode="multi"
         minSelection={1}
-        onSelect={handleConfirmSupersetReplace}
-        title="Remplacer le superset"
+        onSelect={handleConfirmSubstitute}
+        title="Remplacer l'exercice"
         initialMuscleGroups={
           nextExercise?.exercise.muscleGroups.filter(
             (g): g is MuscleGroup => typeof g === "string"
@@ -962,29 +990,14 @@ export default function SessionPage({ params }: SessionPageProps) {
         isSubmitting={isSubmitting}
       />
 
-      {/* Overview substitute exercise sheet */}
+      {/* Overview substitute exercise sheet (multi-select to allow creating superset) */}
       <ExerciseSelector
         open={showOverviewSubstituteSheet}
         onOpenChange={setShowOverviewSubstituteSheet}
-        mode="single"
-        onSelect={handleOverviewConfirmSubstitute}
-        title="Substituer l'exercice"
-        initialMuscleGroups={
-          activeExercises[0]?.exercise.muscleGroups.filter(
-            (g): g is MuscleGroup => typeof g === "string"
-          ) || []
-        }
-        footerMessage="Substitution pour cette séance uniquement"
-      />
-
-      {/* Overview replace superset sheet (multi-select) */}
-      <ExerciseSelector
-        open={showOverviewSupersetReplaceSheet}
-        onOpenChange={setShowOverviewSupersetReplaceSheet}
         mode="multi"
         minSelection={1}
-        onSelect={handleOverviewConfirmSupersetReplace}
-        title="Remplacer le superset"
+        onSelect={handleOverviewConfirmSubstitute}
+        title="Remplacer l'exercice"
         initialMuscleGroups={
           activeExercises[0]?.exercise.muscleGroups.filter(
             (g): g is MuscleGroup => typeof g === "string"
@@ -992,6 +1005,7 @@ export default function SessionPage({ params }: SessionPageProps) {
         }
         footerMessage="1 exercice = standard, 2+ = nouveau superset"
       />
+
     </div>
   );
 }

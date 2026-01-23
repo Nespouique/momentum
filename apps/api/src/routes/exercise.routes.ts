@@ -118,6 +118,82 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
   }
 });
 
+// GET /exercises/:id/last-performance - Get last performance for an exercise across all sessions
+router.get("/:id/last-performance", async (req: AuthRequest, res: Response) => {
+  try {
+    const exerciseId = req.params["id"] as string;
+    const userId = req.userId!;
+
+    // Find the most recent completed session exercise for this exercise
+    // We check session is completed and has at least one completed set
+    // We don't check sessionExercise.status since it may not be updated to "completed"
+    const lastSessionExercise = await prisma.sessionExercise.findFirst({
+      where: {
+        exerciseId,
+        session: {
+          userId,
+          status: "completed",
+        },
+        // Exclude substituted/skipped exercises
+        status: { notIn: ["substituted", "skipped"] },
+        // Only include exercises that have at least one completed set
+        sets: {
+          some: {
+            completedAt: { not: null },
+          },
+        },
+      },
+      orderBy: {
+        session: {
+          completedAt: "desc",
+        },
+      },
+      include: {
+        exercise: {
+          select: { id: true, name: true, muscleGroups: true },
+        },
+        session: {
+          select: { id: true, completedAt: true, workout: { select: { id: true, name: true } } },
+        },
+        sets: {
+          where: {
+            completedAt: { not: null },
+          },
+          orderBy: { setNumber: "asc" },
+        },
+      },
+    });
+
+    if (!lastSessionExercise) {
+      return res.json({ data: null });
+    }
+
+    return res.json({
+      data: {
+        exerciseId: lastSessionExercise.exerciseId,
+        exercise: lastSessionExercise.exercise,
+        sessionId: lastSessionExercise.session.id,
+        completedAt: lastSessionExercise.session.completedAt,
+        workout: lastSessionExercise.session.workout,
+        sets: lastSessionExercise.sets.map((set) => ({
+          setNumber: set.setNumber,
+          actualReps: set.actualReps,
+          actualWeight: set.actualWeight,
+          rpe: set.rpe,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Get last performance error:", error);
+    return res.status(500).json({
+      error: {
+        code: ErrorCodes.INTERNAL_ERROR,
+        message: "An unexpected error occurred",
+      },
+    });
+  }
+});
+
 // POST /exercises - Create an exercise (shared library)
 router.post("/", async (req: AuthRequest, res: Response) => {
   try {

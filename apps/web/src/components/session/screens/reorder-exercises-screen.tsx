@@ -155,7 +155,6 @@ export function ReorderExercisesScreen({
               </span>
             ) : (
               <span className="flex items-center gap-2">
-                <Check className="h-5 w-5" />
                 Confirmer
               </span>
             )}

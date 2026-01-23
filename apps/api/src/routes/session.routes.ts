@@ -820,8 +820,48 @@ router.post("/:id/superset/:workoutItemId/replace", async (req: AuthRequest, res
     // Get the position of the first exercise in the superset (to place new exercises there)
     const basePosition = firstSupersetExercise.position;
 
-    // Use sets from the first exercise of the superset as template
-    const templateSets = firstSupersetExercise.sets;
+    // Get the number of sets from the original exercise (to preserve set count)
+    const numberOfSets = firstSupersetExercise.sets.length;
+
+    // Fetch last performance for each new exercise to use as targets
+    const lastPerformances = await Promise.all(
+      data.exerciseIds.map(async (exerciseId) => {
+        const lastSessionExercise = await prisma.sessionExercise.findFirst({
+          where: {
+            exerciseId,
+            session: {
+              userId,
+              status: "completed",
+            },
+            status: { notIn: ["substituted", "skipped"] },
+            sets: {
+              some: {
+                completedAt: { not: null },
+              },
+            },
+          },
+          orderBy: {
+            session: {
+              completedAt: "desc",
+            },
+          },
+          include: {
+            sets: {
+              where: {
+                completedAt: { not: null },
+              },
+              orderBy: { setNumber: "asc" },
+            },
+          },
+        });
+        return { exerciseId, lastPerformance: lastSessionExercise };
+      })
+    );
+
+    // Build a map of exerciseId -> last performance sets
+    const lastPerfMap = new Map(
+      lastPerformances.map((p) => [p.exerciseId, p.lastPerformance?.sets || null])
+    );
 
     // Transaction: mark all superset exercises as substituted and create new ones
     const result = await prisma.$transaction(async (tx) => {
@@ -836,6 +876,37 @@ router.post("/:id/superset/:workoutItemId/replace", async (req: AuthRequest, res
       // Create new exercises (keeping same position order)
       const createdExercises = [];
       for (const [i, exerciseId] of data.exerciseIds.entries()) {
+        const lastPerfSets = lastPerfMap.get(exerciseId);
+
+        // Build sets: use last performance as targets if available, else default to 10 reps @ 0kg
+        const setsToCreate = Array.from({ length: numberOfSets }, (_, idx) => {
+          const setNumber = idx + 1;
+          const lastSet = lastPerfSets?.find((s) => s.setNumber === setNumber);
+
+          if (lastSet) {
+            return {
+              setNumber,
+              targetReps: lastSet.actualReps ?? 10,
+              targetWeight: lastSet.actualWeight ?? 0,
+            };
+          }
+          // No history for this set number - check if there's any set we can extrapolate from
+          const anyLastSet = lastPerfSets?.[lastPerfSets.length - 1];
+          if (anyLastSet) {
+            return {
+              setNumber,
+              targetReps: anyLastSet.actualReps ?? 10,
+              targetWeight: anyLastSet.actualWeight ?? 0,
+            };
+          }
+          // No history at all - use defaults
+          return {
+            setNumber,
+            targetReps: 10,
+            targetWeight: 0,
+          };
+        });
+
         const created = await tx.sessionExercise.create({
           data: {
             sessionId,
@@ -844,11 +915,7 @@ router.post("/:id/superset/:workoutItemId/replace", async (req: AuthRequest, res
             position: basePosition + i * 0.001, // Use fractional position to keep them together
             substitutedFromId: firstSupersetExercise.id,
             sets: {
-              create: templateSets.map((set) => ({
-                setNumber: set.setNumber,
-                targetReps: set.targetReps,
-                targetWeight: set.targetWeight,
-              })),
+              create: setsToCreate,
             },
           },
           include: {

@@ -13,6 +13,10 @@ import {
   reorderExercises as apiReorderExercises,
   SessionError,
 } from "@/lib/api/sessions";
+import {
+  getExerciseLastPerformance as apiGetExerciseLastPerformance,
+  ExerciseLastPerformance,
+} from "@/lib/api/exercises";
 
 // localStorage helpers for rest state persistence
 const REST_STATE_KEY = "momentum_rest_state";
@@ -101,7 +105,11 @@ interface SessionState {
   // Pending results (before saving to API)
   pendingResults: Map<string, PendingResult>;
 
+  // Cache for last performance data (keyed by exerciseId)
+  lastPerformanceCache: Map<string, ExerciseLastPerformance>;
+
   // Actions
+  fetchLastPerformance: (token: string, exerciseId: string) => Promise<ExerciseLastPerformance | null>;
   initSession: (token: string, workoutId: string) => Promise<void>;
   loadSession: (token: string, sessionId: string) => Promise<void>;
   loadActiveSession: (token: string) => Promise<WorkoutSession | null>;
@@ -123,6 +131,8 @@ interface SessionState {
   reset: () => void;
 
   // Helpers
+  isExerciseInSuperset: (exercise: SessionExercise | null | undefined, allActiveExercises: SessionExercise[]) => boolean;
+  getSupersetExerciseIds: (exercise: SessionExercise | null | undefined, allActiveExercises: SessionExercise[]) => string[];
   getCurrentExercise: () => SessionExercise | null;
   getNextExercise: () => SessionExercise | null;
   getCurrentSet: () => SessionSet | null;
@@ -151,10 +161,36 @@ const initialState = {
   supersetExerciseIndex: 0,
   supersetExerciseIds: [],
   pendingResults: new Map<string, PendingResult>(),
+  lastPerformanceCache: new Map<string, ExerciseLastPerformance>(),
 };
 
 export const useSessionStore = create<SessionState>((set, get) => ({
   ...initialState,
+
+  fetchLastPerformance: async (token: string, exerciseId: string) => {
+    // Check cache first (using fresh state)
+    const cached = get().lastPerformanceCache.get(exerciseId);
+    if (cached) return cached;
+
+    try {
+      const response = await apiGetExerciseLastPerformance(token, exerciseId);
+      const data = response.data;
+      if (data) {
+        // Update cache using updater function to avoid race conditions
+        // when multiple fetchLastPerformance calls run in parallel
+        set((currentState) => {
+          const newCache = new Map(currentState.lastPerformanceCache);
+          newCache.set(exerciseId, data);
+          return { lastPerformanceCache: newCache };
+        });
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.error("Failed to fetch last performance:", error);
+      return null;
+    }
+  },
 
   initSession: async (token: string, workoutId: string) => {
     set({ isLoading: true, error: null });
@@ -164,12 +200,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         (e) => e.status !== "substituted" && e.status !== "skipped"
       );
 
-      // Determine if first exercise is a superset
+      // Determine if first exercise is a superset (by counting exercises with same workoutItemId)
       const firstExercise = activeExercises[0];
-      const isSuperset = firstExercise?.workoutItem?.type === "superset";
+      const workoutItemId = firstExercise?.workoutItem?.id;
+      const supersetCount = workoutItemId
+        ? activeExercises.filter((e) => e.workoutItem?.id === workoutItemId).length
+        : 0;
+      const isSuperset = supersetCount > 1;
       const supersetIds = isSuperset
         ? activeExercises
-            .filter((e) => e.workoutItem?.id === firstExercise.workoutItem?.id)
+            .filter((e) => e.workoutItem?.id === workoutItemId)
             .map((e) => e.id)
         : [];
 
@@ -231,9 +271,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         currentSetIndex = lastExercise ? lastExercise.sets.length - 1 : 0;
       }
 
-      // Determine superset state
+      // Determine superset state (by counting exercises with same workoutItemId)
       const currentExercise = activeExercises[currentExerciseIndex];
-      const isSuperset = currentExercise?.workoutItem?.type === "superset";
+      const workoutItemId = currentExercise?.workoutItem?.id;
+      const supersetCount = workoutItemId
+        ? activeExercises.filter((e) => e.workoutItem?.id === workoutItemId).length
+        : 0;
+      const isSuperset = supersetCount > 1;
       let supersetExerciseIds: string[] = [];
       let supersetExerciseIndex = 0;
       let supersetRound = 1;
@@ -241,7 +285,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       if (isSuperset && currentExercise) {
         // Get all exercises in this superset
         supersetExerciseIds = activeExercises
-          .filter((e) => e.workoutItem?.id === currentExercise.workoutItem?.id)
+          .filter((e) => e.workoutItem?.id === workoutItemId)
           .map((e) => e.id);
 
         // Find position within superset
@@ -347,10 +391,18 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     const activeExercises = state.getActiveExercises();
     const firstExercise = activeExercises[0];
-    const isSuperset = firstExercise?.workoutItem?.type === "superset";
+    // Detect superset by counting exercises with same workoutItemId
+    const isSuperset = state.isExerciseInSuperset(firstExercise, activeExercises);
+    const supersetIds = isSuperset
+      ? state.getSupersetExerciseIds(firstExercise, activeExercises)
+      : [];
 
     set({
       currentScreen: isSuperset ? "superset-exercise" : "exercise",
+      isInSuperset: isSuperset,
+      supersetRound: isSuperset ? 1 : 0,
+      supersetExerciseIndex: 0,
+      supersetExerciseIds: supersetIds,
     });
   },
 
@@ -381,12 +433,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         // No more exercises, go to summary
         set({ session: updatedSession, currentScreen: "summary" });
       } else {
-        // Update superset state if next exercise is a superset
+        // Update superset state if next exercise is a superset (by counting exercises with same workoutItemId)
         const nextExercise = remainingExercises[0];
-        const isSuperset = nextExercise?.workoutItem?.type === "superset";
+        const nextWorkoutItemId = nextExercise?.workoutItem?.id;
+        const supersetCount = nextWorkoutItemId
+          ? remainingExercises.filter((e) => e.workoutItem?.id === nextWorkoutItemId).length
+          : 0;
+        const isSuperset = supersetCount > 1;
         const supersetIds = isSuperset
           ? remainingExercises
-              .filter((e) => e.workoutItem?.id === nextExercise.workoutItem?.id)
+              .filter((e) => e.workoutItem?.id === nextWorkoutItemId)
               .map((e) => e.id)
           : [];
 
@@ -470,7 +526,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         // Superset logic
         const currentSupersetIdx = state.supersetExerciseIndex;
         const isLastInSuperset = currentSupersetIdx >= state.supersetExerciseIds.length - 1;
-        const totalRounds = exercise.workoutItem?.rounds || 1;
+        // For dynamically created supersets, rounds = sets.length; for original supersets, use workoutItem.rounds
+        const totalRounds = exercise.sets.length || exercise.workoutItem?.rounds || 1;
         const isLastRound = state.supersetRound >= totalRounds;
 
         if (isLastInSuperset) {
@@ -703,11 +760,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         return;
       }
 
-      const isSuperset = nextExercise.workoutItem?.type === "superset";
+      // Detect superset by counting exercises with same workoutItemId
+      const nextWorkoutItemId = nextExercise.workoutItem?.id;
+      const supersetCount = nextWorkoutItemId
+        ? activeExercises.filter((e) => e.workoutItem?.id === nextWorkoutItemId).length
+        : 0;
+      const isSuperset = supersetCount > 1;
 
       if (isSuperset) {
         const supersetIds = activeExercises
-          .filter((e) => e.workoutItem?.id === nextExercise.workoutItem?.id)
+          .filter((e) => e.workoutItem?.id === nextWorkoutItemId)
           .map((e) => e.id);
 
         set({
@@ -736,7 +798,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     } else if (state.currentScreen === "superset-rest") {
       // Check if this is the last exercise overall (last round of last superset)
       const currentExercise = state.getCurrentExercise();
-      const totalRounds = currentExercise?.workoutItem?.rounds || 1;
+      // For dynamically created supersets, rounds = sets.length
+      const totalRounds = currentExercise?.sets.length || currentExercise?.workoutItem?.rounds || 1;
       const isLastRound = state.supersetRound >= totalRounds;
       const nextNonSupersetIdx = activeExercises.findIndex(
         (e, i) => i > state.currentExerciseIndex && e.workoutItem?.id !== currentExercise?.workoutItem?.id
@@ -784,11 +847,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         });
       } else {
         const nextExercise = activeExercises[nextIdx];
-        const isSuperset = nextExercise?.workoutItem?.type === "superset";
+        // Detect superset by counting exercises with same workoutItemId
+        const nextWorkoutItemId = nextExercise?.workoutItem?.id;
+        const supersetCount = nextWorkoutItemId
+          ? activeExercises.filter((e) => e.workoutItem?.id === nextWorkoutItemId).length
+          : 0;
+        const isSuperset = supersetCount > 1;
 
         if (isSuperset) {
           const supersetIds = activeExercises
-            .filter((e) => e.workoutItem?.id === nextExercise.workoutItem?.id)
+            .filter((e) => e.workoutItem?.id === nextWorkoutItemId)
             .map((e) => e.id);
 
           set({
@@ -1030,6 +1098,23 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set(initialState);
   },
 
+  // Helper to detect if an exercise is part of a superset by counting exercises with same workoutItemId
+  isExerciseInSuperset: (exercise: SessionExercise | null | undefined, allActiveExercises: SessionExercise[]) => {
+    if (!exercise?.workoutItem?.id) return false;
+    const workoutItemId = exercise.workoutItem.id;
+    const count = allActiveExercises.filter((e) => e.workoutItem?.id === workoutItemId).length;
+    return count > 1;
+  },
+
+  // Get all exercise IDs that share the same workoutItemId (superset members)
+  getSupersetExerciseIds: (exercise: SessionExercise | null | undefined, allActiveExercises: SessionExercise[]) => {
+    if (!exercise?.workoutItem?.id) return [];
+    const workoutItemId = exercise.workoutItem.id;
+    return allActiveExercises
+      .filter((e) => e.workoutItem?.id === workoutItemId)
+      .map((e) => e.id);
+  },
+
   // Helpers
   getCurrentExercise: () => {
     const state = get();
@@ -1068,11 +1153,36 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   getLastSessionSet: (exerciseId: string, setNumber: number) => {
     const state = get();
-    if (!state.lastSession) return null;
 
-    // Find matching exercise in last session by workoutItemExerciseId
+    // Find matching exercise in current session
     const currentExercise = state.session?.exercises.find((e) => e.id === exerciseId);
     if (!currentExercise) return null;
+
+    // Get the exercise ID (from Exercise table) - try exerciseId first, fallback to exercise.id
+    const exerciseTableId = currentExercise.exerciseId || currentExercise.exercise?.id;
+    if (!exerciseTableId) return null;
+
+    // First, check the lastPerformanceCache (for any exercise, across all workouts)
+    const cachedPerformance = state.lastPerformanceCache.get(exerciseTableId);
+    if (cachedPerformance) {
+      const cachedSet = cachedPerformance.sets.find((s) => s.setNumber === setNumber);
+      if (cachedSet) {
+        // Return a SessionSet-like object
+        return {
+          id: `cached-${exerciseTableId}-${setNumber}`,
+          setNumber: cachedSet.setNumber,
+          targetReps: cachedSet.actualReps || 0,
+          targetWeight: cachedSet.actualWeight,
+          actualReps: cachedSet.actualReps,
+          actualWeight: cachedSet.actualWeight,
+          rpe: cachedSet.rpe,
+          completedAt: cachedPerformance.completedAt,
+        } as SessionSet;
+      }
+    }
+
+    // Fall back to lastSession for this workout
+    if (!state.lastSession) return null;
 
     // First try to match by workoutItemExerciseId (for original exercises)
     let lastExercise = state.lastSession.exercises.find(
@@ -1083,7 +1193,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     // This handles cases where user substituted with same exercise they did before
     if (!lastExercise && currentExercise.substitutedFromId) {
       lastExercise = state.lastSession.exercises.find(
-        (e) => e.exerciseId === currentExercise.exerciseId
+        (e) => (e.exerciseId || e.exercise?.id) === exerciseTableId
       );
     }
 
@@ -1091,7 +1201,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     // but might have been done in previous sessions
     if (!lastExercise) {
       lastExercise = state.lastSession.exercises.find(
-        (e) => e.exerciseId === currentExercise.exerciseId
+        (e) => (e.exerciseId || e.exercise?.id) === exerciseTableId
       );
     }
 

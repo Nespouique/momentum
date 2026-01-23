@@ -28,6 +28,27 @@ export interface UpdateExerciseInput {
   muscleGroups?: MuscleGroup[];
 }
 
+export interface ExerciseLastPerformance {
+  exerciseId: string;
+  exercise: {
+    id: string;
+    name: string;
+    muscleGroups: string[];
+  };
+  sessionId: string;
+  completedAt: string;
+  workout: {
+    id: string;
+    name: string;
+  };
+  sets: Array<{
+    setNumber: number;
+    actualReps: number | null;
+    actualWeight: number | null;
+    rpe: number | null;
+  }>;
+}
+
 interface ApiError {
   error: {
     code: string;
@@ -158,4 +179,17 @@ export async function deleteExercise(
   });
 
   return handleResponse<void>(response);
+}
+
+export async function getExerciseLastPerformance(
+  token: string,
+  exerciseId: string
+): Promise<{ data: ExerciseLastPerformance | null }> {
+  const response = await fetch(`${API_URL}/exercises/${exerciseId}/last-performance`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return handleResponse<{ data: ExerciseLastPerformance | null }>(response);
 }
