@@ -202,8 +202,8 @@ function SetRow({ set, value, onChange }: SetRowProps) {
   return (
     <div className="px-4 py-3">
       <div className="flex items-center gap-3">
-        {/* Set number badge */}
-        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-zinc-800 text-xs font-semibold text-zinc-400">
+        {/* Set number badge - white circle */}
+        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 text-xs font-semibold text-zinc-900">
           {set.setNumber}
         </div>
 

@@ -25,7 +25,7 @@ export function ExerciseOptionsBar({
   ];
 
   return (
-    <div className="flex items-center justify-center gap-2">
+    <div className="flex flex-wrap items-center justify-center gap-2">
       {actions.map(({ icon: Icon, label, onClick }) => (
         <button
           key={label}

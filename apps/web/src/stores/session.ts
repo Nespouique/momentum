@@ -244,24 +244,133 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         (e) => e.status !== "substituted" && e.status !== "skipped"
       );
 
-      // Find current position: first exercise with incomplete sets
+      // First, detect if the first exercise is part of a superset
+      const firstExercise = activeExercises[0];
+      const firstWorkoutItemId = firstExercise?.workoutItem?.id;
+      const firstSupersetExercises = firstWorkoutItemId
+        ? activeExercises.filter((e) => e.workoutItem?.id === firstWorkoutItemId)
+        : [];
+      const isFirstSuperset = firstSupersetExercises.length > 1;
+
+      // Find current position - need to handle supersets specially
       let currentExerciseIndex = 0;
       let currentSetIndex = 0;
       let foundIncomplete = false;
+      let isSuperset = false;
+      let supersetExerciseIds: string[] = [];
+      let supersetExerciseIndex = 0;
+      let supersetRound = 1;
 
-      for (let exIdx = 0; exIdx < activeExercises.length; exIdx++) {
-        const exercise = activeExercises[exIdx];
-        if (!exercise) continue;
-        for (let setIdx = 0; setIdx < exercise.sets.length; setIdx++) {
-          const setData = exercise.sets[setIdx];
-          if (setData && !setData.completedAt) {
-            currentExerciseIndex = exIdx;
-            currentSetIndex = setIdx;
-            foundIncomplete = true;
-            break;
+      if (isFirstSuperset) {
+        // For supersets, we need to find position based on round structure
+        // Round N means: all exercises do set N before moving to set N+1
+        const supersetIds = firstSupersetExercises.map((e) => e.id);
+        const maxSets = Math.max(...firstSupersetExercises.map((e) => e.sets.length));
+
+        // Find the current round and exercise within round
+        outerLoop: for (let round = 0; round < maxSets; round++) {
+          for (let exIdx = 0; exIdx < supersetIds.length; exIdx++) {
+            const exId = supersetIds[exIdx];
+            const exercise = activeExercises.find((e) => e.id === exId);
+            if (!exercise) continue;
+            const setData = exercise.sets[round];
+            if (setData && !setData.completedAt) {
+              // Found first incomplete set in superset order
+              currentExerciseIndex = activeExercises.findIndex((e) => e.id === exId);
+              currentSetIndex = round;
+              supersetRound = round + 1;
+              supersetExerciseIndex = exIdx;
+              foundIncomplete = true;
+              break outerLoop;
+            }
           }
         }
-        if (foundIncomplete) break;
+
+        if (foundIncomplete) {
+          isSuperset = true;
+          supersetExerciseIds = supersetIds;
+        } else {
+          // All superset sets completed, check for exercises after superset
+          const nextNonSupersetIdx = activeExercises.findIndex(
+            (e) => !supersetIds.includes(e.id)
+          );
+          if (nextNonSupersetIdx !== -1) {
+            // Move to next exercise after superset
+            currentExerciseIndex = nextNonSupersetIdx;
+            currentSetIndex = 0;
+            // Check if this next exercise is also a superset
+            const nextEx = activeExercises[nextNonSupersetIdx];
+            const nextWorkoutItemId = nextEx?.workoutItem?.id;
+            const nextSupersetCount = nextWorkoutItemId
+              ? activeExercises.filter((e) => e.workoutItem?.id === nextWorkoutItemId).length
+              : 0;
+            isSuperset = nextSupersetCount > 1;
+            if (isSuperset) {
+              supersetExerciseIds = activeExercises
+                .filter((e) => e.workoutItem?.id === nextWorkoutItemId)
+                .map((e) => e.id);
+              supersetExerciseIndex = 0;
+              supersetRound = 1;
+            }
+            foundIncomplete = true;
+          }
+        }
+      }
+
+      // If not a superset or superset fully completed, use linear search
+      if (!foundIncomplete) {
+        for (let exIdx = 0; exIdx < activeExercises.length; exIdx++) {
+          const exercise = activeExercises[exIdx];
+          if (!exercise) continue;
+
+          // Check if this exercise is part of a superset
+          const workoutItemId = exercise.workoutItem?.id;
+          const exercisesInItem = workoutItemId
+            ? activeExercises.filter((e) => e.workoutItem?.id === workoutItemId)
+            : [exercise];
+
+          if (exercisesInItem.length > 1) {
+            // This is a superset - use round-based search
+            const supersetIds = exercisesInItem.map((e) => e.id);
+            const maxSets = Math.max(...exercisesInItem.map((e) => e.sets.length));
+
+            for (let round = 0; round < maxSets; round++) {
+              for (const exId of supersetIds) {
+                const ex = activeExercises.find((e) => e.id === exId);
+                if (!ex) continue;
+                const setData = ex.sets[round];
+                if (setData && !setData.completedAt) {
+                  currentExerciseIndex = activeExercises.findIndex((e) => e.id === exId);
+                  currentSetIndex = round;
+                  supersetRound = round + 1;
+                  supersetExerciseIndex = supersetIds.indexOf(exId);
+                  supersetExerciseIds = supersetIds;
+                  isSuperset = true;
+                  foundIncomplete = true;
+                  break;
+                }
+              }
+              if (foundIncomplete) break;
+            }
+            if (foundIncomplete) break;
+            // Skip past all exercises in this superset
+            exIdx = activeExercises.findIndex(
+              (e) => e.id === supersetIds[supersetIds.length - 1]
+            );
+          } else {
+            // Single exercise - linear search
+            for (let setIdx = 0; setIdx < exercise.sets.length; setIdx++) {
+              const setData = exercise.sets[setIdx];
+              if (setData && !setData.completedAt) {
+                currentExerciseIndex = exIdx;
+                currentSetIndex = setIdx;
+                foundIncomplete = true;
+                break;
+              }
+            }
+            if (foundIncomplete) break;
+          }
+        }
       }
 
       // If all sets completed, go to summary
@@ -269,31 +378,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         currentExerciseIndex = activeExercises.length - 1;
         const lastExercise = activeExercises[currentExerciseIndex];
         currentSetIndex = lastExercise ? lastExercise.sets.length - 1 : 0;
-      }
-
-      // Determine superset state (by counting exercises with same workoutItemId)
-      const currentExercise = activeExercises[currentExerciseIndex];
-      const workoutItemId = currentExercise?.workoutItem?.id;
-      const supersetCount = workoutItemId
-        ? activeExercises.filter((e) => e.workoutItem?.id === workoutItemId).length
-        : 0;
-      const isSuperset = supersetCount > 1;
-      let supersetExerciseIds: string[] = [];
-      let supersetExerciseIndex = 0;
-      let supersetRound = 1;
-
-      if (isSuperset && currentExercise) {
-        // Get all exercises in this superset
-        supersetExerciseIds = activeExercises
-          .filter((e) => e.workoutItem?.id === workoutItemId)
-          .map((e) => e.id);
-
-        // Find position within superset
-        supersetExerciseIndex = supersetExerciseIds.indexOf(currentExercise.id);
-        if (supersetExerciseIndex === -1) supersetExerciseIndex = 0;
-
-        // Calculate current round from setIndex
-        supersetRound = currentSetIndex + 1;
       }
 
       // Check for persisted rest state

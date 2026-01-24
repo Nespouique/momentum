@@ -20,3 +20,4 @@
 - [x] Revoir et tester l'écran de récapitulatif de la séance (avec confettis)
 - [x] Supprimer l'icon ou la mettre en blanc sur la preview de l'exercice
 - [ ] Ajouter une icon statistiques sur les cartes des exercices dans la liste des exercices
+- [ ] Pouvoir ajouter une série pendant la séance
