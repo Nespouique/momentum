@@ -888,7 +888,17 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const nextNonSupersetIdx = activeExercises.findIndex(
         (e, i) => i > state.currentExerciseIndex && e.workoutItem?.id !== currentExercise?.workoutItem?.id
       );
-      const isLastExerciseOverall = isLastRound && nextNonSupersetIdx === -1;
+
+      // IMPORTANT: Check if the current round's sets have actually been completed
+      // This fixes a bug where supersetRound is pre-incremented when transitioning to rest,
+      // causing the session to end prematurely when superset is in last position
+      const currentRoundSetIndex = state.currentSetIndex;
+      const allSetsInCurrentRoundCompleted = state.supersetExerciseIds.every((exId) => {
+        const ex = activeExercises.find((e) => e.id === exId);
+        return ex?.sets[currentRoundSetIndex]?.completedAt;
+      });
+
+      const isLastExerciseOverall = isLastRound && nextNonSupersetIdx === -1 && allSetsInCurrentRoundCompleted;
 
       if (isLastExerciseOverall) {
         // Go to summary
