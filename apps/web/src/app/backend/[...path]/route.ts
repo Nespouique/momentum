@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 const API_URL = process.env["API_URL"] || "http://localhost:3001";
 
 async function proxyRequest(request: NextRequest, path: string) {
-  const url = `${API_URL}/${path}`;
+  // Include query string in the proxied URL
+  const queryString = request.nextUrl.search;
+  const url = `${API_URL}/${path}${queryString}`;
 
   const headers = new Headers();
   request.headers.forEach((value, key) => {

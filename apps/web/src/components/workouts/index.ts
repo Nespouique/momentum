@@ -5,4 +5,7 @@ export { ExerciseConfigDrawer } from "./exercise-config-drawer";
 export { SupersetConfigDrawer } from "./superset-config-drawer";
 export { RestTimePicker } from "./rest-time-picker";
 export { ExerciseItemCard, SupersetItemCard } from "./workout-item-cards";
+export { WorkoutCard, formatRelativeDate } from "./workout-card";
+export type { WorkoutCardProps } from "./workout-card";
+export { SessionHistorySheet } from "./session-history-sheet";
 export * from "./types";
