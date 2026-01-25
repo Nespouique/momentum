@@ -499,11 +499,21 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (!firstExercise) return;
 
     try {
-      await apiSkipExercise(token, state.session.id, firstExercise.id);
+      // Check if first exercise is part of a superset
+      const isFirstInSuperset = state.isExerciseInSuperset(firstExercise, activeExercises);
+      const exercisesToSkip = isFirstInSuperset
+        ? state.getSupersetExerciseIds(firstExercise, activeExercises)
+        : [firstExercise.id];
 
-      // Update local state
+      // Skip all exercises (API calls in parallel)
+      await Promise.all(
+        exercisesToSkip.map((exId) => apiSkipExercise(token, state.session!.id, exId))
+      );
+
+      // Update local state - mark all skipped exercises
+      const skippedSet = new Set(exercisesToSkip);
       const updatedExercises = state.session.exercises.map((ex) =>
-        ex.id === firstExercise.id ? { ...ex, status: "skipped" as const } : ex
+        skippedSet.has(ex.id) ? { ...ex, status: "skipped" as const } : ex
       );
 
       const updatedSession = { ...state.session, exercises: updatedExercises };
@@ -1067,16 +1077,27 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   skipExercise: async (token: string) => {
     const state = get();
+    const activeExercises = state.getActiveExercises();
     const nextExercise = state.getNextExercise();
 
     if (!state.session || !nextExercise) return;
 
     try {
-      await apiSkipExercise(token, state.session.id, nextExercise.id);
+      // Check if next exercise is part of a superset
+      const isNextInSuperset = state.isExerciseInSuperset(nextExercise, activeExercises);
+      const exercisesToSkip = isNextInSuperset
+        ? state.getSupersetExerciseIds(nextExercise, activeExercises)
+        : [nextExercise.id];
 
-      // Update local state
+      // Skip all exercises (API calls in parallel)
+      await Promise.all(
+        exercisesToSkip.map((exId) => apiSkipExercise(token, state.session!.id, exId))
+      );
+
+      // Update local state - mark all skipped exercises
+      const skippedSet = new Set(exercisesToSkip);
       const updatedExercises = state.session.exercises.map((ex) =>
-        ex.id === nextExercise.id ? { ...ex, status: "skipped" as const } : ex
+        skippedSet.has(ex.id) ? { ...ex, status: "skipped" as const } : ex
       );
 
       const updatedSession = { ...state.session, exercises: updatedExercises };
