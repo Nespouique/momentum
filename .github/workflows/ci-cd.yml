@@ -10,8 +10,9 @@ env:
   NODE_VERSION: '20'
 
 jobs:
-  lint:
-    name: Lint
+  # Combined lint + build job (avoids duplicate npm ci)
+  lint-build:
+    name: Lint & Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,30 +30,22 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
       - name: Build all packages
         run: npm run build
 
+  # Build Docker images in parallel using matrix
   docker:
-    name: Build & Push Docker Images
-    needs: [lint, build]
+    name: Docker ${{ matrix.image }}
+    needs: [lint-build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: web
+            dockerfile: ./docker/Dockerfile.web
+          - image: api
+            dockerfile: ./docker/Dockerfile.api
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -70,33 +63,20 @@ jobs:
         id: sha
         run: echo "short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
-      - name: Build and push web image
+      - name: Build and push ${{ matrix.image }} image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./docker/Dockerfile.web
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/momentum-web:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/momentum-web:${{ steps.sha.outputs.short }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push api image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./docker/Dockerfile.api
-          push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/momentum-api:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/momentum-api:${{ steps.sha.outputs.short }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ secrets.DOCKERHUB_USERNAME }}/momentum-${{ matrix.image }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/momentum-${{ matrix.image }}:${{ steps.sha.outputs.short }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
       - name: Summary
         run: |
-          echo "## Docker Images Built & Pushed" >> $GITHUB_STEP_SUMMARY
+          echo "## Docker Image Built & Pushed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- \`${{ secrets.DOCKERHUB_USERNAME }}/momentum-web:${{ steps.sha.outputs.short }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`${{ secrets.DOCKERHUB_USERNAME }}/momentum-api:${{ steps.sha.outputs.short }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ secrets.DOCKERHUB_USERNAME }}/momentum-${{ matrix.image }}:${{ steps.sha.outputs.short }}\`" >> $GITHUB_STEP_SUMMARY
