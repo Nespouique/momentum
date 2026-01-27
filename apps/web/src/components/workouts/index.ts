@@ -8,4 +8,5 @@ export { ExerciseItemCard, SupersetItemCard } from "./workout-item-cards";
 export { WorkoutCard, formatRelativeDate } from "./workout-card";
 export type { WorkoutCardProps } from "./workout-card";
 export { SessionHistorySheet } from "./session-history-sheet";
+export { SessionCalendarSheet } from "./session-calendar-sheet";
 export * from "./types";

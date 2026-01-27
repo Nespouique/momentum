@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { X, Plus, Play, History } from "lucide-react";
+import { X, Plus, Play, History, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
-import { WorkoutCard, SessionHistorySheet } from "@/components/workouts";
+import { WorkoutCard, SessionHistorySheet, SessionCalendarSheet } from "@/components/workouts";
 import { useAuthStore } from "@/stores/auth";
 import {
   getWorkouts,
@@ -50,6 +50,7 @@ export default function WorkoutsPage() {
   const [activeSession, setActiveSession] = useState<WorkoutSession | null>(null);
   const [isAbandoningSession, setIsAbandoningSession] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   // Load workouts
   const loadWorkouts = useCallback(async () => {
@@ -173,24 +174,35 @@ export default function WorkoutsPage() {
     }
   };
 
-  // History action button for PageHeader
-  const historyAction = (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => setShowHistory(true)}
-      className="h-9 w-9"
-      title="Historique des séances"
-    >
-      <History className="h-4 w-4" />
-    </Button>
+  // Header action buttons for PageHeader
+  const headerActions = (
+    <div className="flex items-center gap-1">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setShowCalendar(true)}
+        className="h-9 w-9"
+        title="Statistiques"
+      >
+        <CalendarDays className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setShowHistory(true)}
+        className="h-9 w-9"
+        title="Historique des séances"
+      >
+        <History className="h-4 w-4" />
+      </Button>
+    </div>
   );
 
   // Loading skeleton
   if (isLoading) {
     return (
       <div className="pb-24">
-        <PageHeader title="Séances" actions={historyAction} />
+        <PageHeader title="Séances" actions={headerActions} />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div
@@ -200,13 +212,14 @@ export default function WorkoutsPage() {
           ))}
         </div>
         <SessionHistorySheet open={showHistory} onOpenChange={setShowHistory} />
+        <SessionCalendarSheet open={showCalendar} onOpenChange={setShowCalendar} />
       </div>
     );
   }
 
   return (
     <div className="pb-24">
-      <PageHeader title="Séances" actions={historyAction} />
+      <PageHeader title="Séances" actions={headerActions} />
 
       {/* Active session banner */}
       {activeSession && (
@@ -313,6 +326,9 @@ export default function WorkoutsPage() {
 
       {/* Session History Sheet */}
       <SessionHistorySheet open={showHistory} onOpenChange={setShowHistory} />
+
+      {/* Session Calendar Sheet */}
+      <SessionCalendarSheet open={showCalendar} onOpenChange={setShowCalendar} />
     </div>
   );
 }
