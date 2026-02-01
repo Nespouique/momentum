@@ -373,3 +373,47 @@ export async function deleteSet(
 
   return handleResponse<void>(response);
 }
+
+// Progression suggestion types and endpoints
+export interface ProgressionSuggestionData {
+  id: string;
+  exerciseId: string;
+  exerciseName: string;
+  suggestionType: "increase_weight" | "increase_reps";
+  currentValue: number;
+  suggestedValue: number;
+  reason: string;
+  status: "pending" | "accepted" | "dismissed";
+  createdAt: string;
+  respondedAt: string | null;
+}
+
+export async function getProgressionSuggestions(
+  token: string,
+  sessionId: string
+): Promise<{ data: ProgressionSuggestionData[] }> {
+  const response = await fetch(`${API_URL}/sessions/${sessionId}/progression-suggestions`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return handleResponse<{ data: ProgressionSuggestionData[] }>(response);
+}
+
+export async function updateProgressionSuggestion(
+  token: string,
+  suggestionId: string,
+  status: "accepted" | "dismissed"
+): Promise<{ data: { id: string; status: string; respondedAt: string } }> {
+  const response = await fetch(`${API_URL}/progression-suggestions/${suggestionId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  return handleResponse<{ data: { id: string; status: string; respondedAt: string } }>(response);
+}

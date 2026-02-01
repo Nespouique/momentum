@@ -19,7 +19,14 @@ import { useTimerAudio } from "@/hooks/use-timer-audio";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { ExerciseSelector } from "@/components/workouts/exercise-selector";
 import { MuscleGroup } from "@/lib/constants/muscle-groups";
-import { updateSet, replaceSuperset } from "@/lib/api/sessions";
+import {
+  updateSet,
+  replaceSuperset,
+  getProgressionSuggestions,
+  updateProgressionSuggestion,
+} from "@/lib/api/sessions";
+import { toast } from "sonner";
+import { type ProgressionSuggestion } from "@/components/session";
 
 import {
   SessionOverviewScreen,
@@ -88,6 +95,9 @@ export default function SessionPage({ params }: SessionPageProps) {
   const [showOverviewSubstituteSheet, setShowOverviewSubstituteSheet] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Progression suggestions state
+  const [suggestions, setSuggestions] = useState<Map<string, ProgressionSuggestion>>(new Map());
+
   // Audio hook
   const { playCountdownBeep, initAudio } = useTimerAudio();
 
@@ -130,6 +140,35 @@ export default function SessionPage({ params }: SessionPageProps) {
       playCountdownBeep(0);
     }
   }, [restTimeRemaining, restDuration, playCountdownBeep]);
+
+  // Fetch progression suggestions when entering summary screen
+  useEffect(() => {
+    if (currentScreen !== "summary" || !token || !session) return;
+
+    const fetchSuggestions = async () => {
+      try {
+        const response = await getProgressionSuggestions(token, session.id);
+        const suggestionsMap = new Map<string, ProgressionSuggestion>();
+        for (const s of response.data) {
+          suggestionsMap.set(s.exerciseId, {
+            id: s.id,
+            exerciseId: s.exerciseId,
+            exerciseName: s.exerciseName,
+            suggestionType: s.suggestionType,
+            currentValue: s.currentValue,
+            suggestedValue: s.suggestedValue,
+            reason: s.reason,
+            status: s.status,
+          });
+        }
+        setSuggestions(suggestionsMap);
+      } catch (error) {
+        console.error("Failed to fetch progression suggestions:", error);
+      }
+    };
+
+    fetchSuggestions();
+  }, [currentScreen, token, session]);
 
   // Current exercise and set
   const currentExercise = getCurrentExercise();
@@ -259,6 +298,57 @@ export default function SessionPage({ params }: SessionPageProps) {
       }
     },
     [token, session, completeSession, router]
+  );
+
+  // Progression suggestion handlers
+  const handleAcceptSuggestion = useCallback(
+    async (suggestionId: string) => {
+      if (!token) return;
+      try {
+        await updateProgressionSuggestion(token, suggestionId, "accepted");
+        // Update local state to mark as accepted
+        setSuggestions((prev) => {
+          const next = new Map(prev);
+          for (const [key, value] of next) {
+            if (value.id === suggestionId) {
+              next.set(key, { ...value, status: "accepted" });
+              break;
+            }
+          }
+          return next;
+        });
+        toast.success("Objectif mis à jour !");
+      } catch (error) {
+        console.error("Failed to accept suggestion:", error);
+        toast.error("Échec de la mise à jour");
+        throw error; // Re-throw to let the card handle the error state
+      }
+    },
+    [token]
+  );
+
+  const handleDismissSuggestion = useCallback(
+    async (suggestionId: string) => {
+      if (!token) return;
+      try {
+        await updateProgressionSuggestion(token, suggestionId, "dismissed");
+        // Update local state to mark as dismissed
+        setSuggestions((prev) => {
+          const next = new Map(prev);
+          for (const [key, value] of next) {
+            if (value.id === suggestionId) {
+              next.set(key, { ...value, status: "dismissed" });
+              break;
+            }
+          }
+          return next;
+        });
+      } catch (error) {
+        console.error("Failed to dismiss suggestion:", error);
+        throw error; // Re-throw to let the card handle the error state
+      }
+    },
+    [token]
   );
 
   // Overview screen handlers
@@ -879,6 +969,7 @@ export default function SessionPage({ params }: SessionPageProps) {
         .filter((ex) => ex.status !== "substituted" && ex.status !== "skipped")
         .map((ex) => ({
           id: ex.id,
+          exerciseId: ex.exerciseId,
           name: ex.exercise.name,
           sets: ex.sets.map((s) => ({
             id: s.id,
@@ -895,7 +986,10 @@ export default function SessionPage({ params }: SessionPageProps) {
           workoutName={session.workout?.name || "Workout"}
           duration={duration}
           exercises={summaryExercises}
+          suggestions={suggestions}
           onComplete={handleComplete}
+          onAcceptSuggestion={handleAcceptSuggestion}
+          onDismissSuggestion={handleDismissSuggestion}
           isSubmitting={isSubmitting}
         />
       );

@@ -400,6 +400,33 @@ router.patch("/:id", async (req: AuthRequest, res: Response) => {
       updateData.notes = data.notes;
     }
 
+    // When completing a session, mark exercises with completed sets as "completed"
+    if (data.status === "completed") {
+      // Get exercises that have at least one set with actualReps (meaning it was performed)
+      const exercisesWithCompletedSets = await prisma.sessionExercise.findMany({
+        where: {
+          sessionId: id,
+          status: { notIn: ["skipped", "substituted"] },
+          sets: {
+            some: {
+              actualReps: { not: null },
+            },
+          },
+        },
+        select: { id: true },
+      });
+
+      // Mark these exercises as completed
+      if (exercisesWithCompletedSets.length > 0) {
+        await prisma.sessionExercise.updateMany({
+          where: {
+            id: { in: exercisesWithCompletedSets.map((e) => e.id) },
+          },
+          data: { status: "completed" },
+        });
+      }
+    }
+
     const session = await prisma.workoutSession.update({
       where: { id },
       data: updateData,

@@ -10,6 +10,7 @@ import measurementRoutes from "./routes/measurement.routes.js";
 import exerciseRoutes from "./routes/exercise.routes.js";
 import workoutRoutes from "./routes/workout.routes.js";
 import sessionRoutes from "./routes/session.routes.js";
+import progressionRoutes from "./routes/progression.routes.js";
 
 const app = express();
 const PORT = process.env["PORT"] || 3001;
@@ -48,6 +49,7 @@ app.use("/measurements", measurementRoutes);
 app.use("/exercises", exerciseRoutes);
 app.use("/workouts", workoutRoutes);
 app.use("/sessions", sessionRoutes);
+app.use("/", progressionRoutes);
 
 app.get("/health", async (_req, res) => {
   try {

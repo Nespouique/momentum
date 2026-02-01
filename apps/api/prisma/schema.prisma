@@ -22,9 +22,10 @@ model User {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  measurements    Measurement[]
-  workouts        Workout[]
-  workoutSessions WorkoutSession[]
+  measurements           Measurement[]
+  workouts               Workout[]
+  workoutSessions        WorkoutSession[]
+  progressionSuggestions ProgressionSuggestion[]
 
   @@map("users")
 }
@@ -76,8 +77,9 @@ model Exercise {
   muscleGroups String[] @map("muscle_groups")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  workoutItemExercises WorkoutItemExercise[]
-  sessionExercises     SessionExercise[]
+  workoutItemExercises    WorkoutItemExercise[]
+  sessionExercises        SessionExercise[]
+  progressionSuggestions  ProgressionSuggestion[]
 
   @@map("exercises")
 }
@@ -170,7 +172,8 @@ model WorkoutSession {
   completedAt DateTime?     @map("completed_at")
   notes       String?
 
-  exercises SessionExercise[]
+  exercises              SessionExercise[]
+  progressionSuggestions ProgressionSuggestion[]
 
   @@index([userId, status])
   @@index([workoutId])
@@ -218,4 +221,42 @@ model SessionSet {
 
   @@index([sessionExerciseId, setNumber])
   @@map("session_sets")
+}
+
+// ============================================
+// PROGRESSIVE OVERLOAD MODELS (Story 2.8)
+// ============================================
+
+enum SuggestionType {
+  increase_weight
+  increase_reps
+}
+
+enum SuggestionStatus {
+  pending
+  accepted
+  dismissed
+}
+
+model ProgressionSuggestion {
+  id             String           @id @default(uuid())
+  userId         String           @map("user_id")
+  user           User             @relation(fields: [userId], references: [id])
+  exerciseId     String           @map("exercise_id")
+  exercise       Exercise         @relation(fields: [exerciseId], references: [id])
+  sessionId      String           @map("session_id")
+  session        WorkoutSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  suggestionType SuggestionType   @map("suggestion_type")
+  currentValue   Float            @map("current_value")
+  suggestedValue Float            @map("suggested_value")
+  reason         String
+  status         SuggestionStatus @default(pending)
+
+  createdAt      DateTime         @default(now()) @map("created_at")
+  respondedAt    DateTime?        @map("responded_at")
+
+  @@unique([sessionId, exerciseId])
+  @@index([userId, exerciseId])
+  @@map("progression_suggestions")
 }

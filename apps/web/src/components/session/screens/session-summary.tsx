@@ -4,9 +4,14 @@ import { useState, useCallback } from "react";
 import { Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResultInput } from "../result-input";
+import {
+  ProgressionSuggestionCard,
+  type ProgressionSuggestion,
+} from "../progression-suggestion-card";
 
 export interface SummaryExercise {
   id: string;
+  exerciseId: string; // The actual exercise ID (not sessionExercise ID)
   name: string;
   sets: Array<{
     id: string;
@@ -28,7 +33,10 @@ interface SessionSummaryProps {
   workoutName: string;
   duration: number; // in seconds
   exercises: SummaryExercise[];
+  suggestions: Map<string, ProgressionSuggestion>; // keyed by exerciseId
   onComplete: (modifications: SetModification[]) => void;
+  onAcceptSuggestion: (id: string) => Promise<void>;
+  onDismissSuggestion: (id: string) => Promise<void>;
   isSubmitting?: boolean;
 }
 
@@ -36,7 +44,10 @@ export function SessionSummary({
   workoutName,
   duration,
   exercises,
+  suggestions,
   onComplete,
+  onAcceptSuggestion,
+  onDismissSuggestion,
   isSubmitting = false,
 }: SessionSummaryProps) {
   // Local state for modifications (only tracks changes from original values)
@@ -121,6 +132,9 @@ export function SessionSummary({
           <ExerciseRecap
             key={exercise.id}
             exercise={exercise}
+            suggestion={suggestions.get(exercise.exerciseId) || null}
+            onAcceptSuggestion={onAcceptSuggestion}
+            onDismissSuggestion={onDismissSuggestion}
             getSetValue={getSetValue}
             onSetChange={handleSetChange}
           />
@@ -151,11 +165,21 @@ export function SessionSummary({
 
 interface ExerciseRecapProps {
   exercise: SummaryExercise;
+  suggestion: ProgressionSuggestion | null;
+  onAcceptSuggestion: (id: string) => Promise<void>;
+  onDismissSuggestion: (id: string) => Promise<void>;
   getSetValue: (set: SummaryExercise["sets"][number]) => { reps: number; weight: number };
   onSetChange: (setId: string, originalValue: { reps: number; weight: number }, newValue: { reps: number; weight: number }) => void;
 }
 
-function ExerciseRecap({ exercise, getSetValue, onSetChange }: ExerciseRecapProps) {
+function ExerciseRecap({
+  exercise,
+  suggestion,
+  onAcceptSuggestion,
+  onDismissSuggestion,
+  getSetValue,
+  onSetChange,
+}: ExerciseRecapProps) {
   // Only show completed sets
   const completedSets = exercise.sets.filter((s) => s.actualReps !== null);
 
@@ -188,6 +212,15 @@ function ExerciseRecap({ exercise, getSetValue, onSetChange }: ExerciseRecapProp
           />
         ))}
       </div>
+
+      {/* Progression suggestion */}
+      {suggestion && (
+        <ProgressionSuggestionCard
+          suggestion={suggestion}
+          onAccept={onAcceptSuggestion}
+          onDismiss={onDismissSuggestion}
+        />
+      )}
     </div>
   );
 }
