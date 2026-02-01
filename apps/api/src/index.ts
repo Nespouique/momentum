@@ -42,15 +42,7 @@ app.use(
 );
 app.use(express.json());
 
-// Routes
-app.use("/auth", authRoutes);
-app.use("/profile", profileRoutes);
-app.use("/measurements", measurementRoutes);
-app.use("/exercises", exerciseRoutes);
-app.use("/workouts", workoutRoutes);
-app.use("/sessions", sessionRoutes);
-app.use("/", progressionRoutes);
-
+// Health check endpoint (before auth routes to avoid middleware interference)
 app.get("/health", async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -70,9 +62,19 @@ app.get("/health", async (_req, res) => {
   }
 });
 
+// Root endpoint
 app.get("/", (_req, res) => {
   res.json({ message: "Momentum API" });
 });
+
+// Routes
+app.use("/auth", authRoutes);
+app.use("/profile", profileRoutes);
+app.use("/measurements", measurementRoutes);
+app.use("/exercises", exerciseRoutes);
+app.use("/workouts", workoutRoutes);
+app.use("/sessions", sessionRoutes);
+app.use("/", progressionRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
