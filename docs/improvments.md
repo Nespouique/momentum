@@ -21,3 +21,5 @@
 - [x] Supprimer l'icon ou la mettre en blanc sur la preview de l'exercice
 - [ ] Ajouter une icon statistiques sur les cartes des exercices dans la liste des exercices
 - [ ] Pouvoir ajouter une série pendant la séance
+- [x] Bug quand je fais passer, si c'est un superset ça doit passer le superset entier
+- [ ] Ajouter le numéro de version dans le menu settings
