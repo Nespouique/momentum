@@ -6,7 +6,7 @@ export function useTimerAudio() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const isInitializedRef = useRef(false);
 
-  // Initialize audio context (must be called after user interaction)
+  // Initialize audio context and request notification permission (must be called after user interaction)
   const initAudio = useCallback(() => {
     if (!isInitializedRef.current && typeof window !== "undefined") {
       try {
@@ -14,6 +14,11 @@ export function useTimerAudio() {
           // @ts-expect-error - webkitAudioContext for Safari
           window.webkitAudioContext)();
         isInitializedRef.current = true;
+
+        // Request notification permission for background alerts
+        if ("Notification" in window && Notification.permission === "default") {
+          Notification.requestPermission();
+        }
       } catch (e) {
         console.warn("Failed to initialize AudioContext:", e);
       }
@@ -61,6 +66,20 @@ export function useTimerAudio() {
         // Double long beep at 0 seconds
         playBeep(880, 300);
         setTimeout(() => playBeep(880, 300), 350);
+
+        // Send notification if app is in background (for mobile/PWA)
+        if (
+          typeof document !== "undefined" &&
+          document.hidden &&
+          "Notification" in window &&
+          Notification.permission === "granted"
+        ) {
+          new Notification("⏱️ Repos terminé !", {
+            body: "C'est reparti !",
+            tag: "momentum-timer", // Prevents duplicate notifications
+            requireInteraction: false,
+          });
+        }
       }
     },
     [playBeep]
