@@ -212,28 +212,25 @@ export default function SessionDetailPage() {
         )}
       </div>
 
-      {/* Save button - sticky at bottom when there are modifications */}
+      {/* Save button - at bottom when there are modifications */}
       {hasModifications && (
-        <div className="fixed bottom-20 left-0 right-0 px-4 pb-4 bg-gradient-to-t from-zinc-950 via-zinc-950/95 to-transparent z-40">
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            size="xl"
-            className="w-full gap-2"
-          >
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <span className="animate-spin h-4 w-4 border-2 border-zinc-900/30 border-t-zinc-900 rounded-full" />
-                Enregistrement...
-              </span>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                Enregistrer les modifications
-              </>
-            )}
-          </Button>
-        </div>
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          size="xl"
+          className="w-full gap-2"
+        >
+          {isSaving ? (
+            <span className="flex items-center gap-2">
+              <span className="animate-spin h-4 w-4 border-2 border-zinc-900/30 border-t-zinc-900 rounded-full" />
+              Enregistrement...
+            </span>
+          ) : (
+            <>
+              Enregistrer les modifications
+            </>
+          )}
+        </Button>
       )}
     </div>
   );

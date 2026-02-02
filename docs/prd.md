@@ -23,6 +23,7 @@ Le marché actuel propose soit des apps fitness pures (Hercules, Strong), soit d
 |------|---------|-------------|--------|
 | 2026-01-16 | 0.1 | Initial draft from brainstorming session | PM John |
 | 2026-01-17 | 0.2 | Alignement stories avec Architecture et Front-end Spec | PO Sarah |
+| 2026-02-02 | 0.3 | Ajout Coach IA (FR24-28, Story 2.9), mise à jour RG Progressive Overload | Dev James |
 
 ---
 
@@ -40,9 +41,17 @@ Le marché actuel propose soit des apps fitness pures (Hercules, Strong), soit d
 - **FR7:** Le système doit conserver l'historique complet des sessions d'entraînement
 
 **Surcharge Progressive**
-- **FR8:** Le système doit détecter la stabilisation des performances (3-4 séances identiques sur un exercice)
-- **FR9:** Le système doit suggérer une progression (+reps ou +poids) lorsqu'une stabilisation est détectée
-- **FR10:** L'utilisateur doit pouvoir accepter, modifier ou ignorer une suggestion de progression
+- **FR8:** Le système doit détecter la stabilisation des performances (3 séances consécutives où les objectifs sont atteints au même niveau)
+- **FR9:** Le système doit suggérer une progression (+2 reps pour exercices poids du corps, +2.5kg isolation / +5kg compound pour exercices avec poids) lorsqu'une stabilisation est détectée
+- **FR10:** L'utilisateur doit pouvoir accepter ou ignorer une suggestion de progression
+- **FR10bis:** Une suggestion ignorée déclenche un cooldown de 3 sessions avant une nouvelle suggestion pour le même exercice
+
+**Coach IA (optionnel)**
+- **FR24:** Le système doit proposer un accès au Coach IA lorsqu'au moins un exercice est en stagnation
+- **FR25:** Le Coach IA doit analyser l'historique des 10 dernières séances du même workout
+- **FR26:** Le Coach IA doit proposer des ajustements personnalisés série par série avec analyse et justification
+- **FR27:** L'utilisateur doit pouvoir ajuster les propositions du Coach IA avant de les appliquer
+- **FR28:** Le Coach IA n'est disponible que si la clé API OpenAI est configurée
 
 **Dashboard Today**
 - **FR11:** Le système doit afficher une page d'accueil "Today" montrant les tâches/objectifs du jour
@@ -217,7 +226,9 @@ momentum/
 **Futures intégrations (hors MVP) :**
 - Samsung Health API (steps, sommeil)
 - Google Calendar API
-- LLM API pour IA Coach (Claude/GPT)
+
+**Intégrations déjà implémentées :**
+- OpenAI API pour le Coach IA (GPT-4o-mini) - voir Story 2.9
 
 ---
 
@@ -481,14 +492,31 @@ Implémenter le système complet de tracking fitness inspiré d'Hercules : une b
 **so that** I continuously improve without having to manually track patterns.
 
 **Acceptance Criteria:**
-1. Algorithme de détection de stabilisation : identifier quand un exercice a été fait avec mêmes reps/poids sur 3-4 sessions consécutives
-2. Logique de suggestion : proposer +1-2 reps OU +2.5kg/5kg selon l'exercice et l'historique
-3. Modèle `ProgressionSuggestion` (exerciseId, sessionId, currentReps, currentWeight, suggestedReps, suggestedWeight, status: pending/accepted/dismissed)
-4. Affichage de la suggestion dans l'interface de session active (avant de commencer l'exercice concerné)
-5. UI de suggestion : afficher progression actuelle → suggestion, avec boutons Accepter/Modifier/Ignorer
-6. Si accepté : pré-remplir les nouveaux objectifs pour cette série
-7. Historique des suggestions accessibles (optionnel : dans les stats de l'exercice)
-8. Ne pas re-suggérer si l'utilisateur a ignoré récemment (cooldown de 2-3 sessions)
+1. Algorithme de détection de stabilisation : identifier quand un exercice a été fait avec mêmes reps/poids sur 3 sessions consécutives AU MÊME NIVEAU de difficulté
+2. Logique de suggestion : proposer +2 reps (poids du corps) OU +2.5kg (isolation) / +5kg (compound) selon le type d'exercice
+3. Modèle `ProgressionSuggestion` (exerciseId, sessionId, suggestionType, currentValue, suggestedValue, reason, status: pending/accepted/dismissed)
+4. Affichage de la suggestion sur l'écran de fin de séance (Session Summary)
+5. UI de suggestion : afficher progression actuelle → suggestion, avec boutons Appliquer/Ignorer
+6. Si accepté : mise à jour automatique des objectifs dans le template du workout
+7. Ne pas re-suggérer si l'utilisateur a ignoré récemment (cooldown de 3 sessions)
+
+**Règles de gestion détaillées** : voir `docs/features/progressive-overload.md`
+
+### Story 2.9: AI Coach
+
+**As a** user experiencing stagnation,
+**I want** personalized AI coaching advice,
+**so that** I get intelligent recommendations to break through plateaus.
+
+**Acceptance Criteria:**
+1. Bouton Coach IA visible uniquement si stagnation détectée ET API key configurée
+2. Page dédiée `/session/[id]/ai-coach` avec analyse contextuelle
+3. L'IA analyse les 10 dernières séances du même workout
+4. Propositions personnalisées série par série avec analyse et justification
+5. L'utilisateur peut ajuster les valeurs suggérées avant d'appliquer
+6. Actions : "Appliquer et terminer" ou "Ignorer et terminer"
+
+**Dépendances** : Story 2.8 (réutilise la détection de stagnation), OpenAI API
 
 ---
 

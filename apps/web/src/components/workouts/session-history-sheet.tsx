@@ -211,7 +211,7 @@ export function SessionHistorySheet({ open, onOpenChange }: SessionHistorySheetP
             </SheetDescription>
           </SheetHeader>
 
-          <div className="mt-4 overflow-y-auto flex-1">
+          <div className="mt-4 overflow-y-auto flex-1 scrollbar-thin">
             {isLoading ? (
               <div className="space-y-3 pb-4">
                 {[1, 2, 3].map((i) => (

@@ -233,7 +233,7 @@ STRATÉGIES DE PROGRESSION À CONSIDÉRER:
 - Augmenter les reps à poids constant
 - Réduire légèrement le poids pour augmenter significativement les reps (phase de volume)
 - Proposer un deload temporaire si tu détectes une fatigue accumulée
-- Pour les exercices au poids de corps (0kg ou null), suggérer une progression en reps
+- Pour les exercices au poids de corps (0kg ou null), suggérer une progression en reps si l'exercice n'est pas faisable avec du poids
 
 Tu dois répondre UNIQUEMENT en JSON valide avec ce format exact:
 {

@@ -317,15 +317,99 @@ const MIN_SUCCESSFUL_SESSIONS = 3;
 
 ---
 
-## Alternative future: Progressive Overload "Smart"
+## Coach IA - Progressive Overload "Smart"
 
-Une évolution possible serait d'utiliser l'IA pour analyser les performances:
+En complément du système de règles automatiques, un **Coach IA** est disponible pour analyser les performances de manière plus fine et proposer des conseils personnalisés.
 
-1. Récupérer l'historique des X dernières séances
-2. Appeler l'API ChatGPT avec un prompt pré-formulé
-3. Recevoir des suggestions personnalisées et contextuelles
+### Déclenchement
 
-Avantages:
-- Analyse plus fine des tendances
-- Suggestions adaptées au contexte (fatigue, plateau, etc.)
-- Possibilité de suggestions plus variées (décharges, variations, etc.)
+Le Coach IA est accessible **uniquement** lorsque le système de Progressive Overload détecte au moins un exercice en stagnation (via les suggestions `pending`). Un lien "🧠 Faire appel au coach IA" apparaît alors sur l'écran de fin de séance.
+
+### Fonctionnement
+
+1. **Analyse contextuelle** : L'IA reçoit l'historique des 9 dernières séances du même workout + la session actuelle
+2. **Décision autonome** : L'IA analyse TOUS les exercices et décide elle-même lesquels nécessitent des ajustements
+3. **Propositions par série** : Les suggestions sont faites série par série (pas juste au niveau exercice)
+4. **Ajustement utilisateur** : L'utilisateur peut modifier les valeurs suggérées avant de les appliquer
+
+### Critères d'analyse IA
+
+L'IA considère plusieurs facteurs :
+- **Stagnation** : Performances identiques sur 3+ séances consécutives
+- **Sous-performance répétée** : L'utilisateur n'atteint pas ses objectifs régulièrement
+- **Progression possible** : L'utilisateur dépasse systématiquement ses objectifs
+- **Fatigue détectée** : Baisse de performance progressive
+
+### Stratégies de progression suggérées
+
+- Augmenter le poids (et potentiellement réduire les reps)
+- Augmenter les reps à poids constant
+- Réduire le poids pour augmenter les reps (phase de volume)
+- Proposer un deload temporaire si fatigue détectée
+- Pour les exercices au poids du corps : progression en reps uniquement
+
+### API Endpoints Coach IA
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `GET` | `/config/ai-status` | Vérifie si l'API key OpenAI est configurée |
+| `POST` | `/sessions/:id/ai-coaching` | Génère les conseils IA (appelle OpenAI) |
+| `POST` | `/sessions/:id/apply-coaching` | Applique les suggestions au workout template |
+
+### Structure de la réponse AI Coaching
+
+```typescript
+interface AICoachingResponse {
+  sessionId: string;
+  workoutName: string;
+  analyzedSessionsCount: number;
+  coachMessage: string;  // Message global d'encouragement
+  proposals: Array<{
+    exerciseId: string;
+    exerciseName: string;
+    analysis: string;      // Analyse courte de la situation
+    justification: string; // Explication de la stratégie
+    sets: Array<{
+      setNumber: number;
+      currentReps: number;
+      currentWeight: number | null;
+      suggestedReps: number;
+      suggestedWeight: number | null;
+    }>;
+  }>;
+}
+```
+
+### Configuration
+
+| Variable | Description |
+|----------|-------------|
+| `OPENAI_API_KEY` | Clé API OpenAI (optionnelle) |
+
+Si la clé n'est pas configurée, le bouton Coach IA n'apparaît pas.
+
+### Modèle utilisé
+
+- **GPT-4o-mini** : Recommandé pour le rapport qualité/prix (~$0.01-0.02/requête)
+
+### Fichiers source Coach IA
+
+| Fichier | Rôle |
+|---------|------|
+| `apps/api/src/services/ai-coaching.service.ts` | Service OpenAI et construction du contexte |
+| `apps/api/src/routes/ai-coaching.routes.ts` | Endpoints API |
+| `apps/api/src/routes/config.routes.ts` | Endpoint de vérification API key |
+| `apps/web/src/app/(session)/session/[id]/ai-coach/page.tsx` | Page Coach IA |
+
+---
+
+## Comparaison des deux systèmes
+
+| Aspect | Progressive Overload (RG) | Coach IA |
+|--------|--------------------------|----------|
+| **Déclenchement** | Automatique à chaque fin de séance | Manuel, sur demande |
+| **Logique** | Règles fixes (3 sessions, +5kg/+2 reps) | IA analyse le contexte |
+| **Personnalisation** | Aucune | Conseils adaptés au contexte |
+| **Coût** | Gratuit | ~$0.01-0.02/requête OpenAI |
+| **Disponibilité** | Toujours | Si API key configurée |
+| **Exercices analysés** | Uniquement ceux atteignant les critères | Tous (IA décide) |

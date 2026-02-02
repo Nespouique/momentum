@@ -8,6 +8,8 @@ A full-featured fitness tracking application for managing workouts, tracking bod
 - **Workout Builder**: Create workout templates with supersets and customizable sets
 - **Active Sessions**: Real-time workout tracking with timer, rest periods, and set logging
 - **Historical Comparison**: Compare current performance with previous sessions
+- **Progressive Overload**: Automatic detection of stagnation and smart progression suggestions
+- **AI Coach**: Personalized training advice powered by OpenAI to break through plateaus
 - **Body Measurements**: Track and visualize body measurements over time
 - **Dark Mode**: Full dark theme support
 
@@ -104,6 +106,9 @@ cp apps/api/.env.example apps/api/.env
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://momentum:momentum_dev@localhost:5432/momentum` |
 | `PORT` | API server port | `3001` |
 | `NODE_ENV` | Environment | `development` |
+| `JWT_SECRET` | Secret key for JWT tokens | (required) |
+| `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:3000` |
+| `OPENAI_API_KEY` | OpenAI API key for AI Coach feature | (optional) |
 
 ## Development
 

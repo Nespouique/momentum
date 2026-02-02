@@ -404,7 +404,7 @@ export function SessionCalendarSheet({ open, onOpenChange }: SessionCalendarShee
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-4 flex-1 overflow-y-auto">
+        <div className="mt-4 flex-1 overflow-y-auto scrollbar-thin">
           {/* Month navigation */}
           <div className="flex items-center justify-between mb-4">
             <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
