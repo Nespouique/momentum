@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { CalendarClock, Clock, ArrowLeft, Save } from "lucide-react";
+import { CalendarClock, Clock, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResultInput } from "@/components/session/result-input";
 import { useAuthStore } from "@/stores/auth";
