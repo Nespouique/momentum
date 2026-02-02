@@ -93,6 +93,63 @@ router.get(
   }
 );
 
+// GET /sessions/:sessionId/stagnation - Detect stagnating exercises
+router.get(
+  "/sessions/:sessionId/stagnation",
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const sessionId = req.params["sessionId"] as string;
+      const userId = req.userId!;
+
+      // Verify session exists and belongs to user
+      const session = await prisma.workoutSession.findFirst({
+        where: { id: sessionId, userId },
+      });
+
+      if (!session) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Session not found",
+          },
+        });
+      }
+
+      // Ensure suggestions are generated (idempotent)
+      await evaluateSession(sessionId);
+
+      // Get exercises with pending suggestions (same logic as progressive overload)
+      const pendingSuggestions = await prisma.progressionSuggestion.findMany({
+        where: {
+          sessionId,
+          status: "pending",
+        },
+        select: { exerciseId: true },
+      });
+      const stagnatingExerciseIds = pendingSuggestions.map((s) => s.exerciseId);
+
+      // Check if AI coaching is available (API key configured)
+      const aiAvailable = !!process.env["OPENAI_API_KEY"];
+
+      return res.json({
+        data: {
+          hasStagnation: stagnatingExerciseIds.length > 0,
+          stagnatingExerciseIds,
+          aiCoachingAvailable: aiAvailable && stagnatingExerciseIds.length > 0,
+        },
+      });
+    } catch (error) {
+      console.error("Detect stagnation error:", error);
+      return res.status(500).json({
+        error: {
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
+        },
+      });
+    }
+  }
+);
+
 // PATCH /progression-suggestions/:id - Accept or dismiss a suggestion
 router.patch(
   "/progression-suggestions/:id",

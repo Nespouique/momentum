@@ -22,8 +22,10 @@ const REP_INCREMENT = 2;
 // Number of sessions to check for cooldown
 const COOLDOWN_SESSIONS = 3;
 
-// Minimum number of sessions where targets were met to suggest progression
-const MIN_SUCCESSFUL_SESSIONS = 3;
+// Minimum number of PAST sessions where targets were met to suggest progression
+// Note: Current session is checked separately, so total = MIN_SUCCESSFUL_SESSIONS + 1
+// With value 2, we need: current session (1) + 2 past sessions = 3 total
+const MIN_SUCCESSFUL_SESSIONS = 2;
 
 export interface ProgressionAnalysis {
   shouldSuggest: boolean;
@@ -95,22 +97,20 @@ async function checkRecentDismissed(
 }
 
 /**
- * Count how many past sessions had all sets meeting their targets for this exercise
- * at the CURRENT target level.
+ * Count how many past sessions had all sets meeting their targets for this exercise.
+ * Each set is evaluated independently against its own target (not an average).
  *
- * This is the key stability check: did the user consistently hit THIS specific target?
- * Sessions with lower targets don't count - we need stability at the current level.
+ * For exercises with varying targets per set (e.g., 15@15, 12@20, 12@20, 15@15),
+ * we check that each set met its specific target, and that the session had
+ * the same set structure as the current one.
  */
 async function countSuccessfulSessions(
   userId: string,
   exerciseId: string,
   maxSessions: number,
-  currentTargetReps: number,
-  currentTargetWeight: number | null
+  currentSets: Array<{ setNumber: number; targetReps: number; targetWeight: number | null }>
 ): Promise<number> {
   // Get completed sessions with this exercise
-  // Note: We don't filter on exercise status because it may stay "pending" even when sets are done
-  // Instead, we check if sets have actualReps (meaning they were completed)
   const sessions = await prisma.workoutSession.findMany({
     where: {
       userId,
@@ -120,12 +120,9 @@ async function countSuccessfulSessions(
     take: maxSessions,
     include: {
       exercises: {
-        where: {
-          exerciseId,
-          // Don't filter on status - check actualReps on sets instead
-        },
+        where: { exerciseId },
         include: {
-          sets: true,
+          sets: { orderBy: { setNumber: "asc" } },
         },
       },
     },
@@ -139,31 +136,47 @@ async function countSuccessfulSessions(
       const completedSets = exercise.sets.filter((s) => s.actualReps !== null);
       if (completedSets.length === 0) continue;
 
-      // Check if this session was at the SAME target level as current
-      // Sessions with lower targets don't count toward stability
-      const sameTargetLevel = completedSets.every((set) => {
-        const sameReps = set.targetReps >= currentTargetReps;
-        const sameWeight =
-          currentTargetWeight === null ||
-          currentTargetWeight === 0 ||
-          set.targetWeight === null ||
-          set.targetWeight >= currentTargetWeight;
-        return sameReps && sameWeight;
-      });
+      // Check that the session has the same number of sets
+      if (completedSets.length !== currentSets.length) continue;
 
-      if (!sameTargetLevel) continue;
+      // Check each set individually against current targets
+      // Session must have same or higher targets for each set
+      let allSetsMatch = true;
+      let allSetsMet = true;
 
-      // Check if ALL sets met their targets
-      const allSetsMet = completedSets.every((set) => {
-        const repsOk = (set.actualReps as number) >= set.targetReps;
+      for (const currentSet of currentSets) {
+        const sessionSet = completedSets.find((s) => s.setNumber === currentSet.setNumber);
+        if (!sessionSet) {
+          allSetsMatch = false;
+          break;
+        }
+
+        // Check if target level is same or higher
+        const sameRepsTarget = sessionSet.targetReps >= currentSet.targetReps;
+        const sameWeightTarget =
+          currentSet.targetWeight === null ||
+          currentSet.targetWeight === 0 ||
+          sessionSet.targetWeight === null ||
+          sessionSet.targetWeight >= currentSet.targetWeight;
+
+        if (!sameRepsTarget || !sameWeightTarget) {
+          allSetsMatch = false;
+          break;
+        }
+
+        // Check if actual met target
+        const repsOk = (sessionSet.actualReps as number) >= sessionSet.targetReps;
         const weightOk =
-          set.targetWeight === null ||
-          set.actualWeight === null ||
-          set.actualWeight >= set.targetWeight;
-        return repsOk && weightOk;
-      });
+          sessionSet.targetWeight === null ||
+          sessionSet.actualWeight === null ||
+          sessionSet.actualWeight >= sessionSet.targetWeight;
 
-      if (allSetsMet) {
+        if (!repsOk || !weightOk) {
+          allSetsMet = false;
+        }
+      }
+
+      if (allSetsMatch && allSetsMet) {
         successfulCount++;
       }
     }
@@ -196,16 +209,10 @@ export async function evaluateExercise(
     return noSuggestion;
   }
 
-  // Calculate averages for current session
-  const avgTargetReps = Math.round(
-    completedSets.reduce((sum, s) => sum + s.targetReps, 0) / completedSets.length
+  // Check if this is a bodyweight exercise (no weight targets)
+  const hasWeightTargets = completedSets.some(
+    (s) => s.targetWeight !== null && s.targetWeight > 0
   );
-  const weightsWithTarget = completedSets.filter((s) => s.targetWeight !== null);
-  const avgTargetWeight =
-    weightsWithTarget.length > 0
-      ? weightsWithTarget.reduce((sum, s) => sum + (s.targetWeight as number), 0) /
-        weightsWithTarget.length
-      : 0;
 
   // RG1: Check if ALL sets in current session met their targets
   const allSetsMetTarget = completedSets.every((s) => {
@@ -232,15 +239,19 @@ export async function evaluateExercise(
     return noSuggestion;
   }
 
-  // RG3: Check stability - count past sessions where targets were met at CURRENT level
-  // We check more sessions to find at least MIN_SUCCESSFUL_SESSIONS successful ones
-  // Pass current targets so we only count sessions at the same difficulty level
+  // RG3: Check stability - count past sessions where each set met its target
+  // Build current sets structure for comparison
+  const currentSets = completedSets.map((s, idx) => ({
+    setNumber: idx + 1, // Use index+1 if setNumber not available
+    targetReps: s.targetReps,
+    targetWeight: s.targetWeight,
+  }));
+
   const successfulSessions = await countSuccessfulSessions(
     userId,
     exerciseId,
     MIN_SUCCESSFUL_SESSIONS + 2, // Check a few extra to account for gaps
-    avgTargetReps,
-    avgTargetWeight > 0 ? avgTargetWeight : null
+    currentSets
   );
 
   // Need at least MIN_SUCCESSFUL_SESSIONS (3) past sessions with targets met
@@ -249,28 +260,28 @@ export async function evaluateExercise(
   }
 
   // RG4/RG5: Determine suggestion type based on exercise type
-  const isBodyweight = avgTargetWeight === 0;
+  const isBodyweight = !hasWeightTargets;
 
   if (isBodyweight) {
     // Bodyweight exercise: suggest rep increase
-    const newReps = avgTargetReps + REP_INCREMENT;
+    // Store the increment value (not absolute) for per-set application
     return {
       shouldSuggest: true,
       suggestionType: SuggestionType.increase_reps,
-      currentValue: avgTargetReps,
-      suggestedValue: newReps,
-      reason: `Objectifs atteints sur ${successfulSessions} séances. Passez à ${newReps} reps !`,
+      currentValue: 0, // Base value for increment calculation
+      suggestedValue: REP_INCREMENT,
+      reason: `Objectifs atteints sur ${successfulSessions} séances. +${REP_INCREMENT} reps par série !`,
     };
   } else {
     // Weighted exercise: suggest weight increase
     const weightIncrement = getWeightIncrement(muscleGroups);
-    const newWeight = avgTargetWeight + weightIncrement;
+    // Store the increment value (not absolute) for per-set application
     return {
       shouldSuggest: true,
       suggestionType: SuggestionType.increase_weight,
-      currentValue: avgTargetWeight,
-      suggestedValue: newWeight,
-      reason: `Objectifs atteints sur ${successfulSessions} séances. Prêt pour ${newWeight}kg ?`,
+      currentValue: 0, // Base value for increment calculation
+      suggestedValue: weightIncrement,
+      reason: `Objectifs atteints sur ${successfulSessions} séances. +${weightIncrement}kg par série !`,
     };
   }
 }
@@ -327,17 +338,8 @@ export async function evaluateSession(
     );
 
     if (analysis.shouldSuggest && analysis.suggestionType) {
-      // Check if a suggestion already exists for this session/exercise
-      const existingSuggestion = await prisma.progressionSuggestion.findUnique({
-        where: {
-          sessionId_exerciseId: {
-            sessionId,
-            exerciseId,
-          },
-        },
-      });
-
-      if (!existingSuggestion) {
+      // Try to create, handle race condition by fetching existing if duplicate
+      try {
         const suggestion = await prisma.progressionSuggestion.create({
           data: {
             userId: session.userId,
@@ -351,8 +353,24 @@ export async function evaluateSession(
           },
         });
         suggestions.push(suggestion);
-      } else {
-        suggestions.push(existingSuggestion);
+      } catch (error) {
+        // If unique constraint error (P2002), fetch existing suggestion
+        if (
+          error instanceof Error &&
+          "code" in error &&
+          (error as { code: string }).code === "P2002"
+        ) {
+          const existing = await prisma.progressionSuggestion.findUnique({
+            where: {
+              sessionId_exerciseId: { sessionId, exerciseId },
+            },
+          });
+          if (existing) {
+            suggestions.push(existing);
+          }
+        } else {
+          throw error;
+        }
       }
     }
   }
@@ -422,16 +440,20 @@ export async function respondToSuggestion(
     if (sessionExercise?.workoutItemExercise) {
       const workoutItemExerciseId = sessionExercise.workoutItemExercise.id;
 
+      // Calculate the increment (difference between suggested and current)
+      const increment = suggestion.suggestedValue - suggestion.currentValue;
+
       // Update all workout sets for this exercise in the template
+      // Use increment to preserve each set's individual value
       if (suggestion.suggestionType === SuggestionType.increase_weight) {
         await prisma.workoutSet.updateMany({
           where: { workoutItemExerciseId },
-          data: { targetWeight: suggestion.suggestedValue },
+          data: { targetWeight: { increment } },
         });
       } else if (suggestion.suggestionType === SuggestionType.increase_reps) {
         await prisma.workoutSet.updateMany({
           where: { workoutItemExerciseId },
-          data: { targetReps: Math.round(suggestion.suggestedValue) },
+          data: { targetReps: { increment: Math.round(increment) } },
         });
       }
     }

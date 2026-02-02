@@ -92,19 +92,20 @@ export function RestScreen(props: RestScreenProps) {
       : new Map()
   );
 
-  // Update parent when standard result changes
-  useEffect(() => {
-    if (!props.isSuperset && props.onResultChange) {
-      props.onResultChange(standardResult);
-    }
-  }, [standardResult, props.isSuperset]);
-
-  // Reset standard result when set changes
+  // Reset standard result when set changes (no auto-notify parent)
   useEffect(() => {
     if (!props.isSuperset) {
       setStandardResult({ reps: props.defaultReps, weight: props.defaultWeight });
     }
-  }, [setNumber, props.isSuperset]);
+  }, [setNumber, props.isSuperset, props.defaultReps, props.defaultWeight]);
+
+  // Handle standard result change - only notify parent when user actually changes value
+  const handleStandardResultChange = (value: { reps: number; weight: number }) => {
+    setStandardResult(value);
+    if (!props.isSuperset && props.onResultChange) {
+      props.onResultChange(value);
+    }
+  };
 
   // Update superset results when exercises change
   useEffect(() => {
@@ -180,7 +181,7 @@ export function RestScreen(props: RestScreenProps) {
           targetReps={props.targetReps}
           targetWeight={props.targetWeight}
           value={standardResult}
-          onChange={setStandardResult}
+          onChange={handleStandardResultChange}
           showObjective={true}
         />
       )}

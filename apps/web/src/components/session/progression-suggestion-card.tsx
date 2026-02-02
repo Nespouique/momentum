@@ -59,7 +59,8 @@ export function ProgressionSuggestionCard({
 
   const isWeight = suggestion.suggestionType === "increase_weight";
   const unit = isWeight ? "kg" : "reps";
-  const increment = suggestion.suggestedValue - suggestion.currentValue;
+  // suggestedValue now contains the increment directly (currentValue is 0)
+  const increment = suggestion.suggestedValue;
 
   // Don't render if already handled
   if (suggestion.status !== "pending" && !isVisible) {
@@ -109,35 +110,14 @@ export function ProgressionSuggestionCard({
                 </span>
               </div>
 
-              {/* Value progression display */}
-              <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-zinc-900/60 border border-zinc-800/50">
-                <div className="flex-1 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">
-                    Actuel
-                  </p>
-                  <p className="text-xl font-mono font-bold text-zinc-300">
-                    {suggestion.currentValue}
-                    <span className="text-sm font-normal text-zinc-500 ml-0.5">{unit}</span>
-                  </p>
-                </div>
-
-                <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <TrendingUp className="h-4 w-4 text-emerald-400" />
-                  </div>
-                  <span className="text-[10px] text-emerald-400 font-semibold mt-1">
+              {/* Increment display - shows per-set increment */}
+              <div className="flex items-center justify-center gap-3 mb-4 p-4 rounded-lg bg-zinc-900/60 border border-zinc-800/50">
+                <div className="text-center">
+                  <p className="text-2xl font-mono font-bold text-emerald-400">
                     +{increment}
-                  </span>
-                </div>
-
-                <div className="flex-1 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">
-                    Objectif
+                    <span className="text-base font-normal text-emerald-500/70 ml-1">{unit}</span>
                   </p>
-                  <p className="text-xl font-mono font-bold text-emerald-400">
-                    {suggestion.suggestedValue}
-                    <span className="text-sm font-normal text-emerald-500/70 ml-0.5">{unit}</span>
-                  </p>
+                  <p className="text-xs text-zinc-500 mt-1">par série</p>
                 </div>
               </div>
 

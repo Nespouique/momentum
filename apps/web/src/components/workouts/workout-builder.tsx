@@ -278,6 +278,9 @@ export function WorkoutBuilder({ workout, mode }: WorkoutBuilderProps) {
       ...prev,
       items: [...prev.items, newItem],
     }));
+
+    // Close the selector after adding the item
+    setShowExerciseSelector(false);
   };
 
   // Delete item
