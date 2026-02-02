@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 interface ResultInputProps {
@@ -25,6 +26,18 @@ export function ResultInput({
   compact = false,
   hideHeader = false,
 }: ResultInputProps) {
+  const [editingField, setEditingField] = useState<"reps" | "weight" | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingField && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingField]);
+
   const handleRepsChange = (delta: number) => {
     const newReps = Math.max(0, Math.min(100, value.reps + delta));
     onChange({ ...value, reps: newReps });
@@ -33,6 +46,38 @@ export function ResultInput({
   const handleWeightChange = (delta: number) => {
     const newWeight = Math.max(0, Math.min(500, value.weight + delta));
     onChange({ ...value, weight: newWeight });
+  };
+
+  const startEditing = (field: "reps" | "weight") => {
+    setEditingField(field);
+    setEditValue(field === "reps" ? String(value.reps) : String(value.weight));
+  };
+
+  const commitEdit = () => {
+    if (!editingField) return;
+
+    const parsed = parseFloat(editValue);
+    if (!isNaN(parsed)) {
+      if (editingField === "reps") {
+        const newReps = Math.max(0, Math.min(100, Math.round(parsed)));
+        onChange({ ...value, reps: newReps });
+      } else {
+        // Allow 0.5 increments for weight
+        const newWeight = Math.max(0, Math.min(500, Math.round(parsed * 2) / 2));
+        onChange({ ...value, weight: newWeight });
+      }
+    }
+    setEditingField(null);
+    setEditValue("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      commitEdit();
+    } else if (e.key === "Escape") {
+      setEditingField(null);
+      setEditValue("");
+    }
   };
 
 
@@ -95,23 +140,47 @@ export function ResultInput({
               −
             </button>
 
-            {/* Value display */}
-            <div
-              className={cn(
-                "flex items-center justify-center",
-                "bg-zinc-800/80 border-x border-zinc-700/30",
-                compact ? "h-10 w-12" : "h-11 w-14"
-              )}
-            >
-              <span
+            {/* Value display - clickable to edit */}
+            {editingField === "reps" ? (
+              <input
+                ref={inputRef}
+                type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={handleKeyDown}
                 className={cn(
-                  "font-mono font-bold tabular-nums text-zinc-100",
-                  compact ? "text-xl" : "text-2xl"
+                  "text-center font-mono font-bold tabular-nums text-zinc-100",
+                  "bg-zinc-800/80 border-x border-zinc-700/30",
+                  "outline-none focus:ring-1 focus:ring-zinc-500",
+                  "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                  compact ? "h-10 w-12 text-xl" : "h-11 w-14 text-2xl"
+                )}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => startEditing("reps")}
+                className={cn(
+                  "flex items-center justify-center",
+                  "bg-zinc-800/80 border-x border-zinc-700/30",
+                  "[@media(hover:hover)]:hover:bg-zinc-700/60",
+                  "transition-colors",
+                  compact ? "h-10 w-12" : "h-11 w-14"
                 )}
               >
-                {value.reps}
-              </span>
-            </div>
+                <span
+                  className={cn(
+                    "font-mono font-bold tabular-nums text-zinc-100",
+                    compact ? "text-xl" : "text-2xl"
+                  )}
+                >
+                  {value.reps}
+                </span>
+              </button>
+            )}
 
             {/* Plus button */}
             <button
@@ -158,23 +227,47 @@ export function ResultInput({
               −
             </button>
 
-            {/* Value display */}
-            <div
-              className={cn(
-                "flex items-center justify-center",
-                "bg-zinc-800/80 border-x border-zinc-700/30",
-                compact ? "h-10 w-12" : "h-11 w-14"
-              )}
-            >
-              <span
+            {/* Value display - clickable to edit */}
+            {editingField === "weight" ? (
+              <input
+                ref={inputRef}
+                type="number"
+                inputMode="decimal"
+                step="0.5"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={handleKeyDown}
                 className={cn(
-                  "font-mono font-bold tabular-nums text-zinc-100",
-                  compact ? "text-xl" : "text-2xl"
+                  "text-center font-mono font-bold tabular-nums text-zinc-100",
+                  "bg-zinc-800/80 border-x border-zinc-700/30",
+                  "outline-none focus:ring-1 focus:ring-zinc-500",
+                  "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                  compact ? "h-10 w-12 text-xl" : "h-11 w-14 text-2xl"
+                )}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => startEditing("weight")}
+                className={cn(
+                  "flex items-center justify-center",
+                  "bg-zinc-800/80 border-x border-zinc-700/30",
+                  "[@media(hover:hover)]:hover:bg-zinc-700/60",
+                  "transition-colors",
+                  compact ? "h-10 w-12" : "h-11 w-14"
                 )}
               >
-                {value.weight}
-              </span>
-            </div>
+                <span
+                  className={cn(
+                    "font-mono font-bold tabular-nums text-zinc-100",
+                    compact ? "text-xl" : "text-2xl"
+                  )}
+                >
+                  {value.weight}
+                </span>
+              </button>
+            )}
 
             {/* Plus button */}
             <button
