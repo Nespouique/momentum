@@ -81,6 +81,7 @@ interface SessionState {
   // Core state
   session: WorkoutSession | null;
   lastSession: WorkoutSession | null;
+  token: string | null; // Stored for API calls in skipRest
   isLoading: boolean;
   error: string | null;
 
@@ -117,7 +118,7 @@ interface SessionState {
   skipFirstExercise: (token: string) => Promise<void>;
   substituteFirstExercise: (token: string, newExerciseId: string) => Promise<void>;
   completeSet: (token: string, result: PendingResult) => Promise<void>;
-  skipRest: () => void;
+  skipRest: () => Promise<void>;
   adjustRestTime: (delta: number) => void;
   skipExercise: (token: string) => Promise<void>;
   postponeExercise: (token: string, exerciseIds: string[]) => Promise<void>;
@@ -146,6 +147,7 @@ interface SessionState {
 const initialState = {
   session: null,
   lastSession: null,
+  token: null as string | null,
   isLoading: false,
   error: null,
   currentExerciseIndex: 0,
@@ -216,6 +218,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       set({
         session: response.data,
         lastSession: response.lastSession,
+        token,
         isLoading: false,
         currentExerciseIndex: 0,
         currentSetIndex: 0,
@@ -389,6 +392,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         set({
           session,
           lastSession: response.lastSession,
+          token,
           isLoading: false,
           currentExerciseIndex: persistedRest.currentExerciseIndex,
           currentSetIndex: persistedRest.currentSetIndex,
@@ -428,6 +432,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         set({
           session,
           lastSession: response.lastSession,
+          token,
           isLoading: false,
           currentExerciseIndex,
           currentSetIndex,
@@ -457,6 +462,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       if (response.data) {
         set({
           session: response.data,
+          token,
           isLoading: false,
         });
       } else {
@@ -574,210 +580,166 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
-  completeSet: async (token: string, result: PendingResult) => {
+  completeSet: async (_token: string, result: PendingResult) => {
     const state = get();
     const exercise = state.getCurrentExercise();
     const currentSet = state.getCurrentSet();
 
     if (!state.session || !exercise || !currentSet) return;
 
-    try {
-      // Record result to API
-      await apiRecordSetResult(token, state.session.id, exercise.id, {
-        setNumber: currentSet.setNumber,
-        actualReps: result.reps,
-        actualWeight: result.weight,
-      });
+    // Helper to call API immediately (used when no rest screen follows)
+    const recordResultNow = async () => {
+      if (!state.token) return;
+      try {
+        await apiRecordSetResult(state.token, state.session!.id, exercise.id, {
+          setNumber: currentSet.setNumber,
+          actualReps: result.reps,
+          actualWeight: result.weight,
+        });
+        // Update local state
+        const updatedExercises = state.session!.exercises.map((ex) => {
+          if (ex.id === exercise.id) {
+            return {
+              ...ex,
+              sets: ex.sets.map((s) =>
+                s.id === currentSet.id
+                  ? { ...s, actualReps: result.reps, actualWeight: result.weight, completedAt: new Date().toISOString() }
+                  : s
+              ),
+            };
+          }
+          return ex;
+        });
+        set({ session: { ...state.session!, exercises: updatedExercises } });
+      } catch (error) {
+        console.error("Failed to record set result:", error);
+      }
+    };
 
-      // Update local state with result
-      const updatedExercises = state.session.exercises.map((ex) => {
-        if (ex.id === exercise.id) {
-          return {
-            ...ex,
-            sets: ex.sets.map((s) =>
-              s.id === currentSet.id
-                ? { ...s, actualReps: result.reps, actualWeight: result.weight, completedAt: new Date().toISOString() }
-                : s
-            ),
-          };
-        }
-        return ex;
-      });
+    // Determine next state
+    const activeExercises = state.getActiveExercises();
 
-      // Clear pending result for this exercise (so next set uses target values)
-      const newPendingResults = new Map(state.pendingResults);
-      newPendingResults.delete(exercise.id);
+    if (state.isInSuperset) {
+      // Superset logic
+      const currentSupersetIdx = state.supersetExerciseIndex;
+      const isLastInSuperset = currentSupersetIdx >= state.supersetExerciseIds.length - 1;
+      const totalRounds = exercise.sets.length || exercise.workoutItem?.rounds || 1;
+      const isLastRound = state.supersetRound >= totalRounds;
 
-      set({
-        session: { ...state.session, exercises: updatedExercises },
-        pendingResults: newPendingResults,
-      });
+      if (isLastInSuperset) {
+        // Store result for later (rest screen will follow)
+        const newPendingResults = new Map(state.pendingResults);
+        newPendingResults.set(exercise.id, result);
+        set({ pendingResults: newPendingResults });
 
-      // Determine next state
-      const activeExercises = state.getActiveExercises();
+        if (isLastRound) {
+          // End of superset
+          const nextNonSupersetIdx = activeExercises.findIndex(
+            (e, i) => i > state.currentExerciseIndex && e.workoutItem?.id !== exercise.workoutItem?.id
+          );
 
-      if (state.isInSuperset) {
-        // Superset logic
-        const currentSupersetIdx = state.supersetExerciseIndex;
-        const isLastInSuperset = currentSupersetIdx >= state.supersetExerciseIds.length - 1;
-        // For dynamically created supersets, rounds = sets.length; for original supersets, use workoutItem.rounds
-        const totalRounds = exercise.sets.length || exercise.workoutItem?.rounds || 1;
-        const isLastRound = state.supersetRound >= totalRounds;
-
-        if (isLastInSuperset) {
-          if (isLastRound) {
-            // End of superset
-            const nextNonSupersetIdx = activeExercises.findIndex(
-              (e, i) => i > state.currentExerciseIndex && e.workoutItem?.id !== exercise.workoutItem?.id
-            );
-
-            if (nextNonSupersetIdx === -1) {
-              // Last exercise overall - show rest screen to allow result input
-              const restDuration = exercise.workoutItem?.restAfter || 90;
-              const restEndAt = Date.now() + restDuration * 1000;
-              const newState = {
-                currentScreen: "superset-rest" as SessionScreen,
-                restDuration,
-                restEndAt,
-                restTimeRemaining: restDuration,
-                isResting: true,
-              };
-              set(newState);
-              saveRestState({
-                sessionId: state.session!.id,
-                restEndAt,
-                restDuration,
-                currentScreen: newState.currentScreen,
-                currentExerciseIndex: state.currentExerciseIndex,
-                currentSetIndex: state.currentSetIndex,
-                isInSuperset: state.isInSuperset,
-                supersetRound: state.supersetRound,
-                supersetExerciseIndex: state.supersetExerciseIndex,
-                supersetExerciseIds: state.supersetExerciseIds,
-              });
-            } else {
-              const restDuration = exercise.workoutItem?.restAfter || 120;
-              const restEndAt = Date.now() + restDuration * 1000;
-              const newState = {
-                currentScreen: "superset-transition" as SessionScreen,
-                restDuration,
-                restEndAt,
-                restTimeRemaining: restDuration,
-                isResting: true,
-              };
-              set(newState);
-              saveRestState({
-                sessionId: state.session!.id,
-                restEndAt,
-                restDuration,
-                currentScreen: newState.currentScreen,
-                currentExerciseIndex: state.currentExerciseIndex,
-                currentSetIndex: state.currentSetIndex,
-                isInSuperset: state.isInSuperset,
-                supersetRound: state.supersetRound,
-                supersetExerciseIndex: state.supersetExerciseIndex,
-                supersetExerciseIds: state.supersetExerciseIds,
-              });
-            }
-          } else {
-            // Move to rest between rounds
+          if (nextNonSupersetIdx === -1) {
+            // Last exercise overall - show rest screen
             const restDuration = exercise.workoutItem?.restAfter || 90;
             const restEndAt = Date.now() + restDuration * 1000;
-            const newSupersetRound = state.supersetRound + 1;
-            const newSetIndex = state.currentSetIndex + 1;
-            const newState = {
+            set({
               currentScreen: "superset-rest" as SessionScreen,
-              supersetRound: newSupersetRound,
-              supersetExerciseIndex: 0,
-              currentSetIndex: newSetIndex,
               restDuration,
               restEndAt,
               restTimeRemaining: restDuration,
               isResting: true,
-            };
-            set(newState);
+            });
             saveRestState({
               sessionId: state.session!.id,
               restEndAt,
               restDuration,
-              currentScreen: newState.currentScreen,
+              currentScreen: "superset-rest",
               currentExerciseIndex: state.currentExerciseIndex,
-              currentSetIndex: newSetIndex,
+              currentSetIndex: state.currentSetIndex,
               isInSuperset: state.isInSuperset,
-              supersetRound: newSupersetRound,
-              supersetExerciseIndex: 0,
+              supersetRound: state.supersetRound,
+              supersetExerciseIndex: state.supersetExerciseIndex,
+              supersetExerciseIds: state.supersetExerciseIds,
+            });
+          } else {
+            const restDuration = exercise.workoutItem?.restAfter || 120;
+            const restEndAt = Date.now() + restDuration * 1000;
+            set({
+              currentScreen: "superset-transition" as SessionScreen,
+              restDuration,
+              restEndAt,
+              restTimeRemaining: restDuration,
+              isResting: true,
+            });
+            saveRestState({
+              sessionId: state.session!.id,
+              restEndAt,
+              restDuration,
+              currentScreen: "superset-transition",
+              currentExerciseIndex: state.currentExerciseIndex,
+              currentSetIndex: state.currentSetIndex,
+              isInSuperset: state.isInSuperset,
+              supersetRound: state.supersetRound,
+              supersetExerciseIndex: state.supersetExerciseIndex,
               supersetExerciseIds: state.supersetExerciseIds,
             });
           }
         } else {
-          // Move to next exercise in superset (no timer)
-          const nextSupersetExId = state.supersetExerciseIds[currentSupersetIdx + 1];
-          const nextIdx = activeExercises.findIndex((e) => e.id === nextSupersetExId);
-
+          // Move to rest between rounds
+          const restDuration = exercise.workoutItem?.restAfter || 90;
+          const restEndAt = Date.now() + restDuration * 1000;
+          const newSupersetRound = state.supersetRound + 1;
+          const newSetIndex = state.currentSetIndex + 1;
           set({
-            currentExerciseIndex: nextIdx,
-            supersetExerciseIndex: currentSupersetIdx + 1,
-            currentScreen: "superset-exercise",
+            currentScreen: "superset-rest" as SessionScreen,
+            supersetRound: newSupersetRound,
+            supersetExerciseIndex: 0,
+            currentSetIndex: newSetIndex,
+            restDuration,
+            restEndAt,
+            restTimeRemaining: restDuration,
+            isResting: true,
+          });
+          saveRestState({
+            sessionId: state.session!.id,
+            restEndAt,
+            restDuration,
+            currentScreen: "superset-rest",
+            currentExerciseIndex: state.currentExerciseIndex,
+            currentSetIndex: newSetIndex,
+            isInSuperset: state.isInSuperset,
+            supersetRound: newSupersetRound,
+            supersetExerciseIndex: 0,
+            supersetExerciseIds: state.supersetExerciseIds,
           });
         }
       } else {
-        // Standard exercise logic
-        const totalSets = exercise.sets.length;
-        const isLastSet = state.currentSetIndex >= totalSets - 1;
+        // Move to next exercise in superset (no timer) - record immediately
+        await recordResultNow();
+        const nextSupersetExId = state.supersetExerciseIds[currentSupersetIdx + 1];
+        const nextIdx = activeExercises.findIndex((e) => e.id === nextSupersetExId);
 
-        if (isLastSet) {
-          // Check if last exercise
-          const isLastExercise = state.currentExerciseIndex >= activeExercises.length - 1;
+        set({
+          currentExerciseIndex: nextIdx,
+          supersetExerciseIndex: currentSupersetIdx + 1,
+          currentScreen: "superset-exercise",
+        });
+      }
+    } else {
+      // Standard exercise logic - always goes to rest screen, so store result for later
+      const newPendingResults = new Map(state.pendingResults);
+      newPendingResults.set(exercise.id, result);
+      set({ pendingResults: newPendingResults });
 
-          if (isLastExercise) {
-            // Last set of last exercise - show rest screen to allow result input
-            const restDuration = exercise.workoutItemExercise?.restBetweenSets || 90;
-            const restEndAt = Date.now() + restDuration * 1000;
-            set({
-              currentScreen: "rest",
-              restDuration,
-              restEndAt,
-              restTimeRemaining: restDuration,
-              isResting: true,
-            });
-            saveRestState({
-              sessionId: state.session!.id,
-              restEndAt,
-              restDuration,
-              currentScreen: "rest",
-              currentExerciseIndex: state.currentExerciseIndex,
-              currentSetIndex: state.currentSetIndex,
-              isInSuperset: false,
-              supersetRound: 0,
-              supersetExerciseIndex: 0,
-              supersetExerciseIds: [],
-            });
-          } else {
-            // Transition to next exercise
-            const restDuration = exercise.workoutItem?.restAfter || 120;
-            const restEndAt = Date.now() + restDuration * 1000;
-            set({
-              currentScreen: "transition",
-              restDuration,
-              restEndAt,
-              restTimeRemaining: restDuration,
-              isResting: true,
-            });
-            saveRestState({
-              sessionId: state.session!.id,
-              restEndAt,
-              restDuration,
-              currentScreen: "transition",
-              currentExerciseIndex: state.currentExerciseIndex,
-              currentSetIndex: state.currentSetIndex,
-              isInSuperset: false,
-              supersetRound: 0,
-              supersetExerciseIndex: 0,
-              supersetExerciseIds: [],
-            });
-          }
-        } else {
-          // Rest before next set
+      const totalSets = exercise.sets.length;
+      const isLastSet = state.currentSetIndex >= totalSets - 1;
+
+      if (isLastSet) {
+        // Check if last exercise
+        const isLastExercise = state.currentExerciseIndex >= activeExercises.length - 1;
+
+        if (isLastExercise) {
+          // Last set of last exercise - show rest screen to allow result input
           const restDuration = exercise.workoutItemExercise?.restBetweenSets || 90;
           const restEndAt = Date.now() + restDuration * 1000;
           set({
@@ -799,23 +761,116 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             supersetExerciseIndex: 0,
             supersetExerciseIds: [],
           });
+        } else {
+          // Transition to next exercise
+          const restDuration = exercise.workoutItem?.restAfter || 120;
+          const restEndAt = Date.now() + restDuration * 1000;
+          set({
+            currentScreen: "transition",
+            restDuration,
+            restEndAt,
+            restTimeRemaining: restDuration,
+            isResting: true,
+          });
+          saveRestState({
+            sessionId: state.session!.id,
+            restEndAt,
+            restDuration,
+            currentScreen: "transition",
+            currentExerciseIndex: state.currentExerciseIndex,
+            currentSetIndex: state.currentSetIndex,
+            isInSuperset: false,
+            supersetRound: 0,
+            supersetExerciseIndex: 0,
+            supersetExerciseIds: [],
+          });
         }
+      } else {
+        // Rest before next set
+        const restDuration = exercise.workoutItemExercise?.restBetweenSets || 90;
+        const restEndAt = Date.now() + restDuration * 1000;
+        set({
+          currentScreen: "rest",
+          restDuration,
+          restEndAt,
+          restTimeRemaining: restDuration,
+          isResting: true,
+        });
+        saveRestState({
+          sessionId: state.session!.id,
+          restEndAt,
+          restDuration,
+          currentScreen: "rest",
+          currentExerciseIndex: state.currentExerciseIndex,
+          currentSetIndex: state.currentSetIndex,
+          isInSuperset: false,
+          supersetRound: 0,
+          supersetExerciseIndex: 0,
+          supersetExerciseIds: [],
+        });
       }
-    } catch (error) {
-      console.error("Failed to record set result:", error);
     }
   },
 
-  skipRest: () => {
+  skipRest: async () => {
     const state = get();
+
+    // Prevent double-calls while async work is in progress
+    if (!state.restEndAt) return;
+
+    // Immediately clear restEndAt to prevent tick() from calling us again
+    set({ restEndAt: null });
+
     const activeExercises = state.getActiveExercises();
+    const currentExercise = state.getCurrentExercise();
+    const currentSet = state.getCurrentSet();
 
     // Clear persisted rest state
     clearRestState();
 
+    // Record the set result to API (if we have pending results)
+    if (state.session && state.token && currentExercise && currentSet) {
+      const pendingResult = state.pendingResults.get(currentExercise.id);
+      if (pendingResult) {
+        try {
+          await apiRecordSetResult(state.token, state.session.id, currentExercise.id, {
+            setNumber: currentSet.setNumber,
+            actualReps: pendingResult.reps,
+            actualWeight: pendingResult.weight,
+          });
+
+          // Update local state with result
+          const updatedExercises = state.session.exercises.map((ex) => {
+            if (ex.id === currentExercise.id) {
+              return {
+                ...ex,
+                sets: ex.sets.map((s) =>
+                  s.id === currentSet.id
+                    ? { ...s, actualReps: pendingResult.reps, actualWeight: pendingResult.weight, completedAt: new Date().toISOString() }
+                    : s
+                ),
+              };
+            }
+            return ex;
+          });
+
+          // Clear pending result for this exercise
+          const newPendingResults = new Map(state.pendingResults);
+          newPendingResults.delete(currentExercise.id);
+
+          set({
+            session: { ...state.session, exercises: updatedExercises },
+            pendingResults: newPendingResults,
+          });
+        } catch (error) {
+          console.error("Failed to record set result:", error);
+          // Continue with navigation even if API fails
+        }
+      }
+    }
+
     if (state.currentScreen === "rest") {
       // Check if this is the last set of the last exercise
-      const currentExercise = state.getCurrentExercise();
       const totalSets = currentExercise?.sets.length || 0;
       const isLastSet = state.currentSetIndex >= totalSets - 1;
       const isLastExercise = state.currentExerciseIndex >= activeExercises.length - 1;

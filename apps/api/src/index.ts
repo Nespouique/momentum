@@ -11,6 +11,8 @@ import exerciseRoutes from "./routes/exercise.routes.js";
 import workoutRoutes from "./routes/workout.routes.js";
 import sessionRoutes from "./routes/session.routes.js";
 import progressionRoutes from "./routes/progression.routes.js";
+import configRoutes from "./routes/config.routes.js";
+import aiCoachingRoutes from "./routes/ai-coaching.routes.js";
 
 const app = express();
 const PORT = process.env["PORT"] || 3001;
@@ -75,6 +77,8 @@ app.use("/exercises", exerciseRoutes);
 app.use("/workouts", workoutRoutes);
 app.use("/sessions", sessionRoutes);
 app.use("/", progressionRoutes);
+app.use("/config", configRoutes);
+app.use("/sessions", aiCoachingRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Trophy } from "lucide-react";
+import Link from "next/link";
+import { Trophy, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResultInput } from "../result-input";
 import {
@@ -30,6 +31,7 @@ export interface SetModification {
 }
 
 interface SessionSummaryProps {
+  sessionId: string;
   workoutName: string;
   duration: number; // in seconds
   exercises: SummaryExercise[];
@@ -41,6 +43,7 @@ interface SessionSummaryProps {
 }
 
 export function SessionSummary({
+  sessionId,
   workoutName,
   duration,
   exercises,
@@ -124,6 +127,15 @@ export function SessionSummary({
             {workoutName} • {formatDuration(duration)}
           </p>
         </div>
+
+        {/* AI Coach link - always available */}
+        <Link
+          href={`/session/${sessionId}/ai-coach`}
+          className="inline-flex items-center gap-2 text-violet-400 hover:text-violet-300 text-sm font-medium mt-3 transition-colors underline underline-offset-2"
+        >
+          <Brain className="h-4 w-4" />
+          Revue des objectifs avec le coach IA
+        </Link>
       </div>
 
       {/* Exercises recap */}
@@ -180,8 +192,10 @@ function ExerciseRecap({
   getSetValue,
   onSetChange,
 }: ExerciseRecapProps) {
-  // Only show completed sets
-  const completedSets = exercise.sets.filter((s) => s.actualReps !== null);
+  // Only show completed sets, sorted by set number
+  const completedSets = exercise.sets
+    .filter((s) => s.actualReps !== null)
+    .sort((a, b) => a.setNumber - b.setNumber);
 
   if (completedSets.length === 0) return null;
 
@@ -236,7 +250,7 @@ function SetRow({ set, value, onChange }: SetRowProps) {
     <div className="px-4 py-3">
       <div className="flex items-center gap-3">
         {/* Set number badge - white circle */}
-        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 text-xs font-semibold text-zinc-900">
+        <div className="flex items-center justify-center w-6 h-6 shrink-0 rounded-full bg-zinc-100 text-xs font-semibold text-zinc-900">
           {set.setNumber}
         </div>
 

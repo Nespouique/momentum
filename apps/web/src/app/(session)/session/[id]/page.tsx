@@ -147,9 +147,11 @@ export default function SessionPage({ params }: SessionPageProps) {
 
     const fetchSuggestions = async () => {
       try {
-        const response = await getProgressionSuggestions(token, session.id);
+        const suggestionsResponse = await getProgressionSuggestions(token, session.id);
+
+        // Process suggestions
         const suggestionsMap = new Map<string, ProgressionSuggestion>();
-        for (const s of response.data) {
+        for (const s of suggestionsResponse.data) {
           suggestionsMap.set(s.exerciseId, {
             id: s.id,
             exerciseId: s.exerciseId,
@@ -163,7 +165,7 @@ export default function SessionPage({ params }: SessionPageProps) {
         }
         setSuggestions(suggestionsMap);
       } catch (error) {
-        console.error("Failed to fetch progression suggestions:", error);
+        console.error("Failed to fetch suggestions:", error);
       }
     };
 
@@ -983,6 +985,7 @@ export default function SessionPage({ params }: SessionPageProps) {
 
       return (
         <SessionSummary
+          sessionId={session.id}
           workoutName={session.workout?.name || "Workout"}
           duration={duration}
           exercises={summaryExercises}

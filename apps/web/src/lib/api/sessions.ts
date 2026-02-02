@@ -417,3 +417,97 @@ export async function updateProgressionSuggestion(
 
   return handleResponse<{ data: { id: string; status: string; respondedAt: string } }>(response);
 }
+
+// Stagnation detection
+export interface StagnationData {
+  hasStagnation: boolean;
+  stagnatingExerciseIds: string[];
+  aiCoachingAvailable: boolean;
+}
+
+export async function getStagnationInfo(
+  token: string,
+  sessionId: string
+): Promise<{ data: StagnationData }> {
+  const response = await fetch(`${API_URL}/sessions/${sessionId}/stagnation`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return handleResponse<{ data: StagnationData }>(response);
+}
+
+// AI Coaching types and endpoints
+export interface AIProposalSet {
+  setNumber: number;
+  currentReps: number;
+  currentWeight: number | null;
+  suggestedReps: number;
+  suggestedWeight: number | null;
+}
+
+export interface AIProposal {
+  exerciseId: string;
+  exerciseName: string;
+  analysis: string;
+  justification: string;
+  sets: AIProposalSet[];
+}
+
+export interface AICoachingResponse {
+  sessionId: string;
+  workoutName: string;
+  analyzedSessionsCount: number;
+  proposals: AIProposal[];
+  coachMessage: string;
+}
+
+export async function generateAICoaching(
+  token: string,
+  sessionId: string
+): Promise<{ data: AICoachingResponse }> {
+  const response = await fetch(`${API_URL}/sessions/${sessionId}/ai-coaching`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return handleResponse<{ data: AICoachingResponse }>(response);
+}
+
+export interface ApplyCoachingRequest {
+  proposals: Array<{
+    exerciseId: string;
+    sets: Array<{
+      setNumber: number;
+      targetReps: number;
+      targetWeight: number | null;
+    }>;
+  }>;
+}
+
+export async function applyAICoaching(
+  token: string,
+  sessionId: string,
+  data: ApplyCoachingRequest
+): Promise<{ data: { success: boolean; appliedCount: number } }> {
+  const response = await fetch(`${API_URL}/sessions/${sessionId}/apply-coaching`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  return handleResponse<{ data: { success: boolean; appliedCount: number } }>(response);
+}
+
+// Config endpoints
+export async function getAIStatus(): Promise<{ data: { available: boolean } }> {
+  const response = await fetch(`${API_URL}/config/ai-status`);
+  return handleResponse<{ data: { available: boolean } }>(response);
+}
