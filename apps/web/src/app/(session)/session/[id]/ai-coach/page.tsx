@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout";
 import { ResultInput } from "@/components/session/result-input";
 import { useAuthStore } from "@/stores/auth";
-import { useSessionStore } from "@/stores/session";
 import { toast } from "sonner";
 import {
   generateAICoaching,
   applyAICoaching,
   getSession,
+  updateSession,
   type AIProposal,
   type AICoachingResponse,
 } from "@/lib/api/sessions";
@@ -37,7 +37,8 @@ export default function AICoachPage({ params }: AICoachPageProps) {
   const sessionId = params.id;
   const router = useRouter();
   const { token } = useAuthStore();
-  const { completeSession } = useSessionStore();
+  // Note: We don't use useSessionStore here because the session may not be loaded in the store
+  // when navigating directly to the AI coach page. We use direct API calls instead.
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -128,8 +129,8 @@ export default function AICoachPage({ params }: AICoachPageProps) {
           })),
         })),
       });
-      // Complete the session
-      await completeSession(token);
+      // Complete the session directly via API (store may not have session loaded)
+      await updateSession(token, sessionId, { status: "completed" });
       toast.success("Objectifs mis à jour !");
       router.push("/");
     } catch (err) {
@@ -138,14 +139,15 @@ export default function AICoachPage({ params }: AICoachPageProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [token, sessionId, proposals, router, completeSession]);
+  }, [token, sessionId, proposals, router]);
 
   // Ignore and complete session
   const handleIgnore = useCallback(async () => {
     if (!token) return;
     setIsSubmitting(true);
     try {
-      await completeSession(token);
+      // Complete the session directly via API (store may not have session loaded)
+      await updateSession(token, sessionId, { status: "completed" });
       router.push("/");
     } catch (err) {
       console.error("Failed to complete session:", err);
@@ -153,7 +155,7 @@ export default function AICoachPage({ params }: AICoachPageProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [token, router, completeSession]);
+  }, [token, sessionId, router]);
 
   // Go back
   const handleBack = useCallback(() => {
