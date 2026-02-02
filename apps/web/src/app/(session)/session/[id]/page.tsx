@@ -184,7 +184,8 @@ export default function SessionPage({ params }: SessionPageProps) {
     if (!token || !currentExercise || !currentSet) return;
     initAudio();
 
-    const pendingResult = pendingResults.get(currentExercise.id) || {
+    // Key includes setIndex to get the correct pending result
+    const pendingResult = pendingResults.get(`${currentExercise.id}-${currentSetIndex}`) || {
       reps: currentSet.targetReps,
       weight: currentSet.targetWeight || 0,
     };
@@ -192,22 +193,24 @@ export default function SessionPage({ params }: SessionPageProps) {
     setIsSubmitting(true);
     await completeSet(token, pendingResult);
     setIsSubmitting(false);
-  }, [token, currentExercise, currentSet, pendingResults, completeSet, initAudio]);
+  }, [token, currentExercise, currentSet, currentSetIndex, pendingResults, completeSet, initAudio]);
 
   const handleResultChange = useCallback(
     (value: { reps: number; weight: number }) => {
       if (currentExercise) {
-        updatePendingResult(currentExercise.id, value);
+        // Pass setIndex to store result with the correct key
+        updatePendingResult(currentExercise.id, currentSetIndex, value);
       }
     },
-    [currentExercise, updatePendingResult]
+    [currentExercise, currentSetIndex, updatePendingResult]
   );
 
   const handleSupersetResultChange = useCallback(
     (exerciseId: string, value: { reps: number; weight: number }) => {
-      updatePendingResult(exerciseId, value);
+      // Pass setIndex to store result with the correct key
+      updatePendingResult(exerciseId, currentSetIndex, value);
     },
-    [updatePendingResult]
+    [currentSetIndex, updatePendingResult]
   );
 
   const handleSkipExercise = useCallback(async () => {
@@ -661,7 +664,8 @@ export default function SessionPage({ params }: SessionPageProps) {
   const buildSupersetExercisesData = () => {
     return supersetExerciseIds.map((exId) => {
       const ex = session.exercises.find((e) => e.id === exId);
-      const pending = pendingResults.get(exId);
+      // Key includes setIndex to get the correct pending result
+      const pending = pendingResults.get(`${exId}-${currentSetIndex}`);
       const set = ex?.sets[currentSetIndex];
       return {
         id: exId,
@@ -765,7 +769,8 @@ export default function SessionPage({ params }: SessionPageProps) {
 
     if (!currentExercise || !currentSet) return null;
 
-    const defaultResult = pendingResults.get(currentExercise.id) || {
+    // Key includes setIndex to get the correct pending result
+    const defaultResult = pendingResults.get(`${currentExercise.id}-${currentSetIndex}`) || {
       reps: currentSet.targetReps,
       weight: currentSet.targetWeight || 0,
     };

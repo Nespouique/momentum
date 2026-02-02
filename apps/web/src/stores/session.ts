@@ -125,7 +125,7 @@ interface SessionState {
   substituteExercise: (token: string, newExerciseId: string) => Promise<void>;
   abandonSession: (token: string) => Promise<void>;
   completeSession: (token: string, notes?: string) => Promise<void>;
-  updatePendingResult: (exerciseId: string, result: PendingResult) => void;
+  updatePendingResult: (exerciseId: string, setIndex: number, result: PendingResult) => void;
   pauseTimer: () => void;
   resumeTimer: () => void;
   tick: () => void;
@@ -628,8 +628,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
       if (isLastInSuperset) {
         // Store result for later (rest screen will follow)
+        // Key includes setIndex to avoid pollution between sets
         const newPendingResults = new Map(state.pendingResults);
-        newPendingResults.set(exercise.id, result);
+        newPendingResults.set(`${exercise.id}-${state.currentSetIndex}`, result);
         set({ pendingResults: newPendingResults });
 
         if (isLastRound) {
@@ -727,8 +728,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       }
     } else {
       // Standard exercise logic - always goes to rest screen, so store result for later
+      // Key includes setIndex to avoid pollution between sets
       const newPendingResults = new Map(state.pendingResults);
-      newPendingResults.set(exercise.id, result);
+      newPendingResults.set(`${exercise.id}-${state.currentSetIndex}`, result);
       set({ pendingResults: newPendingResults });
 
       const totalSets = exercise.sets.length;
@@ -829,8 +831,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     clearRestState();
 
     // Record the set result to API (if we have pending results)
+    // Key includes setIndex to match the key used when storing
     if (state.session && state.token && currentExercise && currentSet) {
-      const pendingResult = state.pendingResults.get(currentExercise.id);
+      const pendingResultKey = `${currentExercise.id}-${state.currentSetIndex}`;
+      const pendingResult = state.pendingResults.get(pendingResultKey);
       if (pendingResult) {
         try {
           await apiRecordSetResult(state.token, state.session.id, currentExercise.id, {
@@ -854,9 +858,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             return ex;
           });
 
-          // Clear pending result for this exercise
+          // Clear pending result for this exercise+set
           const newPendingResults = new Map(state.pendingResults);
-          newPendingResults.delete(currentExercise.id);
+          newPendingResults.delete(pendingResultKey);
 
           set({
             session: { ...state.session, exercises: updatedExercises },
@@ -1255,10 +1259,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
-  updatePendingResult: (exerciseId: string, result: PendingResult) => {
+  updatePendingResult: (exerciseId: string, setIndex: number, result: PendingResult) => {
     const state = get();
     const newPending = new Map(state.pendingResults);
-    newPending.set(exerciseId, result);
+    // Key includes setIndex to avoid pollution between sets
+    newPending.set(`${exerciseId}-${setIndex}`, result);
     set({ pendingResults: newPending });
   },
 
