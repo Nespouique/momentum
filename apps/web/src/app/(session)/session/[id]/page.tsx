@@ -163,6 +163,10 @@ export default function SessionPage({ params }: SessionPageProps) {
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
+        // User is back — cancel any pending notifications (SW + page setTimeout)
+        // to avoid a duplicate alert firing after they've already returned
+        cancelScheduledNotification();
+
         // Check rest state BEFORE tick (tick calls skipRest which clears restEndAt)
         const state = useSessionStore.getState();
         const restEndedWhileAway =
@@ -180,7 +184,7 @@ export default function SessionPage({ params }: SessionPageProps) {
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [session, tick, playCountdownBeep]);
+  }, [session, tick, playCountdownBeep, cancelScheduledNotification]);
 
   // Fetch progression suggestions when entering summary screen
   useEffect(() => {
