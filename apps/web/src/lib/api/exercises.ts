@@ -181,6 +181,39 @@ export async function deleteExercise(
   return handleResponse<void>(response);
 }
 
+// Exercise stats types
+export interface ExerciseSessionData {
+  sessionId: string;
+  completedAt: string;
+  bestE1RM: number;
+  totalVolume: number;
+  maxWeight: number;
+  repsAtMaxWeight: number;
+}
+
+export interface PracticedExercise {
+  exerciseId: string;
+  exerciseName: string;
+  muscleGroups: string[];
+  sessions: ExerciseSessionData[];
+}
+
+export interface ExerciseStatsResponse {
+  data: PracticedExercise[];
+}
+
+export async function getExerciseStats(
+  token: string
+): Promise<ExerciseStatsResponse> {
+  const response = await fetch(`${API_URL}/exercises/stats`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return handleResponse<ExerciseStatsResponse>(response);
+}
+
 export async function getExerciseLastPerformance(
   token: string,
   exerciseId: string

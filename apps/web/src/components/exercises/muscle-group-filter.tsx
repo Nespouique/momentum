@@ -12,9 +12,15 @@ import {
 interface MuscleGroupFilterProps {
   selected: MuscleGroup[];
   onChange: (groups: MuscleGroup[]) => void;
+  /** If provided, only show these muscle groups instead of all */
+  availableGroups?: Set<string>;
 }
 
-export function MuscleGroupFilter({ selected, onChange }: MuscleGroupFilterProps) {
+export function MuscleGroupFilter({ selected, onChange, availableGroups }: MuscleGroupFilterProps) {
+  const groups = availableGroups
+    ? MUSCLE_GROUPS.filter((g) => availableGroups.has(g))
+    : MUSCLE_GROUPS;
+
   return (
     <div className="overflow-x-auto scrollbar-hide md:overflow-visible">
       <ToggleGroup
@@ -23,7 +29,7 @@ export function MuscleGroupFilter({ selected, onChange }: MuscleGroupFilterProps
         onValueChange={(value) => onChange(value as MuscleGroup[])}
         className="flex gap-2 pb-2 md:flex-wrap md:justify-center w-max md:w-auto"
       >
-        {MUSCLE_GROUPS.map((group) => {
+        {groups.map((group) => {
           const isSelected = selected.includes(group);
           const colors = getMuscleGroupColors(group);
 

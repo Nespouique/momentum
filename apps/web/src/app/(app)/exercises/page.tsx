@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Plus, Search, X } from "lucide-react";
+import { BarChart3, Plus, Search, X } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout";
@@ -193,7 +194,16 @@ export default function ExercisesPage() {
   if (isLoading) {
     return (
       <div className="pb-24">
-        <PageHeader title="Exercices" />
+        <PageHeader
+        title="Exercices"
+        actions={
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/exercises/stats">
+              <BarChart3 className="h-5 w-5" />
+            </Link>
+          </Button>
+        }
+      />
         <div className="space-y-4">
           <div className="h-10 animate-pulse rounded-lg bg-secondary/50" />
           <div className="h-10 animate-pulse rounded-lg bg-secondary/50" />
@@ -209,7 +219,16 @@ export default function ExercisesPage() {
 
   return (
     <div className="pb-24">
-      <PageHeader title="Exercices" />
+      <PageHeader
+        title="Exercices"
+        actions={
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/exercises/stats">
+              <BarChart3 className="h-5 w-5" />
+            </Link>
+          </Button>
+        }
+      />
 
       {/* Search bar */}
       <div className="relative mb-4">

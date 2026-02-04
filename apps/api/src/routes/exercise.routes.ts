@@ -34,6 +34,135 @@ router.get("/muscle-groups", (_req, res: Response) => {
 // All other exercise routes require authentication
 router.use(authMiddleware);
 
+// GET /exercises/stats - Get exercise statistics for charts (all practiced exercises)
+router.get("/stats", async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+
+    // Fetch all completed session exercises with their completed sets
+    // in a single query, grouped by exercise
+    const sessionExercises = await prisma.sessionExercise.findMany({
+      where: {
+        session: {
+          userId,
+          status: "completed",
+        },
+        status: { notIn: ["substituted", "skipped"] },
+        sets: {
+          some: {
+            actualReps: { not: null },
+            actualWeight: { not: null },
+          },
+        },
+      },
+      select: {
+        exerciseId: true,
+        exercise: {
+          select: { id: true, name: true, muscleGroups: true },
+        },
+        session: {
+          select: { id: true, completedAt: true },
+        },
+        sets: {
+          where: {
+            actualReps: { not: null },
+            actualWeight: { not: null },
+          },
+          select: {
+            actualReps: true,
+            actualWeight: true,
+          },
+        },
+      },
+      orderBy: {
+        session: { completedAt: "asc" },
+      },
+    });
+
+    // Group by exercise and compute per-session metrics
+    const exerciseMap = new Map<
+      string,
+      {
+        exerciseId: string;
+        exerciseName: string;
+        muscleGroups: string[];
+        sessions: Array<{
+          sessionId: string;
+          completedAt: string;
+          bestE1RM: number;
+          totalVolume: number;
+          maxWeight: number;
+          repsAtMaxWeight: number;
+        }>;
+      }
+    >();
+
+    for (const se of sessionExercises) {
+      if (!se.session.completedAt) continue;
+
+      const key = se.exerciseId;
+      if (!exerciseMap.has(key)) {
+        exerciseMap.set(key, {
+          exerciseId: se.exercise.id,
+          exerciseName: se.exercise.name,
+          muscleGroups: se.exercise.muscleGroups,
+          sessions: [],
+        });
+      }
+
+      // Calculate metrics from sets
+      let bestE1RM = 0;
+      let totalVolume = 0;
+      let maxWeight = 0;
+      let repsAtMaxWeight = 0;
+
+      for (const set of se.sets) {
+        const weight = set.actualWeight!;
+        const reps = set.actualReps!;
+
+        // E1RM (Epley formula)
+        const e1rm = weight * (1 + reps / 30);
+        if (e1rm > bestE1RM) {
+          bestE1RM = e1rm;
+        }
+
+        // Volume
+        totalVolume += weight * reps;
+
+        // Max weight
+        if (weight > maxWeight) {
+          maxWeight = weight;
+          repsAtMaxWeight = reps;
+        }
+      }
+
+      exerciseMap.get(key)!.sessions.push({
+        sessionId: se.session.id,
+        completedAt: se.session.completedAt.toISOString(),
+        bestE1RM: Math.round(bestE1RM * 10) / 10,
+        totalVolume: Math.round(totalVolume * 10) / 10,
+        maxWeight,
+        repsAtMaxWeight,
+      });
+    }
+
+    // Convert map to sorted array
+    const exercises = Array.from(exerciseMap.values()).sort((a, b) =>
+      a.exerciseName.localeCompare(b.exerciseName, "fr")
+    );
+
+    return res.json({ data: exercises });
+  } catch (error) {
+    console.error("Get exercise stats error:", error);
+    return res.status(500).json({
+      error: {
+        code: ErrorCodes.INTERNAL_ERROR,
+        message: "An unexpected error occurred",
+      },
+    });
+  }
+});
+
 // GET /exercises - List all exercises (shared library)
 router.get("/", async (req: AuthRequest, res: Response) => {
   try {
