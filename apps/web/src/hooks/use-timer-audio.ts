@@ -3,17 +3,29 @@
 import { useRef, useCallback, useEffect } from "react";
 
 /**
+ * Send a message to the active service worker.
+ */
+function postToServiceWorker(message: Record<string, unknown>) {
+  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage(message);
+  }
+}
+
+/**
  * Send a notification via Service Worker (works on mobile Chrome)
  * with fallback to new Notification() for desktop browsers.
+ * Uses renotify: true to ensure a new alert even when replacing a same-tag notification.
  */
 function sendNotification(title: string, options?: NotificationOptions) {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+  const opts = { ...options, renotify: true };
 
   // Prefer Service Worker registration (required for Android Chrome)
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.ready
       .then((reg) => {
-        reg.showNotification(title, options);
+        reg.showNotification(title, opts);
       })
       .catch(() => {
         // Fallback to standard Notification API (desktop)
@@ -106,8 +118,9 @@ export function useTimerAudio() {
 
   /**
    * Schedule a notification to fire at a specific timestamp.
-   * Uses setTimeout so the browser has a single scheduled callback
-   * (better chance to fire in background than relying on setInterval ticks).
+   * Two mechanisms for reliability on mobile:
+   *   1. setTimeout in page context (works when tab stays alive)
+   *   2. Service Worker postMessage + waitUntil (survives tab throttling)
    */
   const scheduleNotification = useCallback((restEndAt: number) => {
     // Clear any previous scheduled notification
@@ -119,11 +132,21 @@ export function useTimerAudio() {
     const delay = restEndAt - Date.now();
     if (delay <= 0) return;
 
+    // Primary: schedule via Service Worker (more reliable when backgrounded)
+    postToServiceWorker({
+      type: "SCHEDULE_NOTIFICATION",
+      restEndAt,
+      title: "Repos terminé !",
+      body: "C'est reparti !",
+    });
+
+    // Backup: page-context setTimeout (fires if SW is unavailable)
     scheduledNotifRef.current = setTimeout(() => {
       scheduledNotifRef.current = null;
-      // Only send notification if the tab is still hidden (user hasn't come back)
+      // Only send from page if the tab is hidden (SW handles background case,
+      // but SW might not be available on all browsers)
       if (typeof document !== "undefined" && document.hidden) {
-        sendNotification("Repos termine !", {
+        sendNotification("Repos terminé !", {
           body: "C'est reparti !",
           tag: "momentum-timer",
           requireInteraction: false,
@@ -138,6 +161,8 @@ export function useTimerAudio() {
       clearTimeout(scheduledNotifRef.current);
       scheduledNotifRef.current = null;
     }
+    // Also cancel in the Service Worker
+    postToServiceWorker({ type: "CANCEL_NOTIFICATION" });
   }, []);
 
   // Cleanup on unmount
@@ -149,6 +174,7 @@ export function useTimerAudio() {
       if (scheduledNotifRef.current) {
         clearTimeout(scheduledNotifRef.current);
       }
+      postToServiceWorker({ type: "CANCEL_NOTIFICATION" });
     };
   }, []);
 

@@ -163,11 +163,16 @@ export default function SessionPage({ params }: SessionPageProps) {
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        // User came back - tick immediately to sync timer state
-        tick();
-        // If rest just ended while backgrounded, play the completion sound
+        // Check rest state BEFORE tick (tick calls skipRest which clears restEndAt)
         const state = useSessionStore.getState();
-        if (state.isResting && state.restEndAt && state.restEndAt <= Date.now()) {
+        const restEndedWhileAway =
+          state.isResting && state.restEndAt && state.restEndAt <= Date.now();
+
+        // Tick to sync timer state (may call skipRest and transition screens)
+        tick();
+
+        // Play completion sound if rest ended while backgrounded
+        if (restEndedWhileAway) {
           playCountdownBeep(0);
         }
       }
