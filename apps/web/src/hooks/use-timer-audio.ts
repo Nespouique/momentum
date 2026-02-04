@@ -4,10 +4,14 @@ import { useRef, useCallback, useEffect } from "react";
 
 /**
  * Send a message to the active service worker.
+ * Uses navigator.serviceWorker.ready (waits for SW to be active)
+ * instead of .controller (which is null on first load).
  */
 function postToServiceWorker(message: Record<string, unknown>) {
-  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage(message);
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.ready
+      .then((reg) => reg.active?.postMessage(message))
+      .catch(() => {});
   }
 }
 
@@ -58,9 +62,9 @@ export function useTimerAudio() {
           window.webkitAudioContext)();
         isInitializedRef.current = true;
 
-        // Request notification permission for background alerts
+        // Request notification permission (await it so permission is granted before first rest)
         if ("Notification" in window && Notification.permission === "default") {
-          Notification.requestPermission();
+          Notification.requestPermission().catch(() => {});
         }
       } catch (e) {
         console.warn("Failed to initialize AudioContext:", e);
@@ -140,18 +144,15 @@ export function useTimerAudio() {
       body: "C'est reparti !",
     });
 
-    // Backup: page-context setTimeout (fires if SW is unavailable)
+    // Backup: page-context setTimeout (fires if SW didn't handle it)
+    // No document.hidden check — tag "momentum-timer" + renotify deduplicates with SW notification
     scheduledNotifRef.current = setTimeout(() => {
       scheduledNotifRef.current = null;
-      // Only send from page if the tab is hidden (SW handles background case,
-      // but SW might not be available on all browsers)
-      if (typeof document !== "undefined" && document.hidden) {
-        sendNotification("Repos terminé !", {
-          body: "C'est reparti !",
-          tag: "momentum-timer",
-          requireInteraction: false,
-        });
-      }
+      sendNotification("Repos terminé !", {
+        body: "C'est reparti !",
+        tag: "momentum-timer",
+        requireInteraction: false,
+      });
     }, delay);
   }, []);
 

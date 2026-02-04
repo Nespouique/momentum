@@ -1,26 +1,39 @@
 // Service worker for Momentum
-// Handles notifications (including scheduled rest timer notifications) and click events
+// Handles scheduled rest timer notifications and notification clicks
 
 let scheduledTimer = null;
+let scheduledResolve = null;
+
+// Activate immediately — don't wait for old tabs to close
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
 
 // Schedule a notification to fire at a specific timestamp
-// Uses event.waitUntil to keep the SW alive until the notification fires
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SCHEDULE_NOTIFICATION") {
     // Clear any previous scheduled notification
     if (scheduledTimer) {
       clearTimeout(scheduledTimer);
       scheduledTimer = null;
+      // Resolve previous waitUntil promise so it doesn't block
+      if (scheduledResolve) {
+        scheduledResolve();
+        scheduledResolve = null;
+      }
     }
 
     const delay = event.data.restEndAt - Date.now();
     if (delay <= 0) return;
 
-    // waitUntil keeps the service worker alive until the promise resolves
+    // waitUntil keeps the service worker alive until the notification fires
     event.waitUntil(
       new Promise((resolve) => {
+        scheduledResolve = resolve;
         scheduledTimer = setTimeout(() => {
           scheduledTimer = null;
+          scheduledResolve = null;
           self.registration
             .showNotification(event.data.title || "Repos terminé !", {
               body: event.data.body || "C'est reparti !",
@@ -36,6 +49,10 @@ self.addEventListener("message", (event) => {
     if (scheduledTimer) {
       clearTimeout(scheduledTimer);
       scheduledTimer = null;
+      if (scheduledResolve) {
+        scheduledResolve();
+        scheduledResolve = null;
+      }
     }
   }
 });
@@ -43,16 +60,13 @@ self.addEventListener("message", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  // Focus or open the app when notification is clicked
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      // Focus existing window if available
       for (const client of clients) {
         if (client.url.includes(self.location.origin) && "focus" in client) {
           return client.focus();
         }
       }
-      // Otherwise open a new window
       return self.clients.openWindow("/");
     })
   );
