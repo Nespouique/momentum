@@ -145,13 +145,17 @@ export default function SessionPage({ params }: SessionPageProps) {
   }, [restTimeRemaining, restDuration, playCountdownBeep]);
 
   // Schedule background notification when rest starts (reliable on mobile)
+  // Do NOT cancel in the else branch — cancellation causes a race condition
+  // where the notification is cleared before the setTimeout callback fires.
+  // The notification is cancelled either:
+  //   - by scheduleNotification() itself when a new rest starts (clears previous timeout)
+  //   - by handleSkipRest() when the user manually skips rest
+  //   - by the useTimerAudio cleanup on unmount
   useEffect(() => {
     if (isResting && restEndAt) {
       scheduleNotification(restEndAt);
-    } else {
-      cancelScheduledNotification();
     }
-  }, [isResting, restEndAt, scheduleNotification, cancelScheduledNotification]);
+  }, [isResting, restEndAt, scheduleNotification]);
 
   // Catch-up on visibilitychange: play sound + tick when user returns to the tab
   useEffect(() => {
@@ -210,6 +214,12 @@ export default function SessionPage({ params }: SessionPageProps) {
   const nextSet = getNextSet();
   const nextExercise = getNextExercise();
   const activeExercises = getActiveExercises();
+
+  // Manual skip: cancel scheduled notification before skipping rest
+  const handleSkipRest = useCallback(() => {
+    cancelScheduledNotification();
+    skipRest();
+  }, [cancelScheduledNotification, skipRest]);
 
   // Handlers
   const handleCompleteSet = useCallback(async () => {
@@ -859,7 +869,7 @@ export default function SessionPage({ params }: SessionPageProps) {
             restDuration={restDuration}
             restTimeRemaining={restTimeRemaining}
             onTimerComplete={skipRest}
-            onSkip={skipRest}
+            onSkip={handleSkipRest}
             onAdjust={adjustRestTime}
             exerciseName={currentExercise.exercise.name}
             setNumber={currentSetIndex + 1}
@@ -895,7 +905,7 @@ export default function SessionPage({ params }: SessionPageProps) {
             restDuration={restDuration}
             restTimeRemaining={restTimeRemaining}
             onTimerComplete={skipRest}
-            onSkip={skipRest}
+            onSkip={handleSkipRest}
             onAdjust={adjustRestTime}
             lastSetNumber={currentExercise.sets.length}
             targetReps={currentSet.targetReps}
@@ -947,7 +957,7 @@ export default function SessionPage({ params }: SessionPageProps) {
             restDuration={restDuration}
             restTimeRemaining={restTimeRemaining}
             onTimerComplete={skipRest}
-            onSkip={skipRest}
+            onSkip={handleSkipRest}
             onAdjust={adjustRestTime}
             exercises={buildSupersetExercisesData()}
             onSupersetResultChange={handleSupersetResultChange}
@@ -980,7 +990,7 @@ export default function SessionPage({ params }: SessionPageProps) {
             restDuration={restDuration}
             restTimeRemaining={restTimeRemaining}
             onTimerComplete={skipRest}
-            onSkip={skipRest}
+            onSkip={handleSkipRest}
             onAdjust={adjustRestTime}
             exercises={buildSupersetExercisesData()}
             onSupersetResultChange={handleSupersetResultChange}

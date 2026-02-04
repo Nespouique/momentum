@@ -7,7 +7,7 @@ const publicRoutes = ["/login", "/register"];
 // Routes that should redirect to home if authenticated
 const authRoutes = ["/login", "/register"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Check for auth token in cookies or localStorage isn't accessible in middleware

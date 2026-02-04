@@ -406,9 +406,6 @@ export default function ExerciseStatsPage() {
       {/* Prompt when no exercise selected */}
       {!selectedExerciseId && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-[var(--accent-orange)]/20 to-transparent border border-[var(--accent-orange)]/20">
-            <Dumbbell className="h-8 w-8 text-[var(--accent-orange)]" />
-          </div>
           <h3 className="mb-2 text-lg font-semibold">Choisissez un exercice</h3>
           <p className="max-w-xs text-sm text-muted-foreground">
             Sélectionnez un exercice ci-dessus pour voir son évolution.

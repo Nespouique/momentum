@@ -97,15 +97,8 @@ export function useTimerAudio() {
         // Double long beep at 0 seconds
         playBeep(880, 300);
         setTimeout(() => playBeep(880, 300), 350);
-
-        // Send notification if app is in background (for mobile/PWA)
-        if (typeof document !== "undefined" && document.hidden) {
-          sendNotification("Repos termine !", {
-            body: "C'est reparti !",
-            tag: "momentum-timer",
-            requireInteraction: false,
-          });
-        }
+        // Background notification is handled by scheduleNotification() in the page
+        // (no inline notification here to avoid late duplicates on mobile)
       }
     },
     [playBeep]
