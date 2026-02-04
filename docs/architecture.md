@@ -2676,6 +2676,14 @@ momentum/
 │   ├── api.Dockerfile
 │   └── docker-compose.yml
 │
+├── scripts/                           # Migration & utility scripts
+│   ├── hercules-import-exercises.ts   # Epic 4.1: Import exercises from Hercules
+│   ├── hercules-import-workouts.ts    # Epic 4.2: Import workout programs
+│   ├── hercules-import-history.ts     # Epic 4.3: Import session history
+│   ├── hercules-import-measurements.ts # Epic 4.4: Import body measurements
+│   ├── hercules-exercise-mapping.json # Generated: Hercules→Momentum exercise IDs
+│   └── hercules-workout-mapping.json  # Generated: Hercules→Momentum workout IDs
+│
 ├── .env.example
 ├── package.json                      # Workspace root
 ├── tsconfig.base.json
@@ -2761,6 +2769,39 @@ NEXT_PUBLIC_API_URL=http://localhost:3001/api
   }
 }
 ```
+
+### 12.5 Hercules Migration Scripts
+
+Scripts CLI pour migrer les données depuis l'application Android Hercules (SQLite) vers Momentum (PostgreSQL). Chaque script est idempotent et peut être relancé sans créer de doublons.
+
+**Prérequis:** `sql.js` et `pg` (déjà dans les devDependencies)
+
+```bash
+# 1. Import des exercices (génère le mapping exercise IDs)
+npx tsx scripts/hercules-import-exercises.ts
+
+# 2. Import des programmes (génère le mapping workout IDs)
+npx tsx scripts/hercules-import-workouts.ts
+
+# 3. Import de l'historique des séances (utilise les 2 mappings)
+npx tsx scripts/hercules-import-history.ts
+
+# 4. Import des mensurations
+npx tsx scripts/hercules-import-measurements.ts
+```
+
+Par défaut, les scripts se connectent à la base dev (`localhost:5432`). Pour la production :
+```bash
+DATABASE_URL="postgresql://momentum:****@192.168.1.197:5432/momentum" npx tsx scripts/hercules-import-history.ts
+```
+
+**Données migrées :**
+| Script | Données | Volume |
+|--------|---------|--------|
+| `hercules-import-exercises.ts` | Exercices | 21 mappés |
+| `hercules-import-workouts.ts` | Programmes + supersets | 5 workouts, 87 sets |
+| `hercules-import-history.ts` | Historique séances | 125 sessions, 2121 sets |
+| `hercules-import-measurements.ts` | Mensurations corporelles | 2 enregistrements |
 
 ---
 

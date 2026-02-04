@@ -1,0 +1,149 @@
+{
+  "33": {
+    "herculesId": "33",
+    "herculesName": "Curl incliné haltères supination",
+    "momentumId": "d9946c7e-4fa8-4e30-b09e-348cc68d3156",
+    "momentumName": "Curl incliné",
+    "action": "mapped"
+  },
+  "35": {
+    "herculesId": "35",
+    "herculesName": "Curl concentré supination",
+    "momentumId": "766a5128-7848-47e3-8994-58351a593cbe",
+    "momentumName": "Curl concentré",
+    "action": "mapped"
+  },
+  "66": {
+    "herculesId": "66",
+    "herculesName": "Tirage horizontal prise neutre serrée",
+    "momentumId": "748587f6-eafc-480e-be08-f417326e2605",
+    "momentumName": "Tirage horizontal",
+    "action": "mapped"
+  },
+  "69": {
+    "herculesId": "69",
+    "herculesName": "Tirage poitrine prise large",
+    "momentumId": "ff723dc6-97ab-435d-b403-2c5b8c6b93ae",
+    "momentumName": "Tirage vertical",
+    "action": "mapped"
+  },
+  "71": {
+    "herculesId": "71",
+    "herculesName": "Tractions poitrine prise large",
+    "momentumId": "2ec228c3-95da-4c1b-8a1a-c91cd9ebb63a",
+    "momentumName": "Tractions",
+    "action": "mapped"
+  },
+  "88": {
+    "herculesId": "88",
+    "herculesName": "Élévations latérales avec haltères",
+    "momentumId": "f3a591ae-a341-4863-9359-c5ac4b5985e4",
+    "momentumName": "Élévations latérales",
+    "action": "mapped"
+  },
+  "134": {
+    "herculesId": "134",
+    "herculesName": "Développé couché",
+    "momentumId": "a8b79144-5a2a-4702-aaac-ffbd153cf958",
+    "momentumName": "Développé couché barre",
+    "action": "mapped"
+  },
+  "143": {
+    "herculesId": "143",
+    "herculesName": "Écartés à la poulie vis-à-vis",
+    "momentumId": "984537c6-dc40-4759-9555-6499b1f14a0d",
+    "momentumName": "Cable fly",
+    "action": "mapped"
+  },
+  "174": {
+    "herculesId": "174",
+    "herculesName": "Triceps sur chaise",
+    "momentumId": "3b6b98be-190c-4bc7-a870-5c1135e64294",
+    "momentumName": "Dips à la machine",
+    "action": "mapped"
+  },
+  "197": {
+    "herculesId": "197",
+    "herculesName": "Curl Larry Scott à la barre",
+    "momentumId": "daf5bcbb-13b9-49fc-8405-e3305e6b25bb",
+    "momentumName": "Curl pupitre barre",
+    "action": "mapped"
+  },
+  "199": {
+    "herculesId": "199",
+    "herculesName": "Extension triceps poulie haute en pronation",
+    "momentumId": "743dc5ac-1fff-4653-89ef-33dd5086073e",
+    "momentumName": "Triceps poulie haute",
+    "action": "mapped"
+  },
+  "207": {
+    "herculesId": "207",
+    "herculesName": "Presse à buste",
+    "momentumId": "faecfc89-9cc8-42f1-b3b6-34321a201e1a",
+    "momentumName": "Chest press",
+    "action": "mapped"
+  },
+  "267": {
+    "herculesId": "267",
+    "herculesName": "Curl marteau alterné avec haltères",
+    "momentumId": "f4873731-7a7a-4c34-8807-7c0f45d1119f",
+    "momentumName": "Curl marteau",
+    "action": "mapped"
+  },
+  "270": {
+    "herculesId": "270",
+    "herculesName": "Split squat",
+    "momentumId": "fd7794e6-d82d-4b9b-b258-7b4b03460512",
+    "momentumName": "Split squat",
+    "action": "mapped"
+  },
+  "292": {
+    "herculesId": "292",
+    "herculesName": "Développé épaule à la machine",
+    "momentumId": "89de8d20-6b92-49fe-b8ec-2eb70936bbf0",
+    "momentumName": "Développé militaire à la machine",
+    "action": "mapped"
+  },
+  "305": {
+    "herculesId": "305",
+    "herculesName": "Curl jambe assis",
+    "momentumId": "ccbd5b14-b88e-446d-8086-0389e8d61dbe",
+    "momentumName": "Leg curl",
+    "action": "mapped"
+  },
+  "320": {
+    "herculesId": "320",
+    "herculesName": "Développé décliné à la machine",
+    "momentumId": "26290d48-fd8c-4125-ab14-39ebc5333590",
+    "momentumName": "Declined chest press",
+    "action": "mapped"
+  },
+  "4611686018427387927": {
+    "herculesId": "4611686018427387927",
+    "herculesName": "Arrière Épaules",
+    "momentumId": "8d46a4d5-2bd8-4bce-967e-674698c02fdd",
+    "momentumName": "Oiseau à la poulie",
+    "action": "mapped"
+  },
+  "4611686018427387903": {
+    "herculesId": "4611686018427387903",
+    "herculesName": "Hip thrust",
+    "momentumId": "4737e683-e76e-41b3-871f-55aec2d55a30",
+    "momentumName": "Hip thrust",
+    "action": "mapped"
+  },
+  "4611686018427387923": {
+    "herculesId": "4611686018427387923",
+    "herculesName": "Side épaule coiffe",
+    "momentumId": "ec002e45-d5fb-4830-b03c-6c339193db59",
+    "momentumName": "Rotation externe épaule",
+    "action": "mapped"
+  },
+  "4611686018427387922": {
+    "herculesId": "4611686018427387922",
+    "herculesName": "Tirage sous horizontal",
+    "momentumId": "53669660-21f9-4a97-87db-385508973c8c",
+    "momentumName": "Tirage sous horizontal",
+    "action": "mapped"
+  }
+}

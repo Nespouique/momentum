@@ -243,6 +243,9 @@ momentum/
 ### Epic 3: Daily Tracking & Gamification
 **Goal:** Créer le dashboard "Today", la configuration des éléments à tracker, et le système de gamification (streaks, pourcentages, objectifs mensuels).
 
+### Epic 4: Migration Hercules → Momentum ✅
+**Goal:** Migrer l'intégralité des données depuis l'application Hercules (exercices, programmes, historique des séances, mensurations) via des scripts CLI idempotents.
+
 ---
 
 ## Epic 1: Foundation & Infrastructure
@@ -644,6 +647,46 @@ Créer le système de tracking quotidien personnalisable et le dashboard "Today"
 
 ---
 
+## Epic 4: Migration Hercules → Momentum ✅
+
+**Expanded Goal:**
+Migrer l'intégralité des données d'entraînement depuis l'application Android Hercules vers Momentum. La migration couvre les exercices, programmes d'entraînement (avec supersets), l'historique complet des séances (520 performances → 125 sessions), et les mensurations corporelles. Chaque étape est réalisée via un script CLI TypeScript idempotent qui lit la base SQLite Hercules et écrit dans PostgreSQL.
+
+**Source de données:** `docs/features/Hercule_18-01-2026_19h33m23s_v34.db` (SQLite)
+
+### Story 4.1: Import des exercices ✅
+
+**Status:** Completed
+**Script:** `scripts/hercules-import-exercises.ts`
+
+21 exercices mappés (13 créés + 8 existants), 3 ignorés (étirements/rééducation).
+Génère `scripts/hercules-exercise-mapping.json`.
+
+### Story 4.2: Import des programmes (Workouts) ✅
+
+**Status:** Completed
+**Script:** `scripts/hercules-import-workouts.ts`
+
+5 workouts créés (Bras, Fessiers, Pecs, Dos, Épaules) avec 19 WorkoutItems (incluant 2 supersets), 21 WorkoutItemExercises, 87 WorkoutSets.
+Génère `scripts/hercules-workout-mapping.json`.
+
+### Story 4.3: Import de l'historique des séances ✅
+
+**Status:** Completed
+**Script:** `scripts/hercules-import-history.ts`
+
+125 sessions importées (période 28/02/2024 → 04/01/2026), 508 exercices, 2121 sets.
+4 performances avec écarts ignorées, 20 notes de session importées.
+
+### Story 4.4: Import des mensurations ✅
+
+**Status:** Completed
+**Script:** `scripts/hercules-import-measurements.ts`
+
+2 mensurations importées (28/04/2024, 16/06/2024) avec 18 champs chacune.
+
+---
+
 ## Checklist Results Report
 
 ### Executive Summary
@@ -663,7 +706,7 @@ Créer le système de tracking quotidien personnalisable et le dashboard "Today"
 | 3. User Experience Requirements | PARTIAL | Screens defined, detailed flows for UX Expert |
 | 4. Functional Requirements | PASS | 23 FR clear and testable |
 | 5. Non-Functional Requirements | PASS | 12 NFR covering all aspects |
-| 6. Epic & Story Structure | PASS | 3 epics, 22 stories, proper sequencing |
+| 6. Epic & Story Structure | PASS | 4 epics (3 feature + 1 migration), 26 stories, proper sequencing |
 | 7. Technical Guidance | PASS | Complete stack, clear constraints |
 | 8. Cross-Functional Requirements | PARTIAL | Conceptual DB schema, integrations identified |
 | 9. Clarity & Communication | PASS | Well-structured document |

@@ -1,0 +1,42 @@
+{
+  "4611686018427387932": {
+    "herculesId": "4611686018427387932",
+    "herculesName": "Bras",
+    "momentumId": "4e88da78-6d55-4c0f-b656-3f195da5972f",
+    "momentumName": "Bras",
+    "itemCount": 4,
+    "exerciseCount": 0
+  },
+  "4611686018427387933": {
+    "herculesId": "4611686018427387933",
+    "herculesName": "Fessiers",
+    "momentumId": "3fb6efe7-dcf2-4c4b-b55f-be8d210aa760",
+    "momentumName": "Fessiers",
+    "itemCount": 3,
+    "exerciseCount": 0
+  },
+  "4611686018427387931": {
+    "herculesId": "4611686018427387931",
+    "herculesName": "Pecs",
+    "momentumId": "7b40fa34-ac25-4ccf-b477-a8501ed3332f",
+    "momentumName": "Pecs (Hercules)",
+    "itemCount": 4,
+    "exerciseCount": 0
+  },
+  "4611686018427387930": {
+    "herculesId": "4611686018427387930",
+    "herculesName": "Séance dos",
+    "momentumId": "6bcba9cf-d22e-4c96-a176-95379b72b0c7",
+    "momentumName": "Dos",
+    "itemCount": 4,
+    "exerciseCount": 0
+  },
+  "4611686018427387935": {
+    "herculesId": "4611686018427387935",
+    "herculesName": "Épaules",
+    "momentumId": "e97e3d9a-5fa5-4386-91c1-192622ae2e92",
+    "momentumName": "Épaules",
+    "itemCount": 4,
+    "exerciseCount": 0
+  }
+}
