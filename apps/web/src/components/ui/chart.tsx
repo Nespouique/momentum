@@ -122,7 +122,7 @@ function ChartTooltipContent({
   nameKey,
   labelKey,
   ref,
-  ...props
+  ..._props
 }: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
   React.ComponentProps<"div"> & {
     hideLabel?: boolean
@@ -267,7 +267,7 @@ function ChartLegendContent({
   verticalAlign = "bottom",
   nameKey,
   ref,
-  ...props
+  ..._props
 }: React.ComponentProps<"div"> &
   Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
     hideIcon?: boolean
