@@ -146,7 +146,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
           placeholder={placeholder?.toString()}
           className={cn(
             "min-w-0 flex-1 h-full bg-transparent px-2 py-1.5 text-center tabular-nums",
-            "focus:outline-none disabled:cursor-not-allowed"
+            "focus:outline-hidden disabled:cursor-not-allowed"
           )}
           {...props}
         />

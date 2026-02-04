@@ -37,10 +37,10 @@ export default function ProfilePage() {
 
       {/* User Header Card */}
       <div className="relative mb-8">
-        <div className="absolute inset-0 bg-gradient-to-b from-muted/30 to-transparent rounded-2xl" />
+        <div className="absolute inset-0 bg-linear-to-b from-muted/30 to-transparent rounded-2xl" />
         <div className="relative flex flex-col items-center py-8 px-4">
           <Avatar className="h-24 w-24 mb-4 ring-4 ring-background shadow-xl">
-            <AvatarFallback className="text-2xl font-semibold bg-gradient-to-br from-zinc-700 to-zinc-800 text-zinc-200">
+            <AvatarFallback className="text-2xl font-semibold bg-linear-to-br from-zinc-700 to-zinc-800 text-zinc-200">
               {getInitials(user.name)}
             </AvatarFallback>
           </Avatar>

@@ -187,8 +187,8 @@ export function RestScreen(props: RestScreenProps) {
       )}
 
       {/* Separator */}
-      <div className="flex items-center h-4 !mt-2 !mb-2">
-        <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent" />
+      <div className="flex items-center h-4 mt-2! mb-2!">
+        <div className="h-px w-full bg-linear-to-r from-transparent via-zinc-700 to-transparent" />
       </div>
 
       {/* Next set preview or end message */}

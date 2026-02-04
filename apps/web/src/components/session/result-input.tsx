@@ -154,7 +154,7 @@ export function ResultInput({
                 className={cn(
                   "text-center font-mono font-bold tabular-nums text-zinc-100",
                   "bg-zinc-800/80 border-x border-zinc-700/30",
-                  "outline-none focus:ring-1 focus:ring-zinc-500",
+                  "outline-hidden focus:ring-1 focus:ring-zinc-500",
                   "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
                   compact ? "h-10 w-12 text-xl" : "h-11 w-14 text-2xl"
                 )}
@@ -241,7 +241,7 @@ export function ResultInput({
                 className={cn(
                   "text-center font-mono font-bold tabular-nums text-zinc-100",
                   "bg-zinc-800/80 border-x border-zinc-700/30",
-                  "outline-none focus:ring-1 focus:ring-zinc-500",
+                  "outline-hidden focus:ring-1 focus:ring-zinc-500",
                   "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
                   compact ? "h-10 w-12 text-xl" : "h-11 w-14 text-2xl"
                 )}

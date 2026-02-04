@@ -73,7 +73,7 @@ export function ProgressionSuggestionCard({
         <div
           className={cn(
             "relative mx-3 mb-3 overflow-hidden rounded-lg",
-            "bg-gradient-to-br from-emerald-950/80 via-emerald-950/50 to-zinc-900/80",
+            "bg-linear-to-br from-emerald-950/80 via-emerald-950/50 to-zinc-900/80",
             "border border-emerald-500/30",
             "shadow-[0_0_15px_-3px_rgba(16,185,129,0.2)]",
             "transition-all duration-300",

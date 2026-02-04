@@ -347,7 +347,7 @@ export default function MeasurementFormPage() {
         </div>
 
         {/* Weight - Always visible */}
-        <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-4">
+        <div className="rounded-xl border border-primary/30 bg-linear-to-br from-primary/5 to-transparent p-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
               <Scale className="h-5 w-5 text-primary" />

@@ -70,14 +70,14 @@ const PERIODS: Period[] = [
 const chartConfigSingle: ChartConfig = {
   value: {
     label: "Valeur",
-    color: "hsl(var(--accent-orange))",
+    color: "var(--accent-orange)",
   },
 };
 
 const chartConfigBilateral: ChartConfig = {
   left: {
     label: "Gauche",
-    color: "hsl(var(--accent-orange))",
+    color: "var(--accent-orange)",
   },
   right: {
     label: "Droite",
@@ -142,7 +142,7 @@ function TrendCard({
   unit: string;
   color?: "orange" | "blue";
 }) {
-  const dotColor = color === "blue" ? "bg-[hsl(217_91%_60%)]" : "bg-[hsl(var(--accent-orange))]";
+  const dotColor = color === "blue" ? "bg-[hsl(217_91%_60%)]" : "bg-[var(--accent-orange)]";
   const changeColor = change > 0
     ? "text-emerald-400"
     : change < 0
@@ -372,7 +372,7 @@ export default function MeasurementsGraphsPage() {
           {MEASUREMENTS.map((m) => (
             <Button
               key={m.key}
-              variant={selectedMeasurement === m.key ? "default" : "outline"}
+              variant={selectedMeasurement === m.key ? "default" : "outline-solid"}
               size="sm"
               className={cn(
                 "h-10 text-sm font-medium transition-all justify-center",
@@ -389,8 +389,8 @@ export default function MeasurementsGraphsPage() {
       {/* Chart or Empty State */}
       {validChartData.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-border/40 bg-card">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[hsl(var(--accent-orange))]/20 to-transparent border border-[hsl(var(--accent-orange))]/20">
-            <ChartNoAxesCombined className="h-8 w-8 text-[hsl(var(--accent-orange))]" />
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-[var(--accent-orange)]/20 to-transparent border border-[var(--accent-orange)]/20">
+            <ChartNoAxesCombined className="h-8 w-8 text-[var(--accent-orange)]" />
           </div>
           <h3 className="mb-2 text-lg font-semibold">Aucune donnée</h3>
           <p className="max-w-xs text-sm text-muted-foreground">
@@ -423,14 +423,14 @@ export default function MeasurementsGraphsPage() {
                   <CartesianGrid
                     strokeDasharray="3 3"
                     vertical={false}
-                    stroke="hsl(var(--border))"
+                    stroke="var(--border)"
                     opacity={0.5}
                   />
                   <XAxis
                     dataKey="displayDate"
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                     tickMargin={8}
                   />
                   <YAxis
@@ -438,7 +438,7 @@ export default function MeasurementsGraphsPage() {
                     ticks={yAxisTicks}
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                     tickMargin={4}
                     width={50}
                   />
@@ -466,7 +466,7 @@ export default function MeasurementsGraphsPage() {
                         stroke="var(--color-left)"
                         strokeWidth={2.5}
                         dot={{ r: 4, fill: "var(--color-left)", strokeWidth: 0 }}
-                        activeDot={{ r: 6, fill: "var(--color-left)", strokeWidth: 2, stroke: "hsl(var(--background))" }}
+                        activeDot={{ r: 6, fill: "var(--color-left)", strokeWidth: 2, stroke: "var(--background)" }}
                         connectNulls
                       />
                       <Line
@@ -476,7 +476,7 @@ export default function MeasurementsGraphsPage() {
                         stroke="var(--color-right)"
                         strokeWidth={2.5}
                         dot={{ r: 4, fill: "var(--color-right)", strokeWidth: 0 }}
-                        activeDot={{ r: 6, fill: "var(--color-right)", strokeWidth: 2, stroke: "hsl(var(--background))" }}
+                        activeDot={{ r: 6, fill: "var(--color-right)", strokeWidth: 2, stroke: "var(--background)" }}
                         connectNulls
                       />
                     </>
@@ -488,7 +488,7 @@ export default function MeasurementsGraphsPage() {
                       stroke="var(--color-value)"
                       strokeWidth={2.5}
                       dot={{ r: 4, fill: "var(--color-value)", strokeWidth: 0 }}
-                      activeDot={{ r: 6, fill: "var(--color-value)", strokeWidth: 2, stroke: "hsl(var(--background))" }}
+                      activeDot={{ r: 6, fill: "var(--color-value)", strokeWidth: 2, stroke: "var(--background)" }}
                       connectNulls
                     />
                   )}
@@ -500,7 +500,7 @@ export default function MeasurementsGraphsPage() {
             {measurementDef?.bilateral && (
               <div className="flex justify-center gap-6 mt-3 pt-3 border-t border-border/30">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--accent-orange))]" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent-orange)]" />
                   <span className="text-xs text-muted-foreground">Gauche</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -518,7 +518,7 @@ export default function MeasurementsGraphsPage() {
                   variant={selectedPeriod === period.key ? "secondary" : "ghost"}
                   size="sm"
                   className={cn(
-                    "min-w-[3rem] h-8 text-xs",
+                    "min-w-12 h-8 text-xs",
                     selectedPeriod === period.key && "bg-secondary"
                   )}
                   onClick={() => setSelectedPeriod(period.key)}

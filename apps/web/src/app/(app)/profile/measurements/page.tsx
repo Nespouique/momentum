@@ -93,7 +93,7 @@ function StatCard({
   gap?: 1 | 2;
 }) {
   const colorClasses = {
-    orange: "from-[hsl(var(--accent-orange))]/20 to-transparent text-[hsl(var(--accent-orange))]",
+    orange: "from-[var(--accent-orange)]/20 to-transparent text-[var(--accent-orange)]",
     emerald: "from-emerald-500/20 to-transparent text-emerald-400",
     blue: "from-blue-500/20 to-transparent text-blue-400",
     zinc: "from-zinc-500/20 to-transparent text-zinc-400",
@@ -101,7 +101,7 @@ function StatCard({
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-border/40 bg-card p-4">
-      <div className={cn("absolute inset-0 bg-gradient-to-br opacity-50", colorClasses[accentColor].split(" ")[0])} />
+      <div className={cn("absolute inset-0 bg-linear-to-br opacity-50", colorClasses[accentColor].split(" ")[0])} />
       <div className="relative">
         <div className="flex items-center gap-2 mb-2">
           <Icon className={cn("h-4 w-4", colorClasses[accentColor].split(" ").slice(-1)[0])} />
@@ -251,7 +251,7 @@ function SectionHeader({ title }: { title: string }) {
       <h3 className="text-[11px] font-semibold uppercase tracking-wider text-primary">
         {title}
       </h3>
-      <div className="flex-1 h-px bg-gradient-to-r from-primary/30 to-transparent" />
+      <div className="flex-1 h-px bg-linear-to-r from-primary/30 to-transparent" />
     </div>
   );
 }

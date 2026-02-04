@@ -108,7 +108,7 @@ export function SessionOverviewScreen({
       </div>
 
       {/* Start button */}
-      <div className="sticky bottom-0 pt-4 bg-gradient-to-t from-zinc-950 via-zinc-950/95 to-transparent px-4 pb-2">
+      <div className="sticky bottom-0 pt-4 bg-linear-to-t from-zinc-950 via-zinc-950/95 to-transparent px-4 pb-2">
         <Button
           onClick={onStart}
           disabled={isSubmitting || items.length === 0}

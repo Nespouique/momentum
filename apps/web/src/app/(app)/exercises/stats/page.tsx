@@ -29,12 +29,22 @@ import {
 } from "@/components/ui/chart";
 import { useAuthStore } from "@/stores/auth";
 import {
+  getExercises,
   getExerciseStats,
+  type Exercise,
   type PracticedExercise,
   type ExerciseSessionData,
 } from "@/lib/api/exercises";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 
 // Types
 type MetricType = "e1rm" | "volume";
@@ -63,7 +73,7 @@ const PERIODS: Period[] = [
 const chartConfig: ChartConfig = {
   value: {
     label: "Valeur",
-    color: "hsl(var(--accent-orange))",
+    color: "var(--accent-orange)",
   },
 };
 
@@ -213,25 +223,38 @@ function ExerciseInfoCard({
 
 export default function ExerciseStatsPage() {
   const { token } = useAuthStore();
+  const [allExercises, setAllExercises] = useState<Exercise[]>([]);
   const [exercises, setExercises] = useState<PracticedExercise[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<MetricType>("e1rm");
   const [selectedPeriod, setSelectedPeriod] = useState("all");
 
+  // Sorted exercise names for combobox
+  const sortedExerciseNames = useMemo(
+    () =>
+      [...allExercises]
+        .sort((a, b) => a.name.localeCompare(b.name, "fr"))
+        .map((e) => e.name),
+    [allExercises]
+  );
+
+  // Selected exercise name for combobox value
+  const selectedExerciseName = useMemo(
+    () => allExercises.find((e) => e.id === selectedExerciseId)?.name ?? null,
+    [allExercises, selectedExerciseId]
+  );
+
   // Load data
   const loadData = useCallback(async () => {
     if (!token) return;
     try {
-      const data = await getExerciseStats(token);
-      setExercises(data.data);
-      // Select first exercise by default
-      if (data.data.length > 0) {
-        const sorted = [...data.data].sort((a, b) =>
-          a.exerciseName.localeCompare(b.exerciseName, "fr")
-        );
-        setSelectedExerciseId(sorted[0]!.exerciseId);
-      }
+      const [statsData, exercisesData] = await Promise.all([
+        getExerciseStats(token),
+        getExercises(token),
+      ]);
+      setExercises(statsData.data);
+      setAllExercises(exercisesData.data);
     } catch (error) {
       console.error("Failed to load exercise stats:", error);
       toast.error("Erreur lors du chargement des statistiques");
@@ -330,14 +353,14 @@ export default function ExerciseStatsPage() {
     );
   }
 
-  // No practiced exercises at all
-  if (exercises.length === 0) {
+  // No exercises at all
+  if (allExercises.length === 0) {
     return (
       <div className="pb-8">
         <PageHeader title="Évolution" showBack />
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[hsl(var(--accent-orange))]/20 to-transparent border border-[hsl(var(--accent-orange))]/20">
-            <ChartNoAxesCombined className="h-8 w-8 text-[hsl(var(--accent-orange))]" />
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-[var(--accent-orange)]/20 to-transparent border border-[var(--accent-orange)]/20">
+            <ChartNoAxesCombined className="h-8 w-8 text-[var(--accent-orange)]" />
           </div>
           <h3 className="mb-2 text-lg font-semibold">Aucune donnée</h3>
           <p className="max-w-xs text-sm text-muted-foreground">
@@ -352,10 +375,46 @@ export default function ExerciseStatsPage() {
     <div className="pb-8">
       <PageHeader title="Évolution" showBack />
 
-      {/* TODO: Exercise selector (Combobox) */}
-      <div className="mb-6 text-sm text-muted-foreground">
-        Exercice sélectionné : {selectedExercise?.exerciseName ?? "aucun"}
+      {/* Exercise selector */}
+      <div className="mb-6">
+        <Combobox
+          value={selectedExerciseName}
+          onValueChange={(name) => {
+            const ex = allExercises.find((e) => e.name === name);
+            setSelectedExerciseId(ex?.id ?? null);
+          }}
+          items={sortedExerciseNames}
+        >
+          <ComboboxInput
+            placeholder="Choisir un exercice..."
+            showClear
+            className="w-full"
+          />
+          <ComboboxContent>
+            <ComboboxEmpty>Aucun exercice trouvé.</ComboboxEmpty>
+            <ComboboxList>
+              {(item: string) => (
+                <ComboboxItem key={item} value={item}>
+                  {item}
+                </ComboboxItem>
+              )}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
       </div>
+
+      {/* Prompt when no exercise selected */}
+      {!selectedExerciseId && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-[var(--accent-orange)]/20 to-transparent border border-[var(--accent-orange)]/20">
+            <Dumbbell className="h-8 w-8 text-[var(--accent-orange)]" />
+          </div>
+          <h3 className="mb-2 text-lg font-semibold">Choisissez un exercice</h3>
+          <p className="max-w-xs text-sm text-muted-foreground">
+            Sélectionnez un exercice ci-dessus pour voir son évolution.
+          </p>
+        </div>
+      )}
 
       {/* Metric toggle (AC4) */}
       {selectedExercise && (
@@ -382,13 +441,23 @@ export default function ExerciseStatsPage() {
       {/* Chart or empty state (AC5) */}
       {selectedExercise && chartData.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-border/40 bg-card">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[hsl(var(--accent-orange))]/20 to-transparent border border-[hsl(var(--accent-orange))]/20">
-            <ChartNoAxesCombined className="h-8 w-8 text-[hsl(var(--accent-orange))]" />
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-[var(--accent-orange)]/20 to-transparent border border-[var(--accent-orange)]/20">
+            <ChartNoAxesCombined className="h-8 w-8 text-[var(--accent-orange)]" />
           </div>
           <h3 className="mb-2 text-lg font-semibold">Aucune donnée sur cette période</h3>
           <p className="max-w-xs text-sm text-muted-foreground">
             Aucune séance avec {selectedExercise.exerciseName}
             {selectedPeriod !== "all" && " sur cette période"}.
+          </p>
+        </div>
+      ) : selectedExerciseId && !selectedExercise ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-border/40 bg-card">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-[var(--accent-orange)]/20 to-transparent border border-[var(--accent-orange)]/20">
+            <ChartNoAxesCombined className="h-8 w-8 text-[var(--accent-orange)]" />
+          </div>
+          <h3 className="mb-2 text-lg font-semibold">Aucune donnée</h3>
+          <p className="max-w-xs text-sm text-muted-foreground">
+            Aucune séance enregistrée avec {selectedExerciseName}.
           </p>
         </div>
       ) : selectedExercise && chartData.length > 0 ? (
@@ -411,14 +480,14 @@ export default function ExerciseStatsPage() {
                   <CartesianGrid
                     strokeDasharray="3 3"
                     vertical={false}
-                    stroke="hsl(var(--border))"
+                    stroke="var(--border)"
                     opacity={0.5}
                   />
                   <XAxis
                     dataKey="displayDate"
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                     tickMargin={8}
                   />
                   <YAxis
@@ -426,7 +495,7 @@ export default function ExerciseStatsPage() {
                     ticks={yAxisTicks}
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                     tickMargin={4}
                     width={50}
                   />
@@ -461,7 +530,7 @@ export default function ExerciseStatsPage() {
                       r: 6,
                       fill: "var(--color-value)",
                       strokeWidth: 2,
-                      stroke: "hsl(var(--background))",
+                      stroke: "var(--background)",
                     }}
                     connectNulls
                   />
@@ -477,7 +546,7 @@ export default function ExerciseStatsPage() {
                   variant={selectedPeriod === period.key ? "secondary" : "ghost"}
                   size="sm"
                   className={cn(
-                    "min-w-[3rem] h-8 text-xs",
+                    "min-w-12 h-8 text-xs",
                     selectedPeriod === period.key && "bg-secondary"
                   )}
                   onClick={() => setSelectedPeriod(period.key)}

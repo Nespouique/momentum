@@ -224,7 +224,7 @@ export default function WorkoutsPage() {
       {/* Active session banner */}
       {activeSession && (
         <>
-          <div className="mb-6 flex items-center gap-3 py-3 border-l-2 border-primary pl-4 bg-gradient-to-r from-primary/5 to-transparent">
+          <div className="mb-6 flex items-center gap-3 py-3 border-l-2 border-primary pl-4 bg-linear-to-r from-primary/5 to-transparent">
             {/* Pulsing indicator */}
             <div className="relative shrink-0">
               <div className="h-2.5 w-2.5 rounded-full bg-primary" />

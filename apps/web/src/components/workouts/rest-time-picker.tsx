@@ -27,7 +27,7 @@ export function RestTimePicker({ value, onChange, className }: RestTimePickerPro
         )}
       >
         {/* Left line with gradient fade */}
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-zinc-700/50 to-zinc-700/50 group-hover:via-zinc-600/60 group-hover:to-zinc-600/60 transition-colors" />
+        <div className="flex-1 h-px bg-linear-to-r from-transparent via-zinc-700/50 to-zinc-700/50 group-hover:via-zinc-600/60 group-hover:to-zinc-600/60 transition-colors" />
 
         {/* Center badge */}
         <div className={cn(
@@ -43,7 +43,7 @@ export function RestTimePicker({ value, onChange, className }: RestTimePickerPro
         </div>
 
         {/* Right line with gradient fade */}
-        <div className="flex-1 h-px bg-gradient-to-l from-transparent via-zinc-700/50 to-zinc-700/50 group-hover:via-zinc-600/60 group-hover:to-zinc-600/60 transition-colors" />
+        <div className="flex-1 h-px bg-linear-to-l from-transparent via-zinc-700/50 to-zinc-700/50 group-hover:via-zinc-600/60 group-hover:to-zinc-600/60 transition-colors" />
       </button>
 
       {/* Time picker dialog */}

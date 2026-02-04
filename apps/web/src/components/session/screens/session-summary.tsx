@@ -154,7 +154,7 @@ export function SessionSummary({
       </div>
 
       {/* Complete button */}
-      <div className="sticky bottom-0 pt-4 bg-gradient-to-t from-zinc-950 via-zinc-950/95 to-transparent -mx-4 px-4 pb-2">
+      <div className="sticky bottom-0 pt-4 bg-linear-to-t from-zinc-950 via-zinc-950/95 to-transparent -mx-4 px-4 pb-2">
         <Button
           onClick={handleComplete}
           disabled={isSubmitting}

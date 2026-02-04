@@ -26,6 +26,10 @@
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.4.2"
   },
+  "overrides": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19"
+  },
   "engines": {
     "node": ">=20.0.0"
   }

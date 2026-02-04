@@ -1,59 +1,146 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+/* Dark mode via .dark class (next-themes) */
+@custom-variant dark (&:is(.dark *));
+
+/* Safelist: dynamically generated muscle group colors */
+@source inline("
+  bg-rose-500/15 text-rose-400 border-rose-500/30 hover:bg-rose-500/20 hover:text-rose-400
+  bg-sky-500/15 text-sky-400 border-sky-500/30 hover:bg-sky-500/20 hover:text-sky-400
+  bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-400
+  bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 hover:text-emerald-400
+  bg-violet-500/15 text-violet-400 border-violet-500/30 hover:bg-violet-500/20 hover:text-violet-400
+  bg-orange-500/15 text-orange-400 border-orange-500/30 hover:bg-orange-500/20 hover:text-orange-400
+  bg-pink-500/15 text-pink-400 border-pink-500/30 hover:bg-pink-500/20 hover:text-pink-400
+  bg-indigo-500/15 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/20 hover:text-indigo-400
+  bg-cyan-500/15 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 hover:text-cyan-400
+  bg-teal-500/15 text-teal-400 border-teal-500/30 hover:bg-teal-500/20 hover:text-teal-400
+  bg-lime-500/15 text-lime-400 border-lime-500/30 hover:bg-lime-500/20 hover:text-lime-400
+  bg-yellow-500/15 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/20 hover:text-yellow-400
+");
+
+/* Theme: map CSS variables to Tailwind tokens */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-orange: var(--accent-orange);
+  --color-accent-green: var(--accent-green);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-accent-red: var(--accent-red);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+/* Border color compatibility (v4 defaults to currentcolor) */
 @layer base {
-  :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 4%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 4%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 64%;
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 217 91% 60%;
-    --radius: 0.5rem;
-
-    /* Custom accent colors */
-    --accent-blue: 217 91% 60%;
-    --accent-orange: 25 95% 53%;
-    --accent-green: 142 71% 45%;
-    --accent-yellow: 48 96% 47%;
-    --accent-red: 0 84% 60%;
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
   }
+}
 
-  .dark {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 4%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 4%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 64%;
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 217 91% 60%;
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
   }
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(0 0% 25%) transparent;
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: hsl(0 0% 25%);
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(0 0% 35%);
+  }
+}
+
+/* CSS Variables - values include hsl() for v4 */
+:root {
+  --background: hsl(0 0% 4%);
+  --foreground: hsl(0 0% 98%);
+  --card: hsl(0 0% 4%);
+  --card-foreground: hsl(0 0% 98%);
+  --popover: hsl(0 0% 4%);
+  --popover-foreground: hsl(0 0% 98%);
+  --primary: hsl(0 0% 98%);
+  --primary-foreground: hsl(0 0% 9%);
+  --secondary: hsl(0 0% 15%);
+  --secondary-foreground: hsl(0 0% 98%);
+  --muted: hsl(0 0% 15%);
+  --muted-foreground: hsl(0 0% 64%);
+  --accent: hsl(0 0% 15%);
+  --accent-foreground: hsl(0 0% 98%);
+  --destructive: hsl(0 84% 60%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(0 0% 15%);
+  --input: hsl(0 0% 15%);
+  --ring: hsl(217 91% 60%);
+  --radius: 0.5rem;
+
+  /* Custom accent colors */
+  --accent-blue: hsl(217 91% 60%);
+  --accent-orange: hsl(25 95% 53%);
+  --accent-green: hsl(142 71% 45%);
+  --accent-yellow: hsl(48 96% 47%);
+  --accent-red: hsl(0 84% 60%);
+}
+
+.dark {
+  --background: hsl(0 0% 4%);
+  --foreground: hsl(0 0% 98%);
+  --card: hsl(0 0% 4%);
+  --card-foreground: hsl(0 0% 98%);
+  --popover: hsl(0 0% 4%);
+  --popover-foreground: hsl(0 0% 98%);
+  --primary: hsl(0 0% 98%);
+  --primary-foreground: hsl(0 0% 9%);
+  --secondary: hsl(0 0% 15%);
+  --secondary-foreground: hsl(0 0% 98%);
+  --muted: hsl(0 0% 15%);
+  --muted-foreground: hsl(0 0% 64%);
+  --accent: hsl(0 0% 15%);
+  --accent-foreground: hsl(0 0% 98%);
+  --destructive: hsl(0 84% 60%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(0 0% 15%);
+  --input: hsl(0 0% 15%);
+  --ring: hsl(217 91% 60%);
 }
 
 @layer base {
@@ -64,7 +151,6 @@
     @apply bg-background text-foreground;
   }
 
-  /* Consistent input styling across the app */
   input,
   textarea,
   select {
@@ -74,36 +160,5 @@
   input::placeholder,
   textarea::placeholder {
     @apply text-sm text-muted-foreground;
-  }
-}
-
-@layer utilities {
-  /* Hide scrollbar while maintaining scroll functionality */
-  .scrollbar-hide {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
-  }
-
-  /* Thin scrollbar for dark theme */
-  .scrollbar-thin {
-    scrollbar-width: thin; /* Firefox */
-    scrollbar-color: hsl(0 0% 25%) transparent; /* Firefox */
-  }
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: hsl(0 0% 25%);
-    border-radius: 3px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(0 0% 35%);
   }
 }

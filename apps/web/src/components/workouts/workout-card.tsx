@@ -168,7 +168,7 @@ export function WorkoutCard({
       </div>
 
       {/* Separator */}
-      <div className="h-px bg-gradient-to-r from-primary/30 to-transparent my-3" />
+      <div className="h-px bg-linear-to-r from-primary/30 to-transparent my-3" />
 
       {/* Stats row */}
       <div className="flex items-center gap-2 text-xs text-zinc-500">

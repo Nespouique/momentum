@@ -67,7 +67,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <Card className="w-full max-w-md border-border/50 bg-card/80 backdrop-blur-sm">
+    <Card className="w-full max-w-md border-border/50 bg-card/80 backdrop-blur-xs">
       <CardHeader className="space-y-1 text-center pb-8">
         <div className="mx-auto mb-4">
           <h1 className="text-3xl font-bold tracking-tight">MOMENTUM</h1>

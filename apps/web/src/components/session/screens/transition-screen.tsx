@@ -192,8 +192,8 @@ export function TransitionScreen(props: TransitionScreenProps) {
       )}
 
       {/* Separator */}
-      <div className="flex items-center h-4 !mt-2 !mb-2">
-        <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent" />
+      <div className="flex items-center h-4 mt-2! mb-2!">
+        <div className="h-px w-full bg-linear-to-r from-transparent via-zinc-700 to-transparent" />
       </div>
 
       {/* Next item preview or end message */}
