@@ -2,9 +2,40 @@
 
 import { useRef, useCallback, useEffect } from "react";
 
+/**
+ * Send a notification via Service Worker (works on mobile Chrome)
+ * with fallback to new Notification() for desktop browsers.
+ */
+function sendNotification(title: string, options?: NotificationOptions) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+  // Prefer Service Worker registration (required for Android Chrome)
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.ready
+      .then((reg) => {
+        reg.showNotification(title, options);
+      })
+      .catch(() => {
+        // Fallback to standard Notification API (desktop)
+        try {
+          new Notification(title, options);
+        } catch {
+          // Silently fail if not supported
+        }
+      });
+  } else {
+    try {
+      new Notification(title, options);
+    } catch {
+      // Silently fail
+    }
+  }
+}
+
 export function useTimerAudio() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const isInitializedRef = useRef(false);
+  const scheduledNotifRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Initialize audio context and request notification permission (must be called after user interaction)
   const initAudio = useCallback(() => {
@@ -68,15 +99,10 @@ export function useTimerAudio() {
         setTimeout(() => playBeep(880, 300), 350);
 
         // Send notification if app is in background (for mobile/PWA)
-        if (
-          typeof document !== "undefined" &&
-          document.hidden &&
-          "Notification" in window &&
-          Notification.permission === "granted"
-        ) {
-          new Notification("⏱️ Repos terminé !", {
+        if (typeof document !== "undefined" && document.hidden) {
+          sendNotification("Repos termine !", {
             body: "C'est reparti !",
-            tag: "momentum-timer", // Prevents duplicate notifications
+            tag: "momentum-timer",
             requireInteraction: false,
           });
         }
@@ -85,11 +111,50 @@ export function useTimerAudio() {
     [playBeep]
   );
 
+  /**
+   * Schedule a notification to fire at a specific timestamp.
+   * Uses setTimeout so the browser has a single scheduled callback
+   * (better chance to fire in background than relying on setInterval ticks).
+   */
+  const scheduleNotification = useCallback((restEndAt: number) => {
+    // Clear any previous scheduled notification
+    if (scheduledNotifRef.current) {
+      clearTimeout(scheduledNotifRef.current);
+      scheduledNotifRef.current = null;
+    }
+
+    const delay = restEndAt - Date.now();
+    if (delay <= 0) return;
+
+    scheduledNotifRef.current = setTimeout(() => {
+      scheduledNotifRef.current = null;
+      // Only send notification if the tab is still hidden (user hasn't come back)
+      if (typeof document !== "undefined" && document.hidden) {
+        sendNotification("Repos termine !", {
+          body: "C'est reparti !",
+          tag: "momentum-timer",
+          requireInteraction: false,
+        });
+      }
+    }, delay);
+  }, []);
+
+  /** Cancel a previously scheduled notification (e.g. when rest is skipped). */
+  const cancelScheduledNotification = useCallback(() => {
+    if (scheduledNotifRef.current) {
+      clearTimeout(scheduledNotifRef.current);
+      scheduledNotifRef.current = null;
+    }
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (audioContextRef.current && audioContextRef.current.state !== "closed") {
         audioContextRef.current.close();
+      }
+      if (scheduledNotifRef.current) {
+        clearTimeout(scheduledNotifRef.current);
       }
     };
   }, []);
@@ -98,6 +163,8 @@ export function useTimerAudio() {
     initAudio,
     playBeep,
     playCountdownBeep,
+    scheduleNotification,
+    cancelScheduledNotification,
     isInitialized: isInitializedRef.current,
   };
 }

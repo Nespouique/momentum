@@ -59,6 +59,8 @@ export default function SessionPage({ params }: SessionPageProps) {
     currentSetIndex,
     restDuration,
     restTimeRemaining,
+    restEndAt,
+    isResting,
     isInSuperset,
     supersetRound,
     supersetExerciseIds,
@@ -99,7 +101,8 @@ export default function SessionPage({ params }: SessionPageProps) {
   const [suggestions, setSuggestions] = useState<Map<string, ProgressionSuggestion>>(new Map());
 
   // Audio hook
-  const { playCountdownBeep, initAudio } = useTimerAudio();
+  const { playCountdownBeep, initAudio, scheduleNotification, cancelScheduledNotification } =
+    useTimerAudio();
 
   // Wake lock
   useWakeLock(!!session && session.status === "in_progress");
@@ -140,6 +143,35 @@ export default function SessionPage({ params }: SessionPageProps) {
       playCountdownBeep(0);
     }
   }, [restTimeRemaining, restDuration, playCountdownBeep]);
+
+  // Schedule background notification when rest starts (reliable on mobile)
+  useEffect(() => {
+    if (isResting && restEndAt) {
+      scheduleNotification(restEndAt);
+    } else {
+      cancelScheduledNotification();
+    }
+  }, [isResting, restEndAt, scheduleNotification, cancelScheduledNotification]);
+
+  // Catch-up on visibilitychange: play sound + tick when user returns to the tab
+  useEffect(() => {
+    if (!session || session.status !== "in_progress") return;
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // User came back - tick immediately to sync timer state
+        tick();
+        // If rest just ended while backgrounded, play the completion sound
+        const state = useSessionStore.getState();
+        if (state.isResting && state.restEndAt && state.restEndAt <= Date.now()) {
+          playCountdownBeep(0);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [session, tick, playCountdownBeep]);
 
   // Fetch progression suggestions when entering summary screen
   useEffect(() => {
