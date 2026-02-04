@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Brain, Lightbulb, MessageSquare, AlertCircle, Loader2, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import {
 } from "@/lib/api/sessions";
 
 interface AICoachPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 interface EditableSet {
@@ -34,7 +34,7 @@ interface EditableProposal extends Omit<AIProposal, "sets"> {
 }
 
 export default function AICoachPage({ params }: AICoachPageProps) {
-  const sessionId = params.id;
+  const { id: sessionId } = use(params);
   const router = useRouter();
   const { token } = useAuthStore();
   // Note: We don't use useSessionStore here because the session may not be loaded in the store

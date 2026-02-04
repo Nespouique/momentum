@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { X, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout";
@@ -43,11 +43,11 @@ import {
 import { SupersetProgress, type SupersetPreviewData } from "@/components/session";
 
 interface SessionPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default function SessionPage({ params }: SessionPageProps) {
-  const sessionId = params.id;
+  const { id: sessionId } = use(params);
   const router = useRouter();
   const { token } = useAuthStore();
   const {
