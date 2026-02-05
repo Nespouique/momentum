@@ -5,10 +5,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import {
   Card,
   CardContent,
@@ -32,6 +38,7 @@ import { useAuthStore } from "@/stores/auth";
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const login = useAuthStore((state) => state.login);
 
   const form = useForm<LoginFormData>({
@@ -102,14 +109,25 @@ export default function LoginPage() {
                 <FormItem>
                   <FormLabel>Mot de passe</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Entrez votre mot de passe"
-                      autoComplete="current-password"
-                      className="h-11"
-                      disabled={form.formState.isSubmitting}
-                      {...field}
-                    />
+                    <InputGroup className="h-11">
+                      <InputGroupInput
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Entrez votre mot de passe"
+                        autoComplete="current-password"
+                        disabled={form.formState.isSubmitting}
+                        {...field}
+                      />
+                      <InputGroupAddon align="inline-end">
+                        <InputGroupButton
+                          size="icon-xs"
+                          tabIndex={-1}
+                          aria-label="Afficher le mot de passe"
+                          onClick={() => setShowPassword((v) => !v)}
+                        >
+                          {showPassword ? <EyeOff /> : <Eye />}
+                        </InputGroupButton>
+                      </InputGroupAddon>
+                    </InputGroup>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

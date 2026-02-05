@@ -7,10 +7,16 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { AlertCircle, Loader2, CalendarIcon } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Loader2, CalendarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { NumberInput } from "@/components/ui/number-input";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -42,10 +48,13 @@ import { useAuthStore } from "@/stores/auth";
 export default function RegisterPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const register = useAuthStore((state) => state.register);
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    mode: "onChange",
     defaultValues: {
       name: "",
       email: "",
@@ -205,14 +214,25 @@ export default function RegisterPage() {
                 <FormItem>
                   <FormLabel>Mot de passe</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Créez un mot de passe"
-                      autoComplete="new-password"
-                      className="h-11"
-                      disabled={form.formState.isSubmitting}
-                      {...field}
-                    />
+                    <InputGroup className="h-11">
+                      <InputGroupInput
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Créez un mot de passe"
+                        autoComplete="new-password"
+                        disabled={form.formState.isSubmitting}
+                        {...field}
+                      />
+                      <InputGroupAddon align="inline-end">
+                        <InputGroupButton
+                          size="icon-xs"
+                          tabIndex={-1}
+                          aria-label="Afficher le mot de passe"
+                          onClick={() => setShowPassword((v) => !v)}
+                        >
+                          {showPassword ? <EyeOff /> : <Eye />}
+                        </InputGroupButton>
+                      </InputGroupAddon>
+                    </InputGroup>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -226,14 +246,25 @@ export default function RegisterPage() {
                 <FormItem>
                   <FormLabel>Confirmer le mot de passe</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Confirmez votre mot de passe"
-                      autoComplete="new-password"
-                      className="h-11"
-                      disabled={form.formState.isSubmitting}
-                      {...field}
-                    />
+                    <InputGroup className="h-11">
+                      <InputGroupInput
+                        type={showConfirm ? "text" : "password"}
+                        placeholder="Confirmez votre mot de passe"
+                        autoComplete="new-password"
+                        disabled={form.formState.isSubmitting}
+                        {...field}
+                      />
+                      <InputGroupAddon align="inline-end">
+                        <InputGroupButton
+                          size="icon-xs"
+                          tabIndex={-1}
+                          aria-label="Afficher le mot de passe"
+                          onClick={() => setShowConfirm((v) => !v)}
+                        >
+                          {showConfirm ? <EyeOff /> : <Eye />}
+                        </InputGroupButton>
+                      </InputGroupAddon>
+                    </InputGroup>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

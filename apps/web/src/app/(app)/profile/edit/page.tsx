@@ -5,11 +5,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Loader2, AlertCircle, Lock, CalendarIcon } from "lucide-react";
+import { Loader2, AlertCircle, Eye, EyeOff, Lock, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +52,9 @@ export default function EditProfilePage() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const profileForm = useForm<UpdateProfileFormData>({
     resolver: zodResolver(updateProfileSchema),
@@ -64,6 +73,7 @@ export default function EditProfilePage() {
       newPassword: "",
       confirmNewPassword: "",
     },
+    mode: "onChange",
   });
 
   // Load profile data
@@ -321,13 +331,25 @@ export default function EditProfilePage() {
                     <FormItem>
                       <FormLabel>Mot de passe actuel</FormLabel>
                       <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Entrez le mot de passe actuel"
-                          autoComplete="current-password"
-                          disabled={passwordForm.formState.isSubmitting}
-                          {...field}
-                        />
+                        <InputGroup>
+                          <InputGroupInput
+                            type={showCurrentPassword ? "text" : "password"}
+                            placeholder="Entrez le mot de passe actuel"
+                            autoComplete="current-password"
+                            disabled={passwordForm.formState.isSubmitting}
+                            {...field}
+                          />
+                          <InputGroupAddon align="inline-end">
+                            <InputGroupButton
+                              size="icon-xs"
+                              tabIndex={-1}
+                              aria-label="Afficher le mot de passe"
+                              onClick={() => setShowCurrentPassword((v) => !v)}
+                            >
+                              {showCurrentPassword ? <EyeOff /> : <Eye />}
+                            </InputGroupButton>
+                          </InputGroupAddon>
+                        </InputGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -341,13 +363,25 @@ export default function EditProfilePage() {
                     <FormItem>
                       <FormLabel>Nouveau mot de passe</FormLabel>
                       <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Entrez le nouveau mot de passe"
-                          autoComplete="new-password"
-                          disabled={passwordForm.formState.isSubmitting}
-                          {...field}
-                        />
+                        <InputGroup>
+                          <InputGroupInput
+                            type={showNewPassword ? "text" : "password"}
+                            placeholder="Entrez le nouveau mot de passe"
+                            autoComplete="new-password"
+                            disabled={passwordForm.formState.isSubmitting}
+                            {...field}
+                          />
+                          <InputGroupAddon align="inline-end">
+                            <InputGroupButton
+                              size="icon-xs"
+                              tabIndex={-1}
+                              aria-label="Afficher le mot de passe"
+                              onClick={() => setShowNewPassword((v) => !v)}
+                            >
+                              {showNewPassword ? <EyeOff /> : <Eye />}
+                            </InputGroupButton>
+                          </InputGroupAddon>
+                        </InputGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -361,13 +395,25 @@ export default function EditProfilePage() {
                     <FormItem>
                       <FormLabel>Confirmer le nouveau mot de passe</FormLabel>
                       <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Confirmez le nouveau mot de passe"
-                          autoComplete="new-password"
-                          disabled={passwordForm.formState.isSubmitting}
-                          {...field}
-                        />
+                        <InputGroup>
+                          <InputGroupInput
+                            type={showConfirmPassword ? "text" : "password"}
+                            placeholder="Confirmez le nouveau mot de passe"
+                            autoComplete="new-password"
+                            disabled={passwordForm.formState.isSubmitting}
+                            {...field}
+                          />
+                          <InputGroupAddon align="inline-end">
+                            <InputGroupButton
+                              size="icon-xs"
+                              tabIndex={-1}
+                              aria-label="Afficher le mot de passe"
+                              onClick={() => setShowConfirmPassword((v) => !v)}
+                            >
+                              {showConfirmPassword ? <EyeOff /> : <Eye />}
+                            </InputGroupButton>
+                          </InputGroupAddon>
+                        </InputGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

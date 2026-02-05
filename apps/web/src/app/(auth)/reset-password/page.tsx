@@ -5,10 +5,15 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import {
   Card,
   CardContent,
@@ -38,10 +43,13 @@ function ResetPasswordForm() {
 
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const form = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { password: "", confirmPassword: "" },
+    mode: "onChange",
   });
 
   const onSubmit = async (data: ResetPasswordFormData) => {
@@ -158,14 +166,25 @@ function ResetPasswordForm() {
                     <FormItem>
                       <FormLabel>Nouveau mot de passe</FormLabel>
                       <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Minimum 8 caractères"
-                          autoComplete="new-password"
-                          className="h-11"
-                          disabled={form.formState.isSubmitting}
-                          {...field}
-                        />
+                        <InputGroup className="h-11">
+                          <InputGroupInput
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Minimum 8 caractères"
+                            autoComplete="new-password"
+                            disabled={form.formState.isSubmitting}
+                            {...field}
+                          />
+                          <InputGroupAddon align="inline-end">
+                            <InputGroupButton
+                              size="icon-xs"
+                              tabIndex={-1}
+                              aria-label="Afficher le mot de passe"
+                              onClick={() => setShowPassword((v) => !v)}
+                            >
+                              {showPassword ? <EyeOff /> : <Eye />}
+                            </InputGroupButton>
+                          </InputGroupAddon>
+                        </InputGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -179,14 +198,25 @@ function ResetPasswordForm() {
                     <FormItem>
                       <FormLabel>Confirmer le mot de passe</FormLabel>
                       <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Retapez le mot de passe"
-                          autoComplete="new-password"
-                          className="h-11"
-                          disabled={form.formState.isSubmitting}
-                          {...field}
-                        />
+                        <InputGroup className="h-11">
+                          <InputGroupInput
+                            type={showConfirm ? "text" : "password"}
+                            placeholder="Retapez le mot de passe"
+                            autoComplete="new-password"
+                            disabled={form.formState.isSubmitting}
+                            {...field}
+                          />
+                          <InputGroupAddon align="inline-end">
+                            <InputGroupButton
+                              size="icon-xs"
+                              tabIndex={-1}
+                              aria-label="Afficher le mot de passe"
+                              onClick={() => setShowConfirm((v) => !v)}
+                            >
+                              {showConfirm ? <EyeOff /> : <Eye />}
+                            </InputGroupButton>
+                          </InputGroupAddon>
+                        </InputGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
