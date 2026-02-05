@@ -687,15 +687,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           }
         } else {
           // Move to rest between rounds
+          // Don't increment supersetRound/currentSetIndex yet — do it in skipRest.
+          // This keeps indices pointing to the just-completed round so the rest screen
+          // shows correct targets and pending result keys match.
           const restDuration = exercise.workoutItem?.restAfter || 90;
           const restEndAt = Date.now() + restDuration * 1000;
-          const newSupersetRound = state.supersetRound + 1;
-          const newSetIndex = state.currentSetIndex + 1;
           set({
             currentScreen: "superset-rest" as SessionScreen,
-            supersetRound: newSupersetRound,
             supersetExerciseIndex: 0,
-            currentSetIndex: newSetIndex,
             restDuration,
             restEndAt,
             restTimeRemaining: restDuration,
@@ -707,9 +706,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             restDuration,
             currentScreen: "superset-rest",
             currentExerciseIndex: state.currentExerciseIndex,
-            currentSetIndex: newSetIndex,
+            currentSetIndex: state.currentSetIndex,
             isInSuperset: state.isInSuperset,
-            supersetRound: newSupersetRound,
+            supersetRound: state.supersetRound,
             supersetExerciseIndex: 0,
             supersetExerciseIds: state.supersetExerciseIds,
           });
@@ -979,13 +978,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           isInSuperset: false,
         });
       } else {
-        // Move to first exercise of next round
+        // Move to first exercise of next round — increment round/setIndex NOW
         const firstExId = state.supersetExerciseIds[0];
         const firstIdx = activeExercises.findIndex((e) => e.id === firstExId);
 
         set({
           currentExerciseIndex: firstIdx,
           supersetExerciseIndex: 0,
+          supersetRound: state.supersetRound + 1,
+          currentSetIndex: state.currentSetIndex + 1,
           currentScreen: "superset-exercise",
           isResting: false,
           restEndAt: null,

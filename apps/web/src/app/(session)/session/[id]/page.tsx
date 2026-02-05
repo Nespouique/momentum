@@ -944,12 +944,13 @@ export default function SessionPage({ params }: SessionPageProps) {
       const firstSupersetExId = supersetExerciseIds[0];
       const firstSupersetEx = session.exercises.find((e) => e.id === firstSupersetExId);
 
-      // Next round is supersetRound (current is supersetRound - 1)
-      const nextRoundNumber = supersetRound;
+      // supersetRound now points to the COMPLETED round (not pre-incremented)
+      // Next round = supersetRound + 1
+      const nextRoundNumber = supersetRound + 1;
       const nextSetIndex = nextRoundNumber - 1; // 0-indexed
       const nextSetData = firstSupersetEx?.sets[nextSetIndex];
 
-      // Get last session data for this set
+      // Get last session data for the next round's set
       const lastSetData = firstSupersetEx
         ? getLastSessionSet(firstSupersetEx.id, nextRoundNumber)
         : null;
@@ -961,7 +962,7 @@ export default function SessionPage({ params }: SessionPageProps) {
         <div className="flex-1 px-4 py-4 overflow-y-auto">
           <RestScreen
             isSuperset={true}
-            setNumber={supersetRound - 1}
+            setNumber={supersetRound}
             totalRounds={totalRounds}
             restDuration={restDuration}
             restTimeRemaining={restTimeRemaining}
