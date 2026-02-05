@@ -593,11 +593,15 @@ function formatSelectedDate(dateKey: string): string {
   const month = parts[1] ?? 1;
   const day = parts[2] ?? 1;
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString("fr-FR", {
+  const options: Intl.DateTimeFormatOptions = {
     weekday: "long",
     day: "numeric",
     month: "long",
-  });
+  };
+  if (date.getFullYear() !== new Date().getFullYear()) {
+    options.year = "numeric";
+  }
+  return date.toLocaleDateString("fr-FR", options);
 }
 
 /**

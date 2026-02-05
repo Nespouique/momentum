@@ -45,8 +45,12 @@ export function formatRelativeDate(dateStr: string | null): string | null {
     const weeks = Math.floor(diffDays / 7);
     return `Il y a ${weeks} semaine${weeks > 1 ? "s" : ""}`;
   }
-  // Format as date for older sessions
-  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  // Format as date for older sessions, include year if not current year
+  const options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
+  if (date.getFullYear() !== now.getFullYear()) {
+    options.year = "numeric";
+  }
+  return date.toLocaleDateString("fr-FR", options);
 }
 
 export function WorkoutCard({
