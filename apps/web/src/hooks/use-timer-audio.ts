@@ -4,15 +4,24 @@ import { useRef, useCallback, useEffect } from "react";
 
 /**
  * Send a message to the active service worker.
- * Uses navigator.serviceWorker.ready (waits for SW to be active)
- * instead of .controller (which is null on first load).
+ * Tries navigator.serviceWorker.controller first (synchronous — critical for
+ * visibilitychange:hidden where the page may freeze before a Promise resolves).
+ * Falls back to navigator.serviceWorker.ready for first-load edge cases.
  */
 function postToServiceWorker(message: Record<string, unknown>) {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.ready
-      .then((reg) => reg.active?.postMessage(message))
-      .catch(() => {});
+  if (!("serviceWorker" in navigator)) return;
+
+  // Synchronous path: works after first SW activation + clients.claim()
+  const controller = navigator.serviceWorker.controller;
+  if (controller) {
+    controller.postMessage(message);
+    return;
   }
+
+  // Async fallback: first load before SW claims this client
+  navigator.serviceWorker.ready
+    .then((reg) => reg.active?.postMessage(message))
+    .catch(() => {});
 }
 
 /**

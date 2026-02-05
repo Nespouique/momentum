@@ -157,12 +157,22 @@ export default function SessionPage({ params }: SessionPageProps) {
     }
   }, [isResting, restEndAt, scheduleNotification]);
 
-  // Catch-up on visibilitychange: play sound + tick when user returns to the tab
+  // Handle visibilitychange:
+  //  - hidden  → re-schedule notification if rest is ongoing (handles back-and-forth app switching)
+  //  - visible → cancel notifications, sync timer, play catch-up beep
   useEffect(() => {
     if (!session || session.status !== "in_progress") return;
 
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
+      if (document.hidden) {
+        // User left the app — (re-)schedule notification if rest is still ongoing.
+        // This is critical because cancelScheduledNotification() on return clears
+        // everything, so leaving again without this would produce no notification.
+        const state = useSessionStore.getState();
+        if (state.isResting && state.restEndAt && state.restEndAt > Date.now()) {
+          scheduleNotification(state.restEndAt);
+        }
+      } else {
         // User is back — cancel any pending notifications (SW + page setTimeout)
         // to avoid a duplicate alert firing after they've already returned
         cancelScheduledNotification();
@@ -184,7 +194,7 @@ export default function SessionPage({ params }: SessionPageProps) {
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [session, tick, playCountdownBeep, cancelScheduledNotification]);
+  }, [session, tick, playCountdownBeep, scheduleNotification, cancelScheduledNotification]);
 
   // Fetch progression suggestions when entering summary screen
   useEffect(() => {
