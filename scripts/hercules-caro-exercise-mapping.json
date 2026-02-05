@@ -1,0 +1,464 @@
+{
+  "18": {
+    "herculesId": "18",
+    "herculesName": "Planche",
+    "momentumId": "38291ca2-6580-492b-a907-b12666bc8159",
+    "momentumName": "Planche",
+    "action": "mapped"
+  },
+  "19": {
+    "herculesId": "19",
+    "herculesName": "Planche latérale",
+    "momentumId": "f9e18ba4-69a0-488f-baa6-9062535f44c5",
+    "momentumName": "Gainage latéral",
+    "action": "mapped"
+  },
+  "52": {
+    "herculesId": "52",
+    "herculesName": "Squat barre",
+    "momentumId": "2c4df4e0-a601-4e5b-a6e4-a19954e20153",
+    "momentumName": "Squat",
+    "action": "mapped"
+  },
+  "53": {
+    "herculesId": "53",
+    "herculesName": "Presse à cuisses",
+    "momentumId": "60b6a489-d3ee-4628-a87e-4b4bf05569aa",
+    "momentumName": "Leg press",
+    "action": "mapped"
+  },
+  "55": {
+    "herculesId": "55",
+    "herculesName": "Extension de jambes",
+    "momentumId": "826c6a2c-5f69-460f-a3e6-eed2ec7ddc77",
+    "momentumName": "Leg extension",
+    "action": "mapped"
+  },
+  "64": {
+    "herculesId": "64",
+    "herculesName": "Soulevé de terre",
+    "momentumId": "3885b1b1-1603-4bb9-9d48-a781fdb7a800",
+    "momentumName": "Soulevé de terre",
+    "action": "mapped"
+  },
+  "69": {
+    "herculesId": "69",
+    "herculesName": "Tirage poitrine prise large",
+    "momentumId": "ff723dc6-97ab-435d-b403-2c5b8c6b93ae",
+    "momentumName": "Tirage vertical",
+    "action": "mapped"
+  },
+  "71": {
+    "herculesId": "71",
+    "herculesName": "Tractions poitrine prise large",
+    "momentumId": "2ec228c3-95da-4c1b-8a1a-c91cd9ebb63a",
+    "momentumName": "Tractions",
+    "action": "mapped"
+  },
+  "72": {
+    "herculesId": "72",
+    "herculesName": "Tractions en pronation",
+    "momentumId": "2ec228c3-95da-4c1b-8a1a-c91cd9ebb63a",
+    "momentumName": "Tractions",
+    "action": "mapped"
+  },
+  "84": {
+    "herculesId": "84",
+    "herculesName": "Développé militaire haltères",
+    "momentumId": "4231d2f7-bbc8-4730-b3b7-c232cc6e5a70",
+    "momentumName": "Développé militaire",
+    "action": "mapped"
+  },
+  "87": {
+    "herculesId": "87",
+    "herculesName": "Élévations antérieures avec haltères",
+    "momentumId": "76d6fb9f-dc35-433e-a0bb-f3763e65aec5",
+    "momentumName": "Élévations frontales",
+    "action": "mapped"
+  },
+  "88": {
+    "herculesId": "88",
+    "herculesName": "Élévations latérales avec haltères",
+    "momentumId": "f3a591ae-a341-4863-9359-c5ac4b5985e4",
+    "momentumName": "Élévations latérales",
+    "action": "mapped"
+  },
+  "109": {
+    "herculesId": "109",
+    "herculesName": "Soulevé de terre jambes tendues",
+    "momentumId": "0330722b-1579-48fb-8695-91a13d93ec37",
+    "momentumName": "Soulevé de terre jambes tendues",
+    "action": "created"
+  },
+  "110": {
+    "herculesId": "110",
+    "herculesName": "Leg curl",
+    "momentumId": "ccbd5b14-b88e-446d-8086-0389e8d61dbe",
+    "momentumName": "Leg curl",
+    "action": "mapped"
+  },
+  "114": {
+    "herculesId": "114",
+    "herculesName": "Soulevé de terre roumain",
+    "momentumId": "dfd4a172-8ef3-4f24-913d-2aec312fe89c",
+    "momentumName": "Soulevé de terre roumain",
+    "action": "mapped"
+  },
+  "118": {
+    "herculesId": "118",
+    "herculesName": "Extension à la chaise avec enroulement",
+    "momentumId": "67894ea1-7fd1-41f3-8f3e-50cbb22cbbfd",
+    "momentumName": "Extensions lombaires",
+    "action": "mapped"
+  },
+  "130": {
+    "herculesId": "130",
+    "herculesName": "Extensions mollets à la presse à cuisses",
+    "momentumId": "6ea24a32-cf51-41c2-ae8e-4a8b9a2789e5",
+    "momentumName": "Mollets à la presse",
+    "action": "created"
+  },
+  "134": {
+    "herculesId": "134",
+    "herculesName": "Développé couché",
+    "momentumId": "a8b79144-5a2a-4702-aaac-ffbd153cf958",
+    "momentumName": "Développé couché barre",
+    "action": "mapped"
+  },
+  "137": {
+    "herculesId": "137",
+    "herculesName": "Développé incliné avec haltères",
+    "momentumId": "afa0b44e-6ad2-458a-b77e-d58c08128d9d",
+    "momentumName": "Développé incliné haltères",
+    "action": "created"
+  },
+  "141": {
+    "herculesId": "141",
+    "herculesName": "Écartés à la machine",
+    "momentumId": "15f7f36a-2a38-4115-965d-ef285be76b55",
+    "momentumName": "Machine fly",
+    "action": "created"
+  },
+  "143": {
+    "herculesId": "143",
+    "herculesName": "Écartés à la poulie vis-à-vis",
+    "momentumId": "984537c6-dc40-4759-9555-6499b1f14a0d",
+    "momentumName": "Cable fly",
+    "action": "mapped"
+  },
+  "144": {
+    "herculesId": "144",
+    "herculesName": "Développé décliné avec haltères",
+    "momentumId": "c76c1213-ff3b-4158-8fec-6ca9e2414b15",
+    "momentumName": "Développé décliné haltères",
+    "action": "created"
+  },
+  "145": {
+    "herculesId": "145",
+    "herculesName": "Pompes",
+    "momentumId": "f1c2d915-b51c-4562-9525-764a02c98d51",
+    "momentumName": "Pompes",
+    "action": "created"
+  },
+  "158": {
+    "herculesId": "158",
+    "herculesName": "Dips",
+    "momentumId": "2e4d95a1-67de-4edf-8345-4945f6f9cde8",
+    "momentumName": "Dips",
+    "action": "mapped"
+  },
+  "188": {
+    "herculesId": "188",
+    "herculesName": "Burpee",
+    "momentumId": "e4761a40-5dab-4d49-8901-bd171a66eb2e",
+    "momentumName": "Burpees",
+    "action": "created"
+  },
+  "189": {
+    "herculesId": "189",
+    "herculesName": "Relevé de jambes",
+    "momentumId": "948b12a0-6367-45c7-a3ef-444dc0aaa6d7",
+    "momentumName": "Relevé de jambes",
+    "action": "mapped"
+  },
+  "195": {
+    "herculesId": "195",
+    "herculesName": "Rowing horizontal au câble",
+    "momentumId": "748587f6-eafc-480e-be08-f417326e2605",
+    "momentumName": "Tirage horizontal",
+    "action": "mapped"
+  },
+  "199": {
+    "herculesId": "199",
+    "herculesName": "Extension triceps poulie haute en pronation",
+    "momentumId": "743dc5ac-1fff-4653-89ef-33dd5086073e",
+    "momentumName": "Triceps poulie haute",
+    "action": "mapped"
+  },
+  "201": {
+    "herculesId": "201",
+    "herculesName": "Élévations latérales avec haltères penché en avant",
+    "momentumId": "96efc5ca-ecc2-49c5-830d-bb59bae9184a",
+    "momentumName": "Élévations latérales penché",
+    "action": "created"
+  },
+  "204": {
+    "herculesId": "204",
+    "herculesName": "Crunch à la poulie haute",
+    "momentumId": "24335409-d466-42ef-8631-675b89d663de",
+    "momentumName": "Crunch poulie haute",
+    "action": "created"
+  },
+  "206": {
+    "herculesId": "206",
+    "herculesName": "Développé couché avec haltères",
+    "momentumId": "eb262787-ff47-4103-8a25-05f121b426b4",
+    "momentumName": "Développé couché haltères",
+    "action": "mapped"
+  },
+  "217": {
+    "herculesId": "217",
+    "herculesName": "Crunch décliné",
+    "momentumId": "5149cf99-5cf1-4507-a7c6-e82480ef3582",
+    "momentumName": "Crunch décliné",
+    "action": "created"
+  },
+  "221": {
+    "herculesId": "221",
+    "herculesName": "Crunch à la balle",
+    "momentumId": "5454ce88-62b7-47a6-9223-0e68ca176bf7",
+    "momentumName": "Crunch à la balle",
+    "action": "created"
+  },
+  "225": {
+    "herculesId": "225",
+    "herculesName": "Relevé de genoux",
+    "momentumId": "6d4f09af-8376-49f5-ad9a-e890aba954b0",
+    "momentumName": "Relevé de genoux",
+    "action": "created"
+  },
+  "262": {
+    "herculesId": "262",
+    "herculesName": "Curl Larry Scott unilatéral",
+    "momentumId": "70ef5ab1-9250-4ebe-a7e3-b3d30b0ed979",
+    "momentumName": "Curl pupitre unilatéral",
+    "action": "created"
+  },
+  "270": {
+    "herculesId": "270",
+    "herculesName": "Split squat",
+    "momentumId": "fd7794e6-d82d-4b9b-b258-7b4b03460512",
+    "momentumName": "Split squat",
+    "action": "mapped"
+  },
+  "271": {
+    "herculesId": "271",
+    "herculesName": "Fentes marchées",
+    "momentumId": "28ccc740-12ca-46be-acc5-61e1390a588d",
+    "momentumName": "Fentes",
+    "action": "mapped"
+  },
+  "272": {
+    "herculesId": "272",
+    "herculesName": "Hack squat",
+    "momentumId": "be8271f2-60a4-45bf-b2e8-a6a451d36f4c",
+    "momentumName": "Hack squat",
+    "action": "created"
+  },
+  "273": {
+    "herculesId": "273",
+    "herculesName": "Squat à la Smith machine",
+    "momentumId": "eead2c08-8f33-455c-9d8a-ca7d9275f564",
+    "momentumName": "Squat Smith machine",
+    "action": "created"
+  },
+  "279": {
+    "herculesId": "279",
+    "herculesName": "Squat sumo avec haltère",
+    "momentumId": "3ec9b44f-5390-482e-bb21-4347999eec46",
+    "momentumName": "Squat sumo",
+    "action": "created"
+  },
+  "280": {
+    "herculesId": "280",
+    "herculesName": "Abducteur",
+    "momentumId": "a5d9e261-139b-4e18-8004-2b854c112f02",
+    "momentumName": "Abducteur",
+    "action": "created"
+  },
+  "281": {
+    "herculesId": "281",
+    "herculesName": "Adducteur",
+    "momentumId": "826f669c-f229-40a5-adb3-2f24b7e601f4",
+    "momentumName": "Adducteur",
+    "action": "created"
+  },
+  "285": {
+    "herculesId": "285",
+    "herculesName": "Face pull",
+    "momentumId": "e10cb03f-f358-4585-b242-e7fdc1614d9c",
+    "momentumName": "Face pull",
+    "action": "mapped"
+  },
+  "287": {
+    "herculesId": "287",
+    "herculesName": "Oiseau unilatéral à la poulie",
+    "momentumId": "8d46a4d5-2bd8-4bce-967e-674698c02fdd",
+    "momentumName": "Oiseau à la poulie",
+    "action": "mapped"
+  },
+  "300": {
+    "herculesId": "300",
+    "herculesName": "Kickback unilatéral à la poulie basse",
+    "momentumId": "7bcee15f-db87-49b0-bc13-ae33e3f3e6c3",
+    "momentumName": "Kickback poulie",
+    "action": "created"
+  },
+  "305": {
+    "herculesId": "305",
+    "herculesName": "Curl jambe assis",
+    "momentumId": "ccbd5b14-b88e-446d-8086-0389e8d61dbe",
+    "momentumName": "Leg curl",
+    "action": "mapped"
+  },
+  "307": {
+    "herculesId": "307",
+    "herculesName": "Superman",
+    "momentumId": "ed1aaaf1-bbc3-458e-a289-ee86d073ffee",
+    "momentumName": "Superman",
+    "action": "created"
+  },
+  "315": {
+    "herculesId": "315",
+    "herculesName": "Écartés à la poulie",
+    "momentumId": "984537c6-dc40-4759-9555-6499b1f14a0d",
+    "momentumName": "Cable fly",
+    "action": "mapped"
+  },
+  "4611686018427387922": {
+    "herculesId": "4611686018427387922",
+    "herculesName": "Abdos",
+    "momentumId": "ed5ffd50-ffde-47b6-afd3-d2b1c06a3644",
+    "momentumName": "Abdos",
+    "action": "created"
+  },
+  "4611686018427387923": {
+    "herculesId": "4611686018427387923",
+    "herculesName": "Arrière épaules élastique",
+    "momentumId": "52901cd9-02a7-4b4a-a113-74cd09d05cd4",
+    "momentumName": "Arrière épaules élastique",
+    "action": "created"
+  },
+  "4611686018427387918": {
+    "herculesId": "4611686018427387918",
+    "herculesName": "Box jump",
+    "momentumId": "ad130c12-c6c6-4134-87d7-d0b894ded2e1",
+    "momentumName": "Box jump",
+    "action": "created"
+  },
+  "4611686018427387907": {
+    "herculesId": "4611686018427387907",
+    "herculesName": "Coiffe des rotateurs",
+    "momentumId": "ec002e45-d5fb-4830-b03c-6c339193db59",
+    "momentumName": "Rotation externe épaule",
+    "action": "mapped"
+  },
+  "4611686018427387914": {
+    "herculesId": "4611686018427387914",
+    "herculesName": "Extension mollet debout",
+    "momentumId": "c98078d3-568f-4d62-a651-6b18bd7c24dc",
+    "momentumName": "Mollets debout",
+    "action": "mapped"
+  },
+  "4611686018427387913": {
+    "herculesId": "4611686018427387913",
+    "herculesName": "Fentes sur box",
+    "momentumId": "735ebcd3-5e46-4434-9f7d-a376a3f4b312",
+    "momentumName": "Fentes sur box",
+    "action": "created"
+  },
+  "4611686018427387911": {
+    "herculesId": "4611686018427387911",
+    "herculesName": "Functional training",
+    "momentumId": "9f4b3603-8c8f-46ed-a244-cbc86e5a4d56",
+    "momentumName": "Functional training",
+    "action": "created"
+  },
+  "4611686018427387917": {
+    "herculesId": "4611686018427387917",
+    "herculesName": "Hallow rocks",
+    "momentumId": "8ddb1098-0d2f-46db-b22d-f9355bd3830c",
+    "momentumName": "Hollow rocks",
+    "action": "created"
+  },
+  "4611686018427387903": {
+    "herculesId": "4611686018427387903",
+    "herculesName": "Hip thrust",
+    "momentumId": "4737e683-e76e-41b3-871f-55aec2d55a30",
+    "momentumName": "Hip thrust",
+    "action": "mapped"
+  },
+  "4611686018427387920": {
+    "herculesId": "4611686018427387920",
+    "herculesName": "Hip thrust unilatéral",
+    "momentumId": "a84e38b1-768c-4263-a5fb-7ef185ffc561",
+    "momentumName": "Hip thrust unilatéral",
+    "action": "created"
+  },
+  "4611686018427387915": {
+    "herculesId": "4611686018427387915",
+    "herculesName": "Hip thrust à 1 jambe",
+    "momentumId": "a84e38b1-768c-4263-a5fb-7ef185ffc561",
+    "momentumName": "Hip thrust unilatéral",
+    "action": "mapped"
+  },
+  "4611686018427387921": {
+    "herculesId": "4611686018427387921",
+    "herculesName": "One arm dumbell snatch",
+    "momentumId": "d1bc652c-3b1c-473c-995b-3c9555845d8d",
+    "momentumName": "One arm dumbbell snatch",
+    "action": "created"
+  },
+  "4611686018427387910": {
+    "herculesId": "4611686018427387910",
+    "herculesName": "Parcours",
+    "momentumId": "59be3348-53c1-4ee1-b043-fb9c83326f3f",
+    "momentumName": "Parcours",
+    "action": "created"
+  },
+  "4611686018427387912": {
+    "herculesId": "4611686018427387912",
+    "herculesName": "Poirier/Équilibre",
+    "momentumId": "55c1b88e-4972-4d11-99b7-15c8de92ff31",
+    "momentumName": "Poirier/Équilibre",
+    "action": "created"
+  },
+  "4611686018427387906": {
+    "herculesId": "4611686018427387906",
+    "herculesName": "Rear delt fly",
+    "momentumId": "7976d1ce-2178-4c8f-bdee-2c344873984e",
+    "momentumName": "Rear delt fly",
+    "action": "created"
+  },
+  "4611686018427387919": {
+    "herculesId": "4611686018427387919",
+    "herculesName": "Wall ball squat",
+    "momentumId": "4cb851ed-9be7-4b67-bd21-987010bdcb6b",
+    "momentumName": "Wall ball",
+    "action": "created"
+  },
+  "4611686018427387905": {
+    "herculesId": "4611686018427387905",
+    "herculesName": "Yeux",
+    "momentumId": "017a3aaa-805a-4fb5-bb8f-377d77425a10",
+    "momentumName": "Exercices yeux",
+    "action": "created"
+  },
+  "4611686018427387916": {
+    "herculesId": "4611686018427387916",
+    "herculesName": "Échauffement/Mobilité",
+    "momentumId": "3589694f-bd3f-437e-994e-54e9567c301c",
+    "momentumName": "Échauffement/Mobilité",
+    "action": "created"
+  }
+}
