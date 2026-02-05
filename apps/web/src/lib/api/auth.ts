@@ -96,3 +96,25 @@ export async function logout(): Promise<void> {
     method: "POST",
   });
 }
+
+export async function forgotPassword(email: string): Promise<void> {
+  await fetch(`${API_URL}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  // Always succeed from client perspective (no email leak)
+}
+
+export async function resetPassword(token: string, password: string): Promise<void> {
+  const response = await fetch(`${API_URL}/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json() as ApiError;
+    throw new AuthError(data.error.message, data.error.code, data.error.details);
+  }
+}

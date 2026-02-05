@@ -5,7 +5,16 @@ import {
   comparePassword,
   generateToken,
 } from "../services/auth.service.js";
-import { registerSchema, loginSchema } from "../schemas/auth.schema.js";
+import {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "../schemas/auth.schema.js";
+import {
+  requestPasswordReset,
+  resetPassword,
+} from "../services/password-reset.service.js";
 import { authMiddleware, AuthRequest } from "../middleware/auth.middleware.js";
 import { ZodError } from "zod";
 
@@ -16,6 +25,8 @@ const ErrorCodes = {
   VALIDATION_ERROR: "VALIDATION_ERROR",
   EMAIL_EXISTS: "EMAIL_EXISTS",
   INVALID_CREDENTIALS: "INVALID_CREDENTIALS",
+  INVALID_RESET_TOKEN: "INVALID_RESET_TOKEN",
+  EXPIRED_RESET_TOKEN: "EXPIRED_RESET_TOKEN",
   INTERNAL_ERROR: "INTERNAL_ERROR",
 } as const;
 
@@ -196,6 +207,72 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
     return res.json({ user });
   } catch (error) {
     console.error("Get user error:", error);
+    return res.status(500).json({
+      error: {
+        code: ErrorCodes.INTERNAL_ERROR,
+        message: "An unexpected error occurred",
+      },
+    });
+  }
+});
+
+// POST /auth/forgot-password
+router.post("/forgot-password", async (req: Request, res: Response) => {
+  try {
+    const data = forgotPasswordSchema.parse(req.body);
+    await requestPasswordReset(data.email);
+    // Always return 200 — don't reveal if email exists
+    return res.json({ message: "If an account exists with this email, a reset link has been sent." });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        error: {
+          code: ErrorCodes.VALIDATION_ERROR,
+          message: "Validation failed",
+          details: formatZodError(error),
+        },
+      });
+    }
+    console.error("Forgot password error:", error);
+    return res.status(500).json({
+      error: {
+        code: ErrorCodes.INTERNAL_ERROR,
+        message: "An unexpected error occurred",
+      },
+    });
+  }
+});
+
+// POST /auth/reset-password
+router.post("/reset-password", async (req: Request, res: Response) => {
+  try {
+    const data = resetPasswordSchema.parse(req.body);
+    const errorCode = await resetPassword(data.token, data.password);
+
+    if (errorCode) {
+      return res.status(400).json({
+        error: {
+          code: ErrorCodes[errorCode],
+          message:
+            errorCode === "EXPIRED_RESET_TOKEN"
+              ? "This reset link has expired. Please request a new one."
+              : "This reset link is invalid. Please request a new one.",
+        },
+      });
+    }
+
+    return res.json({ message: "Password has been reset successfully." });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        error: {
+          code: ErrorCodes.VALIDATION_ERROR,
+          message: "Validation failed",
+          details: formatZodError(error),
+        },
+      });
+    }
+    console.error("Reset password error:", error);
     return res.status(500).json({
       error: {
         code: ErrorCodes.INTERNAL_ERROR,
