@@ -19,13 +19,18 @@ model User {
   birthDate       DateTime? @map("birth_date") @db.Date
   height          Float?    // in cm
   goalDescription String?   @map("goal_description")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  passwordResetToken     String?   @map("password_reset_token")
+  passwordResetExpiresAt DateTime? @map("password_reset_expires_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
   measurements           Measurement[]
   workouts               Workout[]
   workoutSessions        WorkoutSession[]
   progressionSuggestions ProgressionSuggestion[]
+  healthActivities       HealthActivity[]
+  syncDevices            SyncDevice[]
+  trackableItems         TrackableItem[]
 
   @@map("users")
 }
@@ -221,6 +226,107 @@ model SessionSet {
 
   @@index([sessionExerciseId, setNumber])
   @@map("session_sets")
+}
+
+// ============================================
+// HEALTH SYNC & TRACKABLE MODELS (Story 5.1)
+// ============================================
+
+enum TrackingType {
+  boolean
+  number
+  duration
+}
+
+enum GoalFrequency {
+  daily
+  weekly
+  monthly
+}
+
+model TrackableItem {
+  id           String       @id @default(uuid())
+  userId       String       @map("user_id")
+  user         User         @relation(fields: [userId], references: [id])
+  name         String
+  icon         String       // Lucide icon name (e.g., "footprints", "flame")
+  color        String       // Hex color (e.g., "#22C55E")
+  trackingType TrackingType @map("tracking_type")
+  unit         String?      // e.g., "pas", "kcal", "min", "score"
+  isSystem     Boolean      @default(false) @map("is_system")
+  isActive     Boolean      @default(true) @map("is_active")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  goals   TrackableGoal[]
+  entries DailyEntry[]
+
+  @@index([userId])
+  @@map("trackable_items")
+}
+
+model TrackableGoal {
+  id          String        @id @default(uuid())
+  trackableId String        @map("trackable_id")
+  trackable   TrackableItem @relation(fields: [trackableId], references: [id], onDelete: Cascade)
+  targetValue Float         @map("target_value")
+  frequency   GoalFrequency
+  startDate   DateTime      @default(now()) @map("start_date")
+  endDate     DateTime?     @map("end_date")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@map("trackable_goals")
+}
+
+model DailyEntry {
+  id          String        @id @default(uuid())
+  trackableId String        @map("trackable_id")
+  trackable   TrackableItem @relation(fields: [trackableId], references: [id], onDelete: Cascade)
+  date        DateTime      @db.Date
+  value       Float
+  notes       String?
+  source      String        @default("manual") // "manual" | "health_connect"
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@unique([trackableId, date])
+  @@map("daily_entries")
+}
+
+model HealthActivity {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id])
+  date            DateTime @db.Date
+  startTime       DateTime @map("start_time")
+  endTime         DateTime @map("end_time")
+  activityType    String   @map("activity_type")    // Health Connect exercise type string
+  title           String?                             // Custom name if available
+  durationMinutes Float    @map("duration_minutes")
+  calories        Float?                              // kcal if available
+  distance        Float?                              // metres if available
+  heartRateAvg    Int?     @map("heart_rate_avg")    // bpm if available
+  sourceApp       String?  @map("source_app")        // package name of source app
+  hcRecordId      String?  @map("hc_record_id")     // Health Connect record UUID for dedup
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, hcRecordId])
+  @@index([userId, date])
+  @@map("health_activities")
+}
+
+model SyncDevice {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  deviceName String   @map("device_name")
+  lastSyncAt DateTime @map("last_sync_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("sync_devices")
 }
 
 // ============================================

@@ -13,6 +13,7 @@ import sessionRoutes from "./routes/session.routes.js";
 import progressionRoutes from "./routes/progression.routes.js";
 import configRoutes from "./routes/config.routes.js";
 import aiCoachingRoutes from "./routes/ai-coaching.routes.js";
+import healthSyncRoutes from "./routes/health-sync.routes.js";
 
 const app = express();
 const PORT = process.env["PORT"] || 3001;
@@ -79,6 +80,7 @@ app.use("/sessions", sessionRoutes);
 app.use("/", progressionRoutes);
 app.use("/config", configRoutes);
 app.use("/sessions", aiCoachingRoutes);
+app.use("/health-sync", healthSyncRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
