@@ -23,13 +23,6 @@ function cancelScheduledTimer() {
   restEndAtTarget = null;
 }
 
-function formatTime(ms) {
-  const totalSec = Math.ceil(Math.max(0, ms) / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return m + ":" + String(s).padStart(2, "0");
-}
-
 // Schedule a notification to fire at a specific timestamp
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SCHEDULE_NOTIFICATION") {
@@ -45,7 +38,6 @@ self.addEventListener("message", (event) => {
     // Show immediate "ongoing" notification (silent — no sound/vibration)
     // This ensures the user sees *something* even if Android freezes Chrome later
     self.registration.showNotification("Repos en cours", {
-      body: formatTime(delay) + " restantes",
       tag: "momentum-timer",
       icon: "/icon-192.png",
       silent: true,

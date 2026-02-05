@@ -44,6 +44,9 @@ coverage
 # TypeScript
 *.tsbuildinfo
 
+# Samsung Health data exports
+docs/Samsung Health/
+
 # Misc
 *.local
 .mcp.json
