@@ -17,6 +17,7 @@ import healthSyncRoutes from "./routes/health-sync.routes.js";
 
 const app = express();
 const PORT = process.env["PORT"] || 3001;
+const HOST = process.argv.includes("--host") ? "0.0.0.0" : (process.env["HOST"] || "localhost");
 
 app.use(helmet());
 
@@ -31,18 +32,23 @@ if (process.env["FRONTEND_URL"]) {
   allowedOrigins.push(process.env["FRONTEND_URL"]);
 }
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
+if (HOST === "0.0.0.0") {
+  // Allow all origins when exposed on LAN
+  app.use(cors({ origin: true, credentials: true }));
+} else {
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error("Not allowed by CORS"));
+        }
+      },
+      credentials: true,
+    })
+  );
+}
 app.use(express.json());
 
 // Health check endpoint (before auth routes to avoid middleware interference)
@@ -82,6 +88,6 @@ app.use("/config", configRoutes);
 app.use("/sessions", aiCoachingRoutes);
 app.use("/health-sync", healthSyncRoutes);
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(Number(PORT), HOST, () => {
+  console.log(`Server running on http://${HOST}:${PORT}`);
 });

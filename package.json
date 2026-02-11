@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev -w @momentum/api\" \"npm run dev -w @momentum/web\"",
+    "dev:host": "concurrently \"npm run dev:host -w @momentum/api\" \"npm run dev:host -w @momentum/web\"",
     "dev:api": "npm run dev -w @momentum/api",
     "dev:web": "npm run dev -w @momentum/web",
     "build": "npm run build -w @momentum/shared && npm run build -w @momentum/api && npm run build -w @momentum/web",
