@@ -9,7 +9,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  ResponsiveContainer,
 } from "recharts";
 import { TrendingUp, TrendingDown, Minus, ChartNoAxesCombined } from "lucide-react";
 import { PageHeader } from "@/components/layout";
@@ -415,7 +414,6 @@ export default function MeasurementsGraphsPage() {
               config={measurementDef?.bilateral ? chartConfigBilateral : chartConfigSingle}
               className="h-[220px] w-full"
             >
-              <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={validChartData}
                   margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -458,8 +456,9 @@ export default function MeasurementsGraphsPage() {
                   />
 
                   {measurementDef?.bilateral ? (
-                    <>
+                    [
                       <Line
+                        key="line-left"
                         type="monotone"
                         dataKey="left"
                         name="Gauche"
@@ -468,8 +467,9 @@ export default function MeasurementsGraphsPage() {
                         dot={{ r: 4, fill: "var(--color-left)", strokeWidth: 0 }}
                         activeDot={{ r: 6, fill: "var(--color-left)", strokeWidth: 2, stroke: "var(--background)" }}
                         connectNulls
-                      />
+                      />,
                       <Line
+                        key="line-right"
                         type="monotone"
                         dataKey="right"
                         name="Droite"
@@ -478,10 +478,11 @@ export default function MeasurementsGraphsPage() {
                         dot={{ r: 4, fill: "var(--color-right)", strokeWidth: 0 }}
                         activeDot={{ r: 6, fill: "var(--color-right)", strokeWidth: 2, stroke: "var(--background)" }}
                         connectNulls
-                      />
-                    </>
+                      />,
+                    ]
                   ) : (
                     <Line
+                      key="line-value"
                       type="monotone"
                       dataKey="value"
                       name="Valeur"
@@ -493,7 +494,6 @@ export default function MeasurementsGraphsPage() {
                     />
                   )}
                 </LineChart>
-              </ResponsiveContainer>
             </ChartContainer>
 
             {/* Legend for bilateral */}

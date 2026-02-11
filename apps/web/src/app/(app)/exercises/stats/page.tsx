@@ -9,7 +9,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  ResponsiveContainer,
 } from "recharts";
 import {
   TrendingUp,
@@ -469,7 +468,6 @@ export default function ExerciseStatsPage() {
             </div>
 
             <ChartContainer config={chartConfig} className="h-[220px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={chartData}
                   margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -532,7 +530,6 @@ export default function ExerciseStatsPage() {
                     connectNulls
                   />
                 </LineChart>
-              </ResponsiveContainer>
             </ChartContainer>
 
             {/* Period selector (AC6) */}
