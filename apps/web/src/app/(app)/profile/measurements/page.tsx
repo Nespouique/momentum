@@ -31,6 +31,7 @@ import { getProfile, type UserProfile } from "@/lib/api/profile";
 import {
   getMeasurements,
   deleteMeasurement,
+  hasBodyMeasurements,
   type Measurement,
 } from "@/lib/api/measurements";
 import { toast } from "sonner";
@@ -338,11 +339,19 @@ export default function MeasurementsPage() {
     }
   };
 
-  const latest = measurements[0] ?? null;
-  const previous = measurements[1] ?? null;
+  // Most recent measurement with weight (for weight/BMI cards)
+  const latestWithWeight = measurements.find((m) => m.weight !== null) ?? null;
+
+  // Most recent measurements with body data (for body section + trends)
+  const fullMeasurements = measurements.filter(hasBodyMeasurements);
+  const latestFull = fullMeasurements[0] ?? null;
+  const previousFull = fullMeasurements[1] ?? null;
+
+  // For backward compat: use latestFull for the page, fallback to first measurement
+  const latest = latestFull ?? measurements[0] ?? null;
 
   const age = calculateAge(profile?.birthDate ?? null, latest?.date);
-  const bmi = calculateBMI(latest?.weight ?? null, profile?.height ?? null);
+  const bmi = calculateBMI(latestWithWeight?.weight ?? null, profile?.height ?? null);
   const bmiCategory = bmi ? getBMICategory(bmi) : null;
 
   if (isLoading) {
@@ -417,8 +426,9 @@ export default function MeasurementsPage() {
             <StatCard
               icon={Scale}
               label="Poids"
-              value={latest.weight?.toFixed(1) ?? null}
+              value={latestWithWeight?.weight?.toFixed(1) ?? null}
               unit="kg"
+              subtitle={latestWithWeight ? formatDate(latestWithWeight.date) : undefined}
               accentColor="orange"
             />
             <StatCard
@@ -436,29 +446,29 @@ export default function MeasurementsPage() {
             <SectionHeader title="Haut du corps" />
             <MeasurementRow
               label="Cou"
-              value={latest.neck}
-              previousValue={previous?.neck ?? null}
+              value={latestFull?.neck ?? null}
+              previousValue={previousFull?.neck ?? null}
             />
             <MeasurementRow
               label="Épaules"
-              value={latest.shoulders}
-              previousValue={previous?.shoulders ?? null}
+              value={latestFull?.shoulders ?? null}
+              previousValue={previousFull?.shoulders ?? null}
             />
             <MeasurementRow
               label="Poitrine"
-              value={latest.chest}
-              previousValue={previous?.chest ?? null}
+              value={latestFull?.chest ?? null}
+              previousValue={previousFull?.chest ?? null}
             />
             <MeasurementRow
               label="Taille"
-              value={latest.waist}
-              previousValue={previous?.waist ?? null}
+              value={latestFull?.waist ?? null}
+              previousValue={previousFull?.waist ?? null}
               inverse
             />
             <MeasurementRow
               label="Hanches"
-              value={latest.hips}
-              previousValue={previous?.hips ?? null}
+              value={latestFull?.hips ?? null}
+              previousValue={previousFull?.hips ?? null}
             />
 
             {/* Arms */}
@@ -466,24 +476,24 @@ export default function MeasurementsPage() {
             <SectionHeader title="Bras" />
             <BilateralRow
               label="Biceps"
-              leftValue={latest.bicepsLeft}
-              rightValue={latest.bicepsRight}
-              prevLeftValue={previous?.bicepsLeft ?? null}
-              prevRightValue={previous?.bicepsRight ?? null}
+              leftValue={latestFull?.bicepsLeft ?? null}
+              rightValue={latestFull?.bicepsRight ?? null}
+              prevLeftValue={previousFull?.bicepsLeft ?? null}
+              prevRightValue={previousFull?.bicepsRight ?? null}
             />
             <BilateralRow
               label="Avant-bras"
-              leftValue={latest.forearmLeft}
-              rightValue={latest.forearmRight}
-              prevLeftValue={previous?.forearmLeft ?? null}
-              prevRightValue={previous?.forearmRight ?? null}
+              leftValue={latestFull?.forearmLeft ?? null}
+              rightValue={latestFull?.forearmRight ?? null}
+              prevLeftValue={previousFull?.forearmLeft ?? null}
+              prevRightValue={previousFull?.forearmRight ?? null}
             />
             <BilateralRow
               label="Poignet"
-              leftValue={latest.wristLeft}
-              rightValue={latest.wristRight}
-              prevLeftValue={previous?.wristLeft ?? null}
-              prevRightValue={previous?.wristRight ?? null}
+              leftValue={latestFull?.wristLeft ?? null}
+              rightValue={latestFull?.wristRight ?? null}
+              prevLeftValue={previousFull?.wristLeft ?? null}
+              prevRightValue={previousFull?.wristRight ?? null}
             />
 
             {/* Legs */}
@@ -491,24 +501,24 @@ export default function MeasurementsPage() {
             <SectionHeader title="Jambes" />
             <BilateralRow
               label="Cuisse"
-              leftValue={latest.thighLeft}
-              rightValue={latest.thighRight}
-              prevLeftValue={previous?.thighLeft ?? null}
-              prevRightValue={previous?.thighRight ?? null}
+              leftValue={latestFull?.thighLeft ?? null}
+              rightValue={latestFull?.thighRight ?? null}
+              prevLeftValue={previousFull?.thighLeft ?? null}
+              prevRightValue={previousFull?.thighRight ?? null}
             />
             <BilateralRow
               label="Mollet"
-              leftValue={latest.calfLeft}
-              rightValue={latest.calfRight}
-              prevLeftValue={previous?.calfLeft ?? null}
-              prevRightValue={previous?.calfRight ?? null}
+              leftValue={latestFull?.calfLeft ?? null}
+              rightValue={latestFull?.calfRight ?? null}
+              prevLeftValue={previousFull?.calfLeft ?? null}
+              prevRightValue={previousFull?.calfRight ?? null}
             />
             <BilateralRow
               label="Cheville"
-              leftValue={latest.ankleLeft}
-              rightValue={latest.ankleRight}
-              prevLeftValue={previous?.ankleLeft ?? null}
-              prevRightValue={previous?.ankleRight ?? null}
+              leftValue={latestFull?.ankleLeft ?? null}
+              rightValue={latestFull?.ankleRight ?? null}
+              prevLeftValue={previousFull?.ankleLeft ?? null}
+              prevRightValue={previousFull?.ankleRight ?? null}
             />
           </div>
         </>

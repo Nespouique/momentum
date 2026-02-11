@@ -35,9 +35,10 @@ import { PageHeader } from "@/components/layout";
 import { useAuthStore } from "@/stores/auth";
 import {
   getMeasurement,
-  getLatestMeasurement,
+  getMeasurements,
   createMeasurement,
   updateMeasurement,
+  hasBodyMeasurements,
   type Measurement,
   type MeasurementInput,
 } from "@/lib/api/measurements";
@@ -140,6 +141,7 @@ export default function MeasurementFormPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [previousValues, setPreviousValues] = useState<Measurement | null>(null);
+  const [latestWeight, setLatestWeight] = useState<number | null>(null);
   const [openSections, setOpenSections] = useState({
     upperBody: false,
     arms: false,
@@ -183,10 +185,16 @@ export default function MeasurementFormPage() {
     const loadData = async () => {
       try {
         if (isNew) {
-          // For new measurements, load previous values as placeholders
-          const latest = await getLatestMeasurement(token);
-          if (latest) {
-            setPreviousValues(latest);
+          // For new measurements, use the last full measurement (with body data) as body placeholders
+          // and the last measurement with weight for the weight placeholder
+          const { data: allMeasurements } = await getMeasurements(token);
+          const latestFull = allMeasurements.find(hasBodyMeasurements);
+          if (latestFull) {
+            setPreviousValues(latestFull);
+          }
+          const latestWithWeight = allMeasurements.find((m) => m.weight !== null);
+          if (latestWithWeight) {
+            setLatestWeight(latestWithWeight.weight);
           }
         } else {
           // For editing, load the specific measurement
@@ -232,9 +240,14 @@ export default function MeasurementFormPage() {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  // Get placeholder from previous measurement (only for new measurements)
+  // Get placeholder from previous measurements (only for new measurements)
+  // Weight: from last measurement with weight; body fields: from last full measurement
   const getPlaceholder = (field: keyof Measurement): string | undefined => {
-    if (!isNew || !previousValues) return undefined;
+    if (!isNew) return undefined;
+    if (field === "weight") {
+      return latestWeight !== null ? String(latestWeight) : undefined;
+    }
+    if (!previousValues) return undefined;
     const value = previousValues[field];
     return value !== null && value !== undefined ? String(value) : undefined;
   };
@@ -369,7 +382,7 @@ export default function MeasurementFormPage() {
                   onChange={field.onChange}
                   min={20}
                   max={500}
-                  step={0.1}
+                  step={0.5}
                   placeholder={getPlaceholder("weight") ?? "75.0"}
                   className="flex-1"
                 />

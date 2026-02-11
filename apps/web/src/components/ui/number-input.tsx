@@ -99,12 +99,17 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
       return min ?? 0;
     };
 
+    const roundToStep = (val: number): number => {
+      const decimals = (step.toString().split(".")[1] || "").length;
+      return parseFloat(val.toFixed(decimals));
+    };
+
     const increment = () => {
-      updateValue(getBaseValue() + step);
+      updateValue(roundToStep(getBaseValue() + step));
     };
 
     const decrement = () => {
-      updateValue(getBaseValue() - step);
+      updateValue(roundToStep(getBaseValue() - step));
     };
 
     const baseValue = getBaseValue();

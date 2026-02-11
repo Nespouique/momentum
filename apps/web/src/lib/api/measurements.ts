@@ -75,6 +75,29 @@ interface ApiError {
   };
 }
 
+/** Returns true if the measurement has at least one body field (not just weight) */
+export function hasBodyMeasurements(m: Measurement): boolean {
+  return (
+    m.neck !== null ||
+    m.shoulders !== null ||
+    m.chest !== null ||
+    m.waist !== null ||
+    m.hips !== null ||
+    m.bicepsLeft !== null ||
+    m.bicepsRight !== null ||
+    m.forearmLeft !== null ||
+    m.forearmRight !== null ||
+    m.wristLeft !== null ||
+    m.wristRight !== null ||
+    m.thighLeft !== null ||
+    m.thighRight !== null ||
+    m.calfLeft !== null ||
+    m.calfRight !== null ||
+    m.ankleLeft !== null ||
+    m.ankleRight !== null
+  );
+}
+
 export class MeasurementError extends Error {
   code: string;
   details?: Array<{ field: string; message: string }>;
