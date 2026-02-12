@@ -17,7 +17,8 @@ import healthSyncRoutes from "./routes/health-sync.routes.js";
 
 const app = express();
 const PORT = process.env["PORT"] || 3001;
-const HOST = process.argv.includes("--host") ? "0.0.0.0" : (process.env["HOST"] || "localhost");
+const defaultHost = process.env["NODE_ENV"] === "production" ? "0.0.0.0" : "localhost";
+const HOST = process.argv.includes("--host") ? "0.0.0.0" : (process.env["HOST"] || defaultHost);
 
 app.use(helmet());
 
