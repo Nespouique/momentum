@@ -58,7 +58,7 @@ const HEALTH_CONNECT_TRACKABLES = [
     trackingType: "duration" as const,
     unit: "min",
     isSystem: true,
-    defaultGoal: null,
+    defaultGoal: { targetValue: 480, frequency: "daily" as const },
   },
 ];
 

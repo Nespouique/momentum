@@ -60,7 +60,7 @@ export default function ProfilePage() {
             isFirst
           />
           <MenuItem
-            href="/settings/trackables"
+            href="/profile/trackables"
             icon={BarChart3}
             label="Configuration du suivi"
             description="Personnaliser ce que vous suivez"

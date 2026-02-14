@@ -14,6 +14,8 @@ import progressionRoutes from "./routes/progression.routes.js";
 import configRoutes from "./routes/config.routes.js";
 import aiCoachingRoutes from "./routes/ai-coaching.routes.js";
 import healthSyncRoutes from "./routes/health-sync.routes.js";
+import trackableRoutes from "./routes/trackable.routes.js";
+import trackingRoutes from "./routes/tracking.routes.js";
 
 const app = express();
 const PORT = process.env["PORT"] || 3001;
@@ -88,6 +90,8 @@ app.use("/", progressionRoutes);
 app.use("/config", configRoutes);
 app.use("/sessions", aiCoachingRoutes);
 app.use("/health-sync", healthSyncRoutes);
+app.use("/trackables", trackableRoutes);
+app.use("/tracking", trackingRoutes);
 
 app.listen(Number(PORT), HOST, () => {
   console.log(`Server running on http://${HOST}:${PORT}`);

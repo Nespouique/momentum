@@ -19,7 +19,11 @@
 - [x] Voir le fonctionnement de la séance avec les supersets
 - [x] Revoir et tester l'écran de récapitulatif de la séance (avec confettis)
 - [x] Supprimer l'icon ou la mettre en blanc sur la preview de l'exercice
-- [ ] Ajouter une icon statistiques sur les cartes des exercices dans la liste des exercices
+- [x] Ajouter une icon statistiques sur les cartes des exercices dans la liste des exercices
 - [ ] Pouvoir ajouter une série pendant la séance
 - [x] Bug quand je fais passer, si c'est un superset ça doit passer le superset entier
 - [ ] Ajouter le numéro de version dans le menu settings
+- [ ] Ajouter un MCP Momentum
+- [x] Epic 3 - Stories 3.1 & 3.2 : Trackables CRUD backend + Configuration UI
+- [x] Suggestions d'icônes IA (gpt-4o-mini) pour les trackables personnalisés
+- [x] Support @lucide/lab pour icônes étendues (flower-lotus, etc.)

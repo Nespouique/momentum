@@ -90,6 +90,19 @@
   }
 }
 
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@utility animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
 /* CSS Variables - values include hsl() for v4 */
 :root {
   --background: hsl(0 0% 4%);

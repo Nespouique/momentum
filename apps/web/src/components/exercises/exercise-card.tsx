@@ -1,6 +1,7 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Trash2, ChartColumn } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Exercise } from "@/lib/api/exercises";
@@ -14,6 +15,8 @@ interface ExerciseCardProps {
 }
 
 export function ExerciseCard({ exercise, onEdit, onDelete }: ExerciseCardProps) {
+  const router = useRouter();
+
   return (
     <div
       onClick={onEdit}
@@ -41,8 +44,20 @@ export function ExerciseCard({ exercise, onEdit, onDelete }: ExerciseCardProps) 
           </div>
         </div>
 
-        {/* Delete button */}
-        <div className="flex items-center shrink-0">
+        {/* Actions */}
+        <div className="flex items-center shrink-0 gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/exercises/stats?exerciseId=${exercise.id}`);
+            }}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+          >
+            <ChartColumn className="h-4 w-4" />
+            <span className="sr-only">Statistiques</span>
+          </Button>
           <Button
             variant="ghost"
             size="icon"

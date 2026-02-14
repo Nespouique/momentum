@@ -388,9 +388,6 @@ export default function MeasurementsGraphsPage() {
       {/* Chart or Empty State */}
       {validChartData.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-border/40 bg-card">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-[var(--accent-orange)]/20 to-transparent border border-[var(--accent-orange)]/20">
-            <ChartNoAxesCombined className="h-8 w-8 text-[var(--accent-orange)]" />
-          </div>
           <h3 className="mb-2 text-lg font-semibold">Aucune donnée</h3>
           <p className="max-w-xs text-sm text-muted-foreground">
             Aucune mesure de {selectedLabel.toLowerCase()} enregistrée

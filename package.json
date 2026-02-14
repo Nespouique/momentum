@@ -17,7 +17,9 @@
     "format:check": "prettier --check .",
     "db:start": "docker compose -f docker/docker-compose.dev.yml up -d",
     "db:stop": "docker compose -f docker/docker-compose.dev.yml down",
-    "db:reset": "docker compose -f docker/docker-compose.dev.yml down -v && docker compose -f docker/docker-compose.dev.yml up -d"
+    "db:reset": "docker compose -f docker/docker-compose.dev.yml down -v && docker compose -f docker/docker-compose.dev.yml up -d",
+    "generate-icons": "node scripts/generate-icon-list.mjs",
+    "postinstall": "node scripts/generate-icon-list.mjs"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

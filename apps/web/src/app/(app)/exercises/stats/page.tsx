@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { format, subMonths, subYears, differenceInMonths } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -222,6 +223,8 @@ function ExerciseInfoCard({
 
 export default function ExerciseStatsPage() {
   const { token } = useAuthStore();
+  const searchParams = useSearchParams();
+  const initialExerciseId = useRef(searchParams.get("exerciseId"));
   const [allExercises, setAllExercises] = useState<Exercise[]>([]);
   const [exercises, setExercises] = useState<PracticedExercise[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -265,6 +268,17 @@ export default function ExerciseStatsPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Pre-select exercise from URL query param
+  useEffect(() => {
+    if (initialExerciseId.current && allExercises.length > 0 && !selectedExerciseId) {
+      const match = allExercises.find((e) => e.id === initialExerciseId.current);
+      if (match) {
+        setSelectedExerciseId(match.id);
+        initialExerciseId.current = null;
+      }
+    }
+  }, [allExercises, selectedExerciseId]);
 
   // Selected exercise data
   const selectedExercise = useMemo(
@@ -358,9 +372,6 @@ export default function ExerciseStatsPage() {
       <div className="pb-8">
         <PageHeader title="Évolution" showBack />
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-[var(--accent-orange)]/20 to-transparent border border-[var(--accent-orange)]/20">
-            <ChartNoAxesCombined className="h-8 w-8 text-[var(--accent-orange)]" />
-          </div>
           <h3 className="mb-2 text-lg font-semibold">Aucune donnée</h3>
           <p className="max-w-xs text-sm text-muted-foreground">
             Complétez des séances pour voir vos statistiques d&apos;exercices.
@@ -437,9 +448,6 @@ export default function ExerciseStatsPage() {
       {/* Chart or empty state (AC5) */}
       {selectedExercise && chartData.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-border/40 bg-card">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-[var(--accent-orange)]/20 to-transparent border border-[var(--accent-orange)]/20">
-            <ChartNoAxesCombined className="h-8 w-8 text-[var(--accent-orange)]" />
-          </div>
           <h3 className="mb-2 text-lg font-semibold">Aucune donnée sur cette période</h3>
           <p className="max-w-xs text-sm text-muted-foreground">
             Aucune séance avec {selectedExercise.exerciseName}
@@ -448,9 +456,6 @@ export default function ExerciseStatsPage() {
         </div>
       ) : selectedExerciseId && !selectedExercise ? (
         <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-border/40 bg-card">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-[var(--accent-orange)]/20 to-transparent border border-[var(--accent-orange)]/20">
-            <ChartNoAxesCombined className="h-8 w-8 text-[var(--accent-orange)]" />
-          </div>
           <h3 className="mb-2 text-lg font-semibold">Aucune donnée</h3>
           <p className="max-w-xs text-sm text-muted-foreground">
             Aucune séance enregistrée avec {selectedExerciseName}.
