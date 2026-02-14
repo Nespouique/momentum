@@ -79,8 +79,8 @@ export function TrackableConfigCard({
       toast.success("Trackable supprimé");
       setDeleteDialogOpen(false);
       onUpdate?.();
-    } catch (error: any) {
-      toast.error(error.message || "Erreur lors de la suppression");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Erreur lors de la suppression");
     } finally {
       setIsDeleting(false);
     }

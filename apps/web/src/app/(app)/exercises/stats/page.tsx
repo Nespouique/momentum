@@ -15,7 +15,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  ChartNoAxesCombined,
   Calendar,
   Dumbbell,
 } from "lucide-react";

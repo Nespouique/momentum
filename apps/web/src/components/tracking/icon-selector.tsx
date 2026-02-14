@@ -26,7 +26,7 @@ export function IconSelector({
     if (value && value !== inputValue) {
       setInputValue(value);
     }
-  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [value]);
 
   const resolvedIcon = useMemo(() => {
     if (!inputValue) return null;

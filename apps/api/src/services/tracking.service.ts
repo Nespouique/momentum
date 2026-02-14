@@ -374,7 +374,7 @@ export async function getSummary(
 
 // --- Helper functions ---
 
-function buildRingData(trackable: any) {
+function buildRingData(trackable: { id: string; entries: { value: number }[]; goals: { targetValue: number }[] } | undefined) {
   if (!trackable) {
     return { value: 0, goal: 0, percentage: 0, trackableId: null };
   }
@@ -394,7 +394,7 @@ function buildRingData(trackable: any) {
   };
 }
 
-function buildSleepData(trackable: any) {
+function buildSleepData(trackable: { id: string; entries: { value: number }[]; goals: { targetValue: number }[] } | undefined) {
   if (!trackable) {
     return { value: 0, goal: null, percentage: 0, trackableId: null };
   }

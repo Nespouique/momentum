@@ -10,7 +10,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, TrendingDown, Minus, ChartNoAxesCombined } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { PageHeader } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import {
