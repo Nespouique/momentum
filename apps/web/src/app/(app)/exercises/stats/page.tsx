@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { Suspense, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { format, subMonths, subYears, differenceInMonths } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -220,7 +220,15 @@ function ExerciseInfoCard({
   );
 }
 
-export default function ExerciseStatsPage() {
+export default function ExerciseStatsPageWrapper() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[50vh]"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
+      <ExerciseStatsPage />
+    </Suspense>
+  );
+}
+
+function ExerciseStatsPage() {
   const { token } = useAuthStore();
   const searchParams = useSearchParams();
   const initialExerciseId = useRef(searchParams.get("exerciseId"));
