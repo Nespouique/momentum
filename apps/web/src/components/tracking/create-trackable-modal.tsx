@@ -177,6 +177,9 @@ export function CreateTrackableModal({
           name: data.name,
           icon: data.icon,
           color: data.color,
+          unit: (data.trackingType === "number" || data.trackingType === "duration") && data.unit
+            ? data.unit
+            : null,
         });
 
         // Update or create goal

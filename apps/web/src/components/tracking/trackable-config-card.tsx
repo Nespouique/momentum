@@ -95,10 +95,13 @@ export function TrackableConfigCard({
   };
 
   const isSleep = trackable.name === "Durée sommeil";
+  const isWorkout = trackable.name === "Séances de sport";
   const goalText = trackable.goal
     ? isSleep
       ? `${formatSleepHours(trackable.goal.targetValue)}/${FREQUENCY_LABELS[trackable.goal.frequency]}`
-      : `${trackable.goal.targetValue}${trackable.unit ? " " + trackable.unit : ""}/${FREQUENCY_LABELS[trackable.goal.frequency]}`
+      : isWorkout
+        ? `${trackable.goal.targetValue} séances/${FREQUENCY_LABELS[trackable.goal.frequency]}`
+        : `${trackable.goal.targetValue}${trackable.unit ? " " + trackable.unit : ""}/${FREQUENCY_LABELS[trackable.goal.frequency]}`
     : "Aucun objectif";
 
   return (

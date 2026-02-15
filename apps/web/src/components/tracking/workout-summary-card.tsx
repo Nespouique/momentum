@@ -1,7 +1,6 @@
 "use client";
 
-import { Dumbbell, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Dumbbell } from "lucide-react";
 
 interface WorkoutSessionsSummary {
   today: number;
@@ -15,111 +14,66 @@ interface WorkoutSessionsSummary {
 
 interface WorkoutSummaryCardProps {
   sessions: WorkoutSessionsSummary;
-  onStartSession: () => void;
 }
 
-function formatFrequency(frequency: string): string {
-  const map: Record<string, string> = {
-    weekly: "cette semaine",
-    monthly: "ce mois",
-  };
-  return map[frequency] || frequency;
+function formatFrequencyLabel(frequency: string): string {
+  return frequency === "monthly" ? "ce mois" : "cette sem.";
 }
 
-export function WorkoutSummaryCard({
-  sessions,
-  onStartSession,
-}: WorkoutSummaryCardProps) {
+export function WorkoutSummaryCard({ sessions }: WorkoutSummaryCardProps) {
   const hasGoal = sessions.goal !== null;
   const goalPeriod = sessions.goal?.frequency || "weekly";
-  const currentCount =
-    goalPeriod === "weekly" ? sessions.thisWeek : sessions.thisMonth;
-  const isGoalMet = hasGoal && currentCount >= sessions.goal!.targetValue;
+  const currentCount = goalPeriod === "weekly" ? sessions.thisWeek : sessions.thisMonth;
+  const percentage = hasGoal ? Math.round((currentCount / sessions.goal!.targetValue) * 100) : 0;
+  const progressWidth = hasGoal ? Math.min(percentage, 100) : 0;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-yellow-500/10 p-5 shadow-sm">
-      {/* Ambient energy glow */}
-      <div className="absolute inset-0 bg-gradient-to-br from-orange-400/5 via-transparent to-amber-400/5 opacity-60" />
+    <div className="relative overflow-hidden rounded-xl border border-border/40 bg-card p-4">
+      <div className="absolute inset-0 bg-linear-to-br from-amber-500/20 to-transparent opacity-50" />
 
-      {/* Content */}
-      <div className="relative space-y-4">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/15 ring-1 ring-amber-400/25 shadow-sm">
-            <Dumbbell className="h-5 w-5 text-amber-500" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-bold text-foreground tracking-tight">
-              Sport
-            </h3>
-            <p className="text-xs text-muted-foreground/70 mt-0.5">
-              Séances d'entraînement
-            </p>
-          </div>
+      <div className="relative">
+        <div className="flex items-center gap-2 mb-2">
+          <Dumbbell className="h-4 w-4 text-amber-400" />
+          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            Sport
+          </span>
         </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="flex flex-col items-center rounded-lg bg-background/40 py-2 px-1 backdrop-blur-sm">
-            <span className="text-xl font-bold tabular-nums text-amber-500">
-              {sessions.today}
-            </span>
-            <span className="text-[10px] text-muted-foreground/60 font-medium uppercase tracking-wider mt-0.5">
-              Aujourd'hui
-            </span>
-          </div>
-          <div className="flex flex-col items-center rounded-lg bg-background/40 py-2 px-1 backdrop-blur-sm">
-            <span className="text-xl font-bold tabular-nums text-amber-500">
-              {sessions.thisWeek}
-            </span>
-            <span className="text-[10px] text-muted-foreground/60 font-medium uppercase tracking-wider mt-0.5">
-              Semaine
-            </span>
-          </div>
-          <div className="flex flex-col items-center rounded-lg bg-background/40 py-2 px-1 backdrop-blur-sm">
-            <span className="text-xl font-bold tabular-nums text-amber-500">
-              {sessions.thisMonth}
-            </span>
-            <span className="text-[10px] text-muted-foreground/60 font-medium uppercase tracking-wider mt-0.5">
-              Mois
-            </span>
-          </div>
-        </div>
-
-        {/* Goal */}
-        {hasGoal && (
-          <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
-                {currentCount}
-              </span>
-              <span className="text-xs text-muted-foreground">
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-bold tabular-nums tracking-tight">
+            {currentCount}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            séance{currentCount !== 1 ? "s" : ""}
+          </span>
+          {hasGoal && (
+            <>
+              <span className="text-sm text-muted-foreground">
                 / {sessions.goal!.targetValue}
               </span>
-              <span className="text-xs text-muted-foreground/70">
-                {formatFrequency(goalPeriod)}
+              <span className="text-sm text-muted-foreground font-semibold">
+                ({percentage}%)
               </span>
-            </div>
-            {isGoalMet && (
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20">
-                <div className="h-2 w-2 rounded-full bg-amber-500" />
-              </div>
-            )}
+            </>
+          )}
+        </div>
+        {hasGoal && (
+          <div className="flex items-center justify-between mt-1">
+            <span className="text-[10px] text-muted-foreground/60">
+              {formatFrequencyLabel(goalPeriod)}
+            </span>
           </div>
         )}
 
-        {/* CTA */}
-        <Button
-          onClick={onStartSession}
-          className="w-full h-11 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold shadow-lg shadow-amber-500/25 transition-all duration-200 hover:shadow-xl hover:shadow-amber-500/30 active:scale-[0.98]"
-        >
-          Démarrer une séance
-          <ChevronRight className="ml-1 h-4 w-4" />
-        </Button>
+        {/* Progress bar */}
+        {hasGoal && (
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-amber-500/10">
+            <div
+              className="h-full rounded-full bg-amber-400 transition-all duration-1000 ease-out"
+              style={{ width: `${progressWidth}%` }}
+            />
+          </div>
+        )}
       </div>
-
-      {/* Top highlight */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
     </div>
   );
 }

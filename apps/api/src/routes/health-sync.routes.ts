@@ -60,6 +60,15 @@ const HEALTH_CONNECT_TRACKABLES = [
     isSystem: true,
     defaultGoal: { targetValue: 480, frequency: "daily" as const },
   },
+  {
+    name: "Séances de sport",
+    icon: "dumbbell",
+    color: "#F59E0B",
+    trackingType: "number" as const,
+    unit: "séances",
+    isSystem: true,
+    defaultGoal: { targetValue: 3, frequency: "weekly" as const },
+  },
 ];
 
 /**

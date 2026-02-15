@@ -260,6 +260,54 @@ export async function ensureSleepGoal(userId: string) {
   }
 }
 
+/**
+ * Ensure workout trackable exists with a default goal for existing users.
+ * Called on-demand when listing trackables.
+ */
+export async function ensureWorkoutTrackable(userId: string) {
+  const workoutTrackable = await prisma.trackableItem.findFirst({
+    where: { userId, name: "Séances de sport", isSystem: true },
+    include: {
+      goals: {
+        where: { endDate: null },
+      },
+    },
+  });
+
+  if (!workoutTrackable) {
+    // Create the trackable + default goal
+    const created = await prisma.trackableItem.create({
+      data: {
+        userId,
+        name: "Séances de sport",
+        icon: "dumbbell",
+        color: "#F59E0B",
+        trackingType: "number",
+        unit: "séances",
+        isSystem: true,
+        isActive: true,
+      },
+    });
+
+    await prisma.trackableGoal.create({
+      data: {
+        trackableId: created.id,
+        targetValue: 3,
+        frequency: "weekly",
+      },
+    });
+  } else if (workoutTrackable.goals.length === 0) {
+    // Trackable exists but no active goal
+    await prisma.trackableGoal.create({
+      data: {
+        trackableId: workoutTrackable.id,
+        targetValue: 3,
+        frequency: "weekly",
+      },
+    });
+  }
+}
+
 const FALLBACK_ICONS = ["target", "star", "circle-dot", "heart", "zap"];
 
 /**

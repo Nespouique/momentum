@@ -39,6 +39,7 @@ export interface UpdateTrackableInput {
   name?: string;
   icon?: string;
   color?: string;
+  unit?: string | null;
   isActive?: boolean;
   sortOrder?: number;
 }

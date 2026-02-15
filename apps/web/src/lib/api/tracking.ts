@@ -21,6 +21,12 @@ export interface TrackableEntry {
   source: "manual" | "health_connect";
 }
 
+export interface GoalProgress {
+  current: number;
+  target: number;
+  frequency: "weekly" | "monthly";
+}
+
 export interface DashboardTrackable {
   id: string;
   name: string;
@@ -34,6 +40,7 @@ export interface DashboardTrackable {
   } | null;
   entry: TrackableEntry | null;
   completed: boolean;
+  goalProgress: GoalProgress | null;
 }
 
 export interface WorkoutSessionsSummary {

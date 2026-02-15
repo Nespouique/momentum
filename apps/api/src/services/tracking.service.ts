@@ -53,20 +53,113 @@ export async function getTodayTracking(userId: string) {
   // Build sleep data
   const sleep = buildSleepData(sleepTrackable);
 
+  // Collect trackable IDs that have non-daily goals to fetch period entries
+  const weeklyTrackableIds: string[] = [];
+  const monthlyTrackableIds: string[] = [];
+  for (const t of customTrackables) {
+    const goal = t.goals[0];
+    if (!goal) continue;
+    if (goal.frequency === "weekly") weeklyTrackableIds.push(t.id);
+    else if (goal.frequency === "monthly") monthlyTrackableIds.push(t.id);
+  }
+
+  // Fetch period entries for weekly/monthly trackables in bulk
+  const pWeekStart = new Date(format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd") + "T00:00:00.000Z");
+  const pWeekEnd = new Date(format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd") + "T00:00:00.000Z");
+  const pMonthStart = new Date(format(startOfMonth(new Date()), "yyyy-MM-dd") + "T00:00:00.000Z");
+  const pMonthEnd = new Date(format(endOfMonth(new Date()), "yyyy-MM-dd") + "T00:00:00.000Z");
+
+  const [weekEntries, monthEntries] = await Promise.all([
+    weeklyTrackableIds.length > 0
+      ? prisma.dailyEntry.findMany({
+          where: {
+            trackableId: { in: weeklyTrackableIds },
+            date: { gte: pWeekStart, lte: pWeekEnd },
+            value: { gt: 0 },
+          },
+        })
+      : Promise.resolve([]),
+    monthlyTrackableIds.length > 0
+      ? prisma.dailyEntry.findMany({
+          where: {
+            trackableId: { in: monthlyTrackableIds },
+            date: { gte: pMonthStart, lte: pMonthEnd },
+            value: { gt: 0 },
+          },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  // Index period entries by trackable ID
+  const weekEntriesByTrackable = new Map<string, typeof weekEntries>();
+  for (const e of weekEntries) {
+    const arr = weekEntriesByTrackable.get(e.trackableId) || [];
+    arr.push(e);
+    weekEntriesByTrackable.set(e.trackableId, arr);
+  }
+  const monthEntriesByTrackable = new Map<string, typeof monthEntries>();
+  for (const e of monthEntries) {
+    const arr = monthEntriesByTrackable.get(e.trackableId) || [];
+    arr.push(e);
+    monthEntriesByTrackable.set(e.trackableId, arr);
+  }
+
   // Build custom trackables data
-  const trackablesData = customTrackables.map((trackable) => ({
-    id: trackable.id,
-    name: trackable.name,
-    icon: trackable.icon,
-    color: trackable.color,
-    trackingType: trackable.trackingType,
-    unit: trackable.unit,
-    goal: trackable.goals[0] || null,
-    entry: trackable.entries[0] || null,
-    completed: trackable.entries[0] && trackable.goals[0]
-      ? trackable.entries[0].value >= trackable.goals[0].targetValue
-      : false,
-  }));
+  const trackablesData = customTrackables.map((trackable) => {
+    const entry = trackable.entries[0] || null;
+    const goal = trackable.goals[0] || null;
+
+    // "completed" = done for today
+    // Boolean: entry exists with value >= 1
+    // Number/duration with daily goal: entry.value >= goal.targetValue
+    // Number/duration with non-daily goal: entry exists with value > 0
+    let completed = false;
+    if (entry && goal) {
+      if (trackable.trackingType === "boolean") {
+        completed = entry.value >= 1;
+      } else if (goal.frequency === "daily") {
+        completed = entry.value >= goal.targetValue;
+      } else {
+        completed = entry.value > 0;
+      }
+    } else if (entry && !goal) {
+      completed = entry.value > 0;
+    }
+
+    // goalProgress for weekly/monthly goals
+    let goalProgress: { current: number; target: number; frequency: string } | null = null;
+    if (goal && goal.frequency !== "daily") {
+      const periodEntries =
+        goal.frequency === "weekly"
+          ? weekEntriesByTrackable.get(trackable.id) || []
+          : monthEntriesByTrackable.get(trackable.id) || [];
+
+      // For boolean: count of days with value > 0. For number/duration: sum of values.
+      const current =
+        trackable.trackingType === "boolean"
+          ? periodEntries.length
+          : periodEntries.reduce((sum, e) => sum + e.value, 0);
+
+      goalProgress = {
+        current,
+        target: goal.targetValue,
+        frequency: goal.frequency,
+      };
+    }
+
+    return {
+      id: trackable.id,
+      name: trackable.name,
+      icon: trackable.icon,
+      color: trackable.color,
+      trackingType: trackable.trackingType,
+      unit: trackable.unit,
+      goal,
+      entry,
+      completed,
+      goalProgress,
+    };
+  });
 
   // Count workout sessions (from workout_sessions table)
   const todayStart = startOfDay(new Date());
@@ -75,6 +168,10 @@ export async function getTodayTracking(userId: string) {
   const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
   const monthStart = startOfMonth(new Date());
   const monthEnd = endOfMonth(new Date());
+
+  // Get workout trackable goal
+  const workoutTrackable = systemTrackables.find((t) => t.name === "Séances de sport");
+  const workoutGoal = workoutTrackable?.goals[0] ?? null;
 
   const [todaySessions, weekSessions, monthSessions] = await Promise.all([
     prisma.workoutSession.count({
@@ -100,12 +197,13 @@ export async function getTodayTracking(userId: string) {
     }),
   ]);
 
-  // TODO: In future, add a "workout" system trackable with weekly/monthly goals
   const workoutSessions = {
     today: todaySessions,
     thisWeek: weekSessions,
     thisMonth: monthSessions,
-    goal: null, // No goal tracking for workouts yet (future Story 3.x)
+    goal: workoutGoal
+      ? { targetValue: workoutGoal.targetValue, frequency: workoutGoal.frequency as "weekly" | "monthly" }
+      : null,
   };
 
   // Calculate overall progress (completed / total active trackables)

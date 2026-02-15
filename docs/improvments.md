@@ -27,3 +27,4 @@
 - [x] Epic 3 - Stories 3.1 & 3.2 : Trackables CRUD backend + Configuration UI
 - [x] Suggestions d'icônes IA (gpt-4o-mini) pour les trackables personnalisés
 - [x] Support @lucide/lab pour icônes étendues (flower-lotus, etc.)
+- [ ] Le popover de la sélection de couleur n'est pas de la bonne taille (l'input du hex est trop large)

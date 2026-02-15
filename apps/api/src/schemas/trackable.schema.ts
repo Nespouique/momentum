@@ -16,6 +16,7 @@ export const updateTrackableSchema = z.object({
   name: z.string().min(1).max(50).optional(),
   icon: z.string().min(1).optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  unit: z.string().max(20).optional().nullable(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
 });

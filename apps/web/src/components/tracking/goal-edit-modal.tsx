@@ -60,6 +60,11 @@ function isSleepTrackable(trackable: Trackable): boolean {
   return trackable.name === "Durée sommeil";
 }
 
+/** Workout trackable only supports weekly/monthly frequencies */
+function isWorkoutTrackable(trackable: Trackable): boolean {
+  return trackable.name === "Séances de sport";
+}
+
 function minutesToHours(min: number): number {
   return Math.round((min / 60) * 2) / 2; // round to nearest 0.5
 }
@@ -77,14 +82,16 @@ export function GoalEditModal({
   const { token } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSleep = isSleepTrackable(trackable);
+  const isWorkout = isWorkoutTrackable(trackable);
 
-  const defaultTarget = trackable.goal?.targetValue || 1;
+  const defaultTarget = trackable.goal?.targetValue || (isWorkout ? 3 : 1);
+  const defaultFrequency = trackable.goal?.frequency || (isWorkout ? "weekly" : "daily");
 
   const form = useForm<GoalFormData>({
     resolver: zodResolver(goalSchema),
     defaultValues: {
       targetValue: isSleep ? minutesToHours(defaultTarget) : defaultTarget,
-      frequency: trackable.goal?.frequency || "daily",
+      frequency: defaultFrequency,
     },
   });
 
@@ -148,7 +155,7 @@ export function GoalEditModal({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="daily">Quotidien</SelectItem>
+                      {!isWorkout && <SelectItem value="daily">Quotidien</SelectItem>}
                       <SelectItem value="weekly">Hebdomadaire</SelectItem>
                       <SelectItem value="monthly">Mensuel</SelectItem>
                     </SelectContent>
@@ -164,7 +171,7 @@ export function GoalEditModal({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    {isSleep ? "Durée cible (heures)" : "Valeur cible"}
+                    {isSleep ? "Durée cible (heures)" : isWorkout ? "Nombre de séances" : "Valeur cible"}
                   </FormLabel>
                   <FormControl>
                     {isSleep ? (
@@ -175,6 +182,15 @@ export function GoalEditModal({
                         max={24}
                         step={0.5}
                         placeholder="8"
+                      />
+                    ) : isWorkout ? (
+                      <NumberInput
+                        value={field.value}
+                        onChange={(val) => field.onChange(val ?? 1)}
+                        min={1}
+                        max={31}
+                        step={1}
+                        placeholder="3"
                       />
                     ) : (
                       <Input

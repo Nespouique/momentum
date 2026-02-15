@@ -17,6 +17,7 @@ import {
   updateGoal,
   reorderTrackables,
   ensureSleepGoal,
+  ensureWorkoutTrackable,
   suggestIcons,
 } from "../services/trackable.service.js";
 import { ZodError } from "zod";
@@ -46,8 +47,11 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
 
-    // Ensure sleep goal exists for this user (one-time fix)
-    await ensureSleepGoal(userId);
+    // Ensure system trackable defaults exist for this user (one-time lazy creation)
+    await Promise.all([
+      ensureSleepGoal(userId),
+      ensureWorkoutTrackable(userId),
+    ]);
 
     const trackables = await getUserTrackables(userId);
 

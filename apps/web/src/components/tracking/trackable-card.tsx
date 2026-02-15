@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { getIconComponent } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import type { GoalProgress } from "@/lib/api/tracking";
 
 interface DashboardTrackable {
   id: string;
@@ -24,6 +25,7 @@ interface DashboardTrackable {
     source: "manual" | "health_connect";
   } | null;
   completed: boolean;
+  goalProgress: GoalProgress | null;
 }
 
 interface TrackableCardProps {
@@ -170,7 +172,7 @@ export function TrackableCard({
                 </div>
               )}
             </div>
-            {trackable.goal && (
+            {trackable.goal && !trackable.goalProgress && (
               <p className="text-xs text-muted-foreground/70 mt-0.5">
                 {trackable.trackingType === "duration" && !trackable.unit
                   ? formatDuration(trackable.goal.targetValue)
@@ -178,6 +180,23 @@ export function TrackableCard({
                 {trackable.unit && ` ${trackable.unit}`} /{" "}
                 {formatFrequency(trackable.goal.frequency)}
               </p>
+            )}
+            {trackable.goalProgress && (
+              <div className="mt-1 flex items-center gap-2">
+                <div className="flex-1 h-1.5 rounded-full bg-secondary/50 overflow-hidden max-w-[100px]">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(100, (trackable.goalProgress.current / trackable.goalProgress.target) * 100)}%`,
+                      backgroundColor: trackable.color,
+                    }}
+                  />
+                </div>
+                <span className="text-xs tabular-nums text-muted-foreground/70">
+                  {trackable.goalProgress.current}/{trackable.goalProgress.target}
+                  {" "}/{" "}{formatFrequency(trackable.goalProgress.frequency)}
+                </span>
+              </div>
             )}
           </div>
 
@@ -189,11 +208,6 @@ export function TrackableCard({
                 onCheckedChange={handleBooleanToggle}
                 disabled={isUpdating}
                 className="h-6 w-6 transition-all duration-200 hover:scale-110 active:scale-95"
-                style={
-                  {
-                    "--checkbox-color": trackable.color,
-                  } as React.CSSProperties
-                }
               />
             ) : isEditing ? (
               <Input

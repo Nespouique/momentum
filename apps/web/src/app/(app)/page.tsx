@@ -1,19 +1,17 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout";
 import { ActivityRings } from "@/components/tracking/activity-rings";
 import { SleepCard } from "@/components/tracking/sleep-card";
 import { TrackableCard } from "@/components/tracking/trackable-card";
 import { WorkoutSummaryCard } from "@/components/tracking/workout-summary-card";
-import { DailyProgressBar } from "@/components/tracking/daily-progress-bar";
+
 import { useAuthStore } from "@/stores/auth";
 import { getToday, upsertEntry, type TodayResponse } from "@/lib/api/tracking";
 import { toast } from "sonner";
 
 export default function Home() {
-  const router = useRouter();
   const { token, user } = useAuthStore();
   const [data, setData] = useState<TodayResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,7 +75,9 @@ export default function Home() {
     if (!trackable) return;
 
     const isCompleted = trackable.goal
-      ? value >= trackable.goal.targetValue
+      ? trackable.goal.frequency === "daily"
+        ? value >= trackable.goal.targetValue
+        : value > 0
       : value > 0;
 
     const optimisticData = {
@@ -110,14 +110,10 @@ export default function Home() {
     }
   };
 
-  const handleStartWorkout = () => {
-    router.push("/workouts");
-  };
-
   if (isLoading) {
     return (
       <div className="pb-8">
-        <PageHeader title="Aujourd'hui" subtitle={user ? `Bonjour, ${user.name.split(" ")[0]}` : undefined} />
+        <PageHeader title="Dashboard" subtitle={new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }).replace(/^\w/, (c) => c.toUpperCase())} />
         <div className="space-y-6">
           <div className="h-96 animate-pulse rounded-2xl bg-secondary/50" />
           <div className="h-32 animate-pulse rounded-2xl bg-secondary/50" />
@@ -130,7 +126,7 @@ export default function Home() {
   if (!data) {
     return (
       <div className="pb-8">
-        <PageHeader title="Aujourd'hui" subtitle={user ? `Bonjour, ${user.name.split(" ")[0]}` : undefined} />
+        <PageHeader title="Dashboard" subtitle={new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }).replace(/^\w/, (c) => c.toUpperCase())} />
         <div className="rounded-2xl border border-border bg-card p-6">
           <p className="text-center text-muted-foreground">
             Impossible de charger les données du tableau de bord
@@ -143,12 +139,12 @@ export default function Home() {
   return (
     <div className="pb-8 space-y-6">
       <PageHeader
-        title="Aujourd'hui"
-        subtitle={user ? `Bonjour, ${user.name.split(" ")[0]}` : undefined}
+        title="Dashboard"
+        subtitle={new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }).replace(/^\w/, (c) => c.toUpperCase())}
       />
 
       {/* Activity Rings */}
-      <div className="rounded-2xl border border-border/40 bg-card p-6 shadow-sm">
+      <div className="rounded-2xl pb-6">
         <ActivityRings
           steps={data.rings.steps}
           active={data.rings.active}
@@ -159,11 +155,14 @@ export default function Home() {
       {/* Sleep */}
       <SleepCard sleep={data.sleep} />
 
+      {/* Workout Summary */}
+      <WorkoutSummaryCard sessions={data.workoutSessions} />
+
       {/* Manual Trackables */}
       {data.trackables.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-4 pt-6">
           <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground px-1">
-            Suivi du jour
+            Suivi du jour ({data.trackables.filter((t) => t.completed).length}/{data.trackables.length})
           </h2>
           <div className="space-y-3">
             {data.trackables.map((trackable) => (
@@ -177,15 +176,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
-      {/* Workout Summary */}
-      <WorkoutSummaryCard
-        sessions={data.workoutSessions}
-        onStartSession={handleStartWorkout}
-      />
-
-      {/* Daily Progress */}
-      <DailyProgressBar progress={data.progress} />
     </div>
   );
 }
