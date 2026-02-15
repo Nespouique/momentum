@@ -12,7 +12,7 @@ import { getToday, upsertEntry, type TodayResponse } from "@/lib/api/tracking";
 import { toast } from "sonner";
 
 export default function Home() {
-  const { token, user } = useAuthStore();
+  const { token } = useAuthStore();
   const [data, setData] = useState<TodayResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
