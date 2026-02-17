@@ -18,5 +18,5 @@ Steps:
 5. Commit with message: `release: v{new_version}`
 6. Create a git tag: `v{new_version}`
 7. Push the commit and tag: `git push && git push origin v{new_version}`
-8. Create a GitHub release using `gh release create v{new_version} --generate-notes` if gh CLI is available, otherwise instruct the user to create the release manually on GitHub.
+8. Create a GitHub release on Nespouique/momentum for tag `v{new_version}` using the MCP GitHub tools (generate release notes automatically).
 9. Report the new version and confirm the CI/CD pipeline was triggered.

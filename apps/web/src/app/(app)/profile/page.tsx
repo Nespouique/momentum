@@ -99,9 +99,14 @@ export default function ProfilePage() {
       </div>
 
       {/* App Version */}
-      <p className="mt-6 text-center text-xs text-muted-foreground/50">
+      <a
+        href="https://github.com/Nespouique/momentum"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-6 block text-center text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+      >
         Momentum v{process.env["APP_VERSION"]}
-      </p>
+      </a>
     </div>
   );
 }
