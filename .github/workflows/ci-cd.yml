@@ -3,6 +3,7 @@ name: CI/CD
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
 
@@ -37,7 +38,7 @@ jobs:
   docker:
     name: Docker ${{ matrix.image }}
     needs: [lint-build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && github.event_name == 'push'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -59,9 +60,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract short SHA
-        id: sha
-        run: echo "short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+      - name: Extract metadata
+        id: meta
+        run: |
+          echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build and push ${{ matrix.image }} image
         uses: docker/build-push-action@v5
@@ -71,7 +76,8 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/momentum-${{ matrix.image }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/momentum-${{ matrix.image }}:${{ steps.sha.outputs.short }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/momentum-${{ matrix.image }}:${{ steps.meta.outputs.short_sha }}
+            ${{ steps.meta.outputs.version && format('{0}/momentum-{1}:{2}', secrets.DOCKERHUB_USERNAME, matrix.image, steps.meta.outputs.version) || '' }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
@@ -79,4 +85,7 @@ jobs:
         run: |
           echo "## Docker Image Built & Pushed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- \`${{ secrets.DOCKERHUB_USERNAME }}/momentum-${{ matrix.image }}:${{ steps.sha.outputs.short }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ secrets.DOCKERHUB_USERNAME }}/momentum-${{ matrix.image }}:${{ steps.meta.outputs.short_sha }}\`" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.meta.outputs.version }}" ]; then
+            echo "- \`${{ secrets.DOCKERHUB_USERNAME }}/momentum-${{ matrix.image }}:${{ steps.meta.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          fi

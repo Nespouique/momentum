@@ -97,6 +97,11 @@ export default function ProfilePage() {
           Déconnexion
         </Button>
       </div>
+
+      {/* App Version */}
+      <p className="mt-6 text-center text-xs text-muted-foreground/50">
+        Momentum v{process.env["APP_VERSION"]}
+      </p>
     </div>
   );
 }
