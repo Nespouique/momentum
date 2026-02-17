@@ -1,3 +1,7 @@
+---
+description: "Create a new semver release: bump version, lint, commit, tag, push and trigger CI/CD. Usage: /release [patch|minor|major]"
+---
+
 Create a new release for Momentum.
 
 Argument: $ARGUMENTS (version bump type: patch, minor, or major — defaults to patch if omitted)
