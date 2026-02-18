@@ -2,7 +2,6 @@ name: CI/CD
 
 on:
   push:
-    branches: [main]
     tags: ["v*"]
   pull_request:
     branches: [main]
@@ -38,7 +37,7 @@ jobs:
   docker:
     name: Docker ${{ matrix.image }}
     needs: [lint-build]
-    if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && github.event_name == 'push'
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
     runs-on: ubuntu-latest
     strategy:
       matrix:
