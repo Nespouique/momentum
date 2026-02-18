@@ -20,6 +20,7 @@ import {
 
 // localStorage helpers for rest state persistence
 const REST_STATE_KEY = "momentum_rest_state";
+const PENDING_RESULTS_KEY = "momentum_pending_results";
 
 interface PersistedRestState {
   sessionId: string;
@@ -60,6 +61,27 @@ function loadRestState(sessionId: string): PersistedRestState | null {
 function clearRestState(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(REST_STATE_KEY);
+}
+
+function clearPendingResults(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(PENDING_RESULTS_KEY);
+}
+
+function savePendingResults(results: Map<string, PendingResult>): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(PENDING_RESULTS_KEY, JSON.stringify(Array.from(results.entries())));
+}
+
+function loadPendingResults(): Map<string, PendingResult> {
+  if (typeof window === "undefined") return new Map();
+  try {
+    const stored = localStorage.getItem(PENDING_RESULTS_KEY);
+    if (!stored) return new Map();
+    return new Map(JSON.parse(stored) as [string, PendingResult][]);
+  } catch {
+    return new Map();
+  }
 }
 
 export type SessionScreen =
@@ -383,11 +405,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         currentSetIndex = lastExercise ? lastExercise.sets.length - 1 : 0;
       }
 
+      // Load pending results BEFORE loadRestState (which may clear rest state on expiry)
+      const savedPendingResults = loadPendingResults();
+
       // Check for persisted rest state
       const persistedRest = loadRestState(sessionId);
 
       if (persistedRest) {
-        // Restore from persisted rest state
+        // Rest still active - restore with pending results
         const remaining = Math.max(0, Math.ceil((persistedRest.restEndAt - Date.now()) / 1000));
         set({
           session,
@@ -405,10 +430,39 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           restEndAt: persistedRest.restEndAt,
           restDuration: persistedRest.restDuration,
           restTimeRemaining: remaining,
-          pendingResults: new Map(),
+          pendingResults: savedPendingResults,
         });
       } else {
-        // Determine screen based on session progress
+        // No active rest - flush any saved pending results to API before clearing
+        if (savedPendingResults.size > 0) {
+          for (const [key, result] of savedPendingResults) {
+            const lastDash = key.lastIndexOf("-");
+            const exerciseId = key.substring(0, lastDash);
+            const setIdx = parseInt(key.substring(lastDash + 1), 10);
+            const exercise = activeExercises.find((e) => e.id === exerciseId);
+            if (exercise) {
+              const targetSet = exercise.sets[setIdx];
+              if (targetSet && !targetSet.completedAt) {
+                try {
+                  await apiRecordSetResult(token, sessionId, exerciseId, {
+                    setNumber: targetSet.setNumber,
+                    actualReps: result.reps,
+                    actualWeight: result.weight,
+                  });
+                  // Update local session data to reflect the flushed result
+                  targetSet.actualReps = result.reps;
+                  targetSet.actualWeight = result.weight;
+                  targetSet.completedAt = new Date().toISOString();
+                } catch (error) {
+                  console.error("Failed to flush pending result for", key, error);
+                }
+              }
+            }
+          }
+          clearPendingResults();
+        }
+
+        // Recompute screen based on (now-updated) session progress
         const allSetsCompleted = activeExercises.every((ex) =>
           ex.sets.every((s) => s.completedAt)
         );
@@ -632,6 +686,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         const newPendingResults = new Map(state.pendingResults);
         newPendingResults.set(`${exercise.id}-${state.currentSetIndex}`, result);
         set({ pendingResults: newPendingResults });
+        savePendingResults(newPendingResults);
 
         if (isLastRound) {
           // End of superset
@@ -731,6 +786,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const newPendingResults = new Map(state.pendingResults);
       newPendingResults.set(`${exercise.id}-${state.currentSetIndex}`, result);
       set({ pendingResults: newPendingResults });
+      savePendingResults(newPendingResults);
 
       const totalSets = exercise.sets.length;
       const isLastSet = state.currentSetIndex >= totalSets - 1;
@@ -865,6 +921,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             session: { ...state.session, exercises: updatedExercises },
             pendingResults: newPendingResults,
           });
+          savePendingResults(newPendingResults);
         } catch (error) {
           console.error("Failed to record set result:", error);
           // Continue with navigation even if API fails
@@ -1234,6 +1291,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     try {
       await apiUpdateSession(token, state.session.id, { status: "abandoned" });
       clearRestState();
+      clearPendingResults();
       state.reset();
     } catch (error) {
       console.error("Failed to abandon session:", error);
@@ -1247,6 +1305,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     try {
       await apiUpdateSession(token, state.session.id, { status: "completed", notes });
       clearRestState();
+      clearPendingResults();
       set({
         session: {
           ...state.session,
@@ -1266,6 +1325,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     // Key includes setIndex to avoid pollution between sets
     newPending.set(`${exerciseId}-${setIndex}`, result);
     set({ pendingResults: newPending });
+    savePendingResults(newPending);
   },
 
   reset: () => {
