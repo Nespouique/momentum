@@ -4,6 +4,7 @@ services:
     ports:
       - "3000:3000"
     environment:
+      - TZ=Europe/Paris
       - API_URL=http://api:3001
     depends_on:
       api:
@@ -21,6 +22,7 @@ services:
     ports:
       - "3001:3001"
     environment:
+      - TZ=Europe/Paris
       - DATABASE_URL=postgresql://momentum:${DB_PASSWORD}@postgres:5432/momentum
       - JWT_SECRET=${JWT_SECRET}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
@@ -39,6 +41,7 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
+      - TZ=Europe/Paris
       - POSTGRES_USER=momentum
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=momentum
