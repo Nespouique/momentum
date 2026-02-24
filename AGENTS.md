@@ -235,7 +235,7 @@ Hardcoded dark theme via `className="dark"` on root. CSS variables in `globals.c
 - The app UI is in **French** — user-facing strings, validation messages, toasts are all in French
 - Code (variables, comments, commits) is in **English**
 - PWA: `manifest.json` + service worker in `apps/web/public/`
-- CI/CD: GitHub Actions runs `npm run lint` then `npm run build` on every push/PR to `main`
+- CI/CD: GitHub Actions runs `npm run lint` then `npm run build` on PRs to `main` and on version tags (`v*`). Docker build+push only runs on tags.
 - BMAD project management framework is in `.opencode/` and `_bmad*/` — do not modify
 
 ### Git
