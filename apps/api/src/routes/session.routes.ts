@@ -57,90 +57,96 @@ const sessionInclude = {
 };
 
 // Logging helpers for session API calls
-type SessionRequestHandler = (req: AuthRequest, res: Response) => Promise<void>
+type SessionRequestHandler = (req: AuthRequest, res: Response) => Promise<unknown>;
 
 type SessionLogContext = {
-  sessionId?: string
-  start: number
-}
+  sessionId?: string;
+  start: number;
+};
 
 type SessionLogResponse = Response & {
-  locals: { sessionLog?: SessionLogContext }
-}
+  locals: { sessionLog?: SessionLogContext };
+};
 
-const withSessionLogging = (handler: SessionRequestHandler): SessionRequestHandler => async (req, res) => {
-  const typedRes = res as SessionLogResponse
-  typedRes.locals.sessionLog = { start: Date.now() }
+const withSessionLogging =
+  (handler: SessionRequestHandler): SessionRequestHandler =>
+  async (req, res) => {
+    const typedRes = res as SessionLogResponse;
+    typedRes.locals.sessionLog = { start: Date.now() };
 
-  // Auto-extract sessionId from route params if available
-  const paramId = req.params?.['id'] as string | undefined
-  if (paramId) {
-    typedRes.locals.sessionLog.sessionId = paramId
-  }
+    // Auto-extract sessionId from route params if available
+    const paramId = req.params?.["id"] as string | undefined;
+    if (paramId) {
+      typedRes.locals.sessionLog.sessionId = paramId;
+    }
 
-  try {
-    await handler(req, res)
-  } finally {
-    const context = typedRes.locals.sessionLog
-    if (context?.sessionId) {
-      const durationMs = Math.max(0, Math.round(Date.now() - context.start))
-      console.log(`[SESSION-LOG] ${req.method} ${req.originalUrl} → ${res.statusCode} (${durationMs}ms) session=${context.sessionId}`)
-      try {
-        await prisma.sessionApiCall.create({
-          data: {
-            sessionId: context.sessionId,
-            method: req.method,
-            path: req.originalUrl,
-            statusCode: res.statusCode,
-            durationMs,
-          },
-        })
-      } catch (logError) {
-        console.error('[SESSION-LOG] Failed to persist API call log:', logError)
+    try {
+      await handler(req, res);
+    } finally {
+      const context = typedRes.locals.sessionLog;
+      if (context?.sessionId) {
+        const durationMs = Math.max(0, Math.round(Date.now() - context.start));
+        console.log(
+          `[SESSION-LOG] ${req.method} ${req.originalUrl} → ${res.statusCode} (${durationMs}ms) session=${context.sessionId}`
+        );
+        try {
+          await prisma.sessionApiCall.create({
+            data: {
+              sessionId: context.sessionId,
+              method: req.method,
+              path: req.originalUrl,
+              statusCode: res.statusCode,
+              durationMs,
+            },
+          });
+        } catch (logError) {
+          console.error("[SESSION-LOG] Failed to persist API call log:", logError);
+        }
       }
     }
-  }
-}
+  };
 
 function markSessionForLogging(res: Response, session: { id: string; status: string }) {
-  if (session.status !== 'in_progress') return
-  const typedRes = res as SessionLogResponse
-  const context = typedRes.locals.sessionLog
+  if (session.status !== "in_progress") return;
+  const typedRes = res as SessionLogResponse;
+  const context = typedRes.locals.sessionLog;
   if (context) {
-    context.sessionId = session.id
+    context.sessionId = session.id;
   }
 }
-
 
 // All routes require authentication
 router.use(authMiddleware);
 
 // GET /sessions/active - Get active session (must be before /:id)
-router.get("/active", withSessionLogging(async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.userId!;
+router.get(
+  "/active",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.userId!;
 
-    const session = await prisma.workoutSession.findFirst({
-      where: { userId, status: "in_progress" },
-      include: sessionInclude,
-    });
+      const session = await prisma.workoutSession.findFirst({
+        where: { userId, status: "in_progress" },
+        include: sessionInclude,
+      });
 
-    if (!session) {
-      return res.json({ data: null });
+      if (!session) {
+        return res.json({ data: null });
+      }
+
+      markSessionForLogging(res, session);
+      return res.json({ data: session });
+    } catch (error) {
+      console.error("Get active session error:", error);
+      return res.status(500).json({
+        error: {
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
+        },
+      });
     }
-
-    markSessionForLogging(res, session);
-    return res.json({ data: session });
-  } catch (error) {
-    console.error("Get active session error:", error);
-    return res.status(500).json({
-      error: {
-        code: ErrorCodes.INTERNAL_ERROR,
-        message: "An unexpected error occurred",
-      },
-    });
-  }
-}));
+  })
+);
 
 // GET /sessions/last - Get last completed session for a workout
 router.get("/last", async (req: AuthRequest, res: Response) => {
@@ -253,465 +259,364 @@ router.get("/", async (req: AuthRequest, res: Response) => {
 });
 
 // GET /sessions/:id - Get single session with full details
-router.get("/:id", withSessionLogging(async (req: AuthRequest, res: Response) => {
-  try {
-    const id = req.params["id"] as string;
-    const userId = req.userId!;
+router.get(
+  "/:id",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const id = req.params["id"] as string;
+      const userId = req.userId!;
 
-    const session = await prisma.workoutSession.findFirst({
-      where: { id, userId },
-      include: sessionInclude,
-    });
+      const session = await prisma.workoutSession.findFirst({
+        where: { id, userId },
+        include: sessionInclude,
+      });
 
-    if (!session) {
-      return res.status(404).json({
+      if (!session) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Session not found",
+          },
+        });
+      }
+
+      markSessionForLogging(res, session);
+      // Also get last completed session for comparison
+      const lastSession = await prisma.workoutSession.findFirst({
+        where: {
+          userId,
+          workoutId: session.workoutId,
+          status: "completed",
+          id: { not: session.id },
+        },
+        orderBy: { completedAt: "desc" },
+        include: sessionInclude,
+      });
+
+      return res.json({ data: session, lastSession: lastSession || null });
+    } catch (error) {
+      console.error("Get session error:", error);
+      return res.status(500).json({
         error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Session not found",
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
         },
       });
     }
-
-    markSessionForLogging(res, session);
-    // Also get last completed session for comparison
-    const lastSession = await prisma.workoutSession.findFirst({
-      where: {
-        userId,
-        workoutId: session.workoutId,
-        status: "completed",
-        id: { not: session.id },
-      },
-      orderBy: { completedAt: "desc" },
-      include: sessionInclude,
-    });
-
-    return res.json({ data: session, lastSession: lastSession || null });
-  } catch (error) {
-    console.error("Get session error:", error);
-    return res.status(500).json({
-      error: {
-        code: ErrorCodes.INTERNAL_ERROR,
-        message: "An unexpected error occurred",
-      },
-    });
-  }
-}));
+  })
+);
 
 // POST /sessions - Start a new session
-router.post("/", withSessionLogging(async (req: AuthRequest, res: Response) => {
-  try {
-    const data = createSessionSchema.parse(req.body);
-    const userId = req.userId!;
+router.post(
+  "/",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const data = createSessionSchema.parse(req.body);
+      const userId = req.userId!;
 
-    // Check for existing active session
-    const existingSession = await prisma.workoutSession.findFirst({
-      where: { userId, status: "in_progress" },
-    });
-
-    if (existingSession) {
-      return res.status(409).json({
-        error: {
-          code: ErrorCodes.SESSION_ALREADY_ACTIVE,
-          message: "You already have an active session",
-          activeSessionId: existingSession.id,
-        },
+      // Check for existing active session
+      const existingSession = await prisma.workoutSession.findFirst({
+        where: { userId, status: "in_progress" },
       });
-    }
 
-    // Get the workout with full structure
-    const workout = await prisma.workout.findFirst({
-      where: { id: data.workoutId, userId },
-      include: {
-        items: {
-          orderBy: { position: "asc" },
-          include: {
-            exercises: {
-              orderBy: { position: "asc" },
-              include: {
-                exercise: true,
-                sets: { orderBy: { setNumber: "asc" } },
+      if (existingSession) {
+        return res.status(409).json({
+          error: {
+            code: ErrorCodes.SESSION_ALREADY_ACTIVE,
+            message: "You already have an active session",
+            activeSessionId: existingSession.id,
+          },
+        });
+      }
+
+      // Get the workout with full structure
+      const workout = await prisma.workout.findFirst({
+        where: { id: data.workoutId, userId },
+        include: {
+          items: {
+            orderBy: { position: "asc" },
+            include: {
+              exercises: {
+                orderBy: { position: "asc" },
+                include: {
+                  exercise: true,
+                  sets: { orderBy: { setNumber: "asc" } },
+                },
               },
             },
           },
         },
-      },
-    });
-
-    if (!workout) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Workout not found",
-        },
       });
-    }
 
-    // Flatten exercises for session (preserving superset grouping via workoutItemId)
-    const flattenedExercises: Array<{
-      exerciseId: string;
-      workoutItemId: string;
-      workoutItemExerciseId: string;
-      sets: Array<{ setNumber: number; targetReps: number; targetWeight: number | null }>;
-    }> = [];
-
-    for (const item of workout.items) {
-      for (const itemExercise of item.exercises) {
-        flattenedExercises.push({
-          exerciseId: itemExercise.exerciseId,
-          workoutItemId: item.id,
-          workoutItemExerciseId: itemExercise.id,
-          sets: itemExercise.sets.map((s) => ({
-            setNumber: s.setNumber,
-            targetReps: s.targetReps,
-            targetWeight: s.targetWeight,
-          })),
+      if (!workout) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Workout not found",
+          },
         });
       }
-    }
 
-    // Create the session with exercises and sets
-    const session = await prisma.workoutSession.create({
-      data: {
-        userId,
-        workoutId: data.workoutId,
-        exercises: {
-          create: flattenedExercises.map((ex, index) => ({
-            exerciseId: ex.exerciseId,
-            workoutItemId: ex.workoutItemId,
-            workoutItemExerciseId: ex.workoutItemExerciseId,
-            position: index,
-            sets: {
-              create: ex.sets.map((set) => ({
-                setNumber: set.setNumber,
-                targetReps: set.targetReps,
-                targetWeight: set.targetWeight,
-              })),
-            },
-          })),
-        },
-      },
-      include: sessionInclude,
-    });
+      // Flatten exercises for session (preserving superset grouping via workoutItemId)
+      const flattenedExercises: Array<{
+        exerciseId: string;
+        workoutItemId: string;
+        workoutItemExerciseId: string;
+        sets: Array<{ setNumber: number; targetReps: number; targetWeight: number | null }>;
+      }> = [];
 
-    markSessionForLogging(res, session);
-    // Get last completed session for comparison
-    const lastSession = await prisma.workoutSession.findFirst({
-      where: {
-        userId,
-        workoutId: data.workoutId,
-        status: "completed",
-      },
-      orderBy: { completedAt: "desc" },
-      include: sessionInclude,
-    });
-
-    return res.status(201).json({ data: session, lastSession: lastSession || null });
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.VALIDATION_ERROR,
-          message: "Validation failed",
-          details: formatZodError(error),
-        },
-      });
-    }
-    console.error("Create session error:", error);
-    return res.status(500).json({
-      error: {
-        code: ErrorCodes.INTERNAL_ERROR,
-        message: "An unexpected error occurred",
-      },
-    });
-  }
-}));
-
-// PATCH /sessions/:id - Update session (status/notes)
-router.patch("/:id", withSessionLogging(async (req: AuthRequest, res: Response) => {
-  try {
-    const id = req.params["id"] as string;
-    const data = updateSessionSchema.parse(req.body);
-    const userId = req.userId!;
-
-    const existing = await prisma.workoutSession.findFirst({
-      where: { id, userId },
-    });
-
-    if (!existing) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Session not found",
-        },
-      });
-    }
-
-    const updateData: { status?: "completed" | "abandoned"; notes?: string; completedAt?: Date } = {};
-
-    if (data.status) {
-      updateData.status = data.status;
-      // Set completedAt when completing or abandoning
-      if (data.status === "completed" || data.status === "abandoned") {
-        updateData.completedAt = new Date();
+      for (const item of workout.items) {
+        for (const itemExercise of item.exercises) {
+          flattenedExercises.push({
+            exerciseId: itemExercise.exerciseId,
+            workoutItemId: item.id,
+            workoutItemExerciseId: itemExercise.id,
+            sets: itemExercise.sets.map((s) => ({
+              setNumber: s.setNumber,
+              targetReps: s.targetReps,
+              targetWeight: s.targetWeight,
+            })),
+          });
+        }
       }
-    }
-    if (data.notes !== undefined) {
-      updateData.notes = data.notes;
-    }
 
-    // When completing a session, mark exercises with completed sets as "completed"
-    if (data.status === "completed") {
-      // Get exercises that have at least one set with actualReps (meaning it was performed)
-      const exercisesWithCompletedSets = await prisma.sessionExercise.findMany({
-        where: {
-          sessionId: id,
-          status: { notIn: ["skipped", "substituted"] },
-          sets: {
-            some: {
-              actualReps: { not: null },
-            },
-          },
-        },
-        select: { id: true },
-      });
-
-      // Mark these exercises as completed
-      if (exercisesWithCompletedSets.length > 0) {
-        await prisma.sessionExercise.updateMany({
-          where: {
-            id: { in: exercisesWithCompletedSets.map((e) => e.id) },
-          },
-          data: { status: "completed" },
-        });
-      }
-    }
-
-    const session = await prisma.workoutSession.update({
-      where: { id },
-      data: updateData,
-      include: sessionInclude,
-    });
-
-    return res.json({ data: session });
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.VALIDATION_ERROR,
-          message: "Validation failed",
-          details: formatZodError(error),
-        },
-      });
-    }
-    console.error("Update session error:", error);
-    return res.status(500).json({
-      error: {
-        code: ErrorCodes.INTERNAL_ERROR,
-        message: "An unexpected error occurred",
-      },
-    });
-  }
-}));
-
-// DELETE /sessions/:id - Delete session
-router.delete("/:id", withSessionLogging(async (req: AuthRequest, res: Response) => {
-  try {
-    const id = req.params["id"] as string;
-    const userId = req.userId!;
-
-    const existing = await prisma.workoutSession.findFirst({
-      where: { id, userId },
-    });
-
-    if (!existing) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Session not found",
-        },
-      });
-    }
-
-    await prisma.workoutSession.delete({
-      where: { id },
-    });
-
-    return res.status(204).send();
-  } catch (error) {
-    console.error("Delete session error:", error);
-    return res.status(500).json({
-      error: {
-        code: ErrorCodes.INTERNAL_ERROR,
-        message: "An unexpected error occurred",
-      },
-    });
-  }
-}));
-
-// PATCH /sessions/:id/exercises/:exerciseId - Update exercise status (skip)
-router.patch("/:id/exercises/:exerciseId", withSessionLogging(async (req: AuthRequest, res: Response) => {
-  try {
-    const sessionId = req.params["id"] as string;
-    const exerciseId = req.params["exerciseId"] as string;
-    const data = updateSessionExerciseSchema.parse(req.body);
-    const userId = req.userId!;
-
-    // Verify session exists, is active, and belongs to user
-    const session = await prisma.workoutSession.findFirst({
-      where: { id: sessionId, userId },
-    });
-
-    if (!session) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Session not found",
-        },
-      });
-    }
-
-    if (session.status !== "in_progress") {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.SESSION_NOT_ACTIVE,
-          message: "Session is not active",
-        },
-      });
-    }
-
-    // Verify exercise belongs to session
-    const exercise = await prisma.sessionExercise.findFirst({
-      where: { id: exerciseId, sessionId },
-    });
-
-    if (!exercise) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Exercise not found in session",
-        },
-      });
-    }
-
-    const updatedExercise = await prisma.sessionExercise.update({
-      where: { id: exerciseId },
-      data: { status: data.status },
-      include: {
-        exercise: {
-          select: { id: true, name: true, muscleGroups: true },
-        },
-        sets: { orderBy: { setNumber: "asc" } },
-      },
-    });
-
-    return res.json({ data: updatedExercise });
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.VALIDATION_ERROR,
-          message: "Validation failed",
-          details: formatZodError(error),
-        },
-      });
-    }
-    console.error("Update session exercise error:", error);
-    return res.status(500).json({
-      error: {
-        code: ErrorCodes.INTERNAL_ERROR,
-        message: "An unexpected error occurred",
-      },
-    });
-  }
-}));
-
-// POST /sessions/:id/exercises/:exerciseId/substitute - Substitute exercise
-router.post("/:id/exercises/:exerciseId/substitute", withSessionLogging(async (req: AuthRequest, res: Response) => {
-  try {
-    const sessionId = req.params["id"] as string;
-    const exerciseId = req.params["exerciseId"] as string;
-    const data = substituteExerciseSchema.parse(req.body);
-    const userId = req.userId!;
-
-    // Verify session exists, is active, and belongs to user
-    const session = await prisma.workoutSession.findFirst({
-      where: { id: sessionId, userId },
-    });
-
-    if (!session) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Session not found",
-        },
-      });
-    }
-
-    if (session.status !== "in_progress") {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.SESSION_NOT_ACTIVE,
-          message: "Session is not active",
-        },
-      });
-    }
-
-    // Verify exercise belongs to session
-    const originalExercise = await prisma.sessionExercise.findFirst({
-      where: { id: exerciseId, sessionId },
-      include: {
-        sets: { orderBy: { setNumber: "asc" } },
-      },
-    });
-
-    if (!originalExercise) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Exercise not found in session",
-        },
-      });
-    }
-
-    // Verify new exercise exists
-    const newExercise = await prisma.exercise.findUnique({
-      where: { id: data.newExerciseId },
-    });
-
-    if (!newExercise) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "New exercise not found",
-        },
-      });
-    }
-
-    // Transaction: mark original as substituted and create new exercise
-    const result = await prisma.$transaction(async (tx) => {
-      // Mark original as substituted
-      await tx.sessionExercise.update({
-        where: { id: exerciseId },
-        data: { status: "substituted" },
-      });
-
-      // Create new exercise with same sets
-      return tx.sessionExercise.create({
+      // Create the session with exercises and sets
+      const session = await prisma.workoutSession.create({
         data: {
-          sessionId,
-          exerciseId: data.newExerciseId,
-          workoutItemId: originalExercise.workoutItemId,
-          workoutItemExerciseId: originalExercise.workoutItemExerciseId,
-          position: originalExercise.position,
-          substitutedFromId: exerciseId,
-          sets: {
-            create: originalExercise.sets.map((set) => ({
-              setNumber: set.setNumber,
-              targetReps: set.targetReps,
-              targetWeight: set.targetWeight,
+          userId,
+          workoutId: data.workoutId,
+          exercises: {
+            create: flattenedExercises.map((ex, index) => ({
+              exerciseId: ex.exerciseId,
+              workoutItemId: ex.workoutItemId,
+              workoutItemExerciseId: ex.workoutItemExerciseId,
+              position: index,
+              sets: {
+                create: ex.sets.map((set) => ({
+                  setNumber: set.setNumber,
+                  targetReps: set.targetReps,
+                  targetWeight: set.targetWeight,
+                })),
+              },
             })),
           },
         },
+        include: sessionInclude,
+      });
+
+      markSessionForLogging(res, session);
+      // Get last completed session for comparison
+      const lastSession = await prisma.workoutSession.findFirst({
+        where: {
+          userId,
+          workoutId: data.workoutId,
+          status: "completed",
+        },
+        orderBy: { completedAt: "desc" },
+        include: sessionInclude,
+      });
+
+      return res.status(201).json({ data: session, lastSession: lastSession || null });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.VALIDATION_ERROR,
+            message: "Validation failed",
+            details: formatZodError(error),
+          },
+        });
+      }
+      console.error("Create session error:", error);
+      return res.status(500).json({
+        error: {
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
+        },
+      });
+    }
+  })
+);
+
+// PATCH /sessions/:id - Update session (status/notes)
+router.patch(
+  "/:id",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const id = req.params["id"] as string;
+      const data = updateSessionSchema.parse(req.body);
+      const userId = req.userId!;
+
+      const existing = await prisma.workoutSession.findFirst({
+        where: { id, userId },
+      });
+
+      if (!existing) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Session not found",
+          },
+        });
+      }
+
+      const updateData: { status?: "completed" | "abandoned"; notes?: string; completedAt?: Date } =
+        {};
+
+      if (data.status) {
+        updateData.status = data.status;
+        // Set completedAt when completing or abandoning
+        if (data.status === "completed" || data.status === "abandoned") {
+          updateData.completedAt = new Date();
+        }
+      }
+      if (data.notes !== undefined) {
+        updateData.notes = data.notes;
+      }
+
+      // When completing a session, mark exercises with completed sets as "completed"
+      if (data.status === "completed") {
+        // Get exercises that have at least one set with actualReps (meaning it was performed)
+        const exercisesWithCompletedSets = await prisma.sessionExercise.findMany({
+          where: {
+            sessionId: id,
+            status: { notIn: ["skipped", "substituted"] },
+            sets: {
+              some: {
+                actualReps: { not: null },
+              },
+            },
+          },
+          select: { id: true },
+        });
+
+        // Mark these exercises as completed
+        if (exercisesWithCompletedSets.length > 0) {
+          await prisma.sessionExercise.updateMany({
+            where: {
+              id: { in: exercisesWithCompletedSets.map((e) => e.id) },
+            },
+            data: { status: "completed" },
+          });
+        }
+      }
+
+      const session = await prisma.workoutSession.update({
+        where: { id },
+        data: updateData,
+        include: sessionInclude,
+      });
+
+      return res.json({ data: session });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.VALIDATION_ERROR,
+            message: "Validation failed",
+            details: formatZodError(error),
+          },
+        });
+      }
+      console.error("Update session error:", error);
+      return res.status(500).json({
+        error: {
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
+        },
+      });
+    }
+  })
+);
+
+// DELETE /sessions/:id - Delete session
+router.delete(
+  "/:id",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const id = req.params["id"] as string;
+      const userId = req.userId!;
+
+      const existing = await prisma.workoutSession.findFirst({
+        where: { id, userId },
+      });
+
+      if (!existing) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Session not found",
+          },
+        });
+      }
+
+      await prisma.workoutSession.delete({
+        where: { id },
+      });
+
+      return res.status(204).send();
+    } catch (error) {
+      console.error("Delete session error:", error);
+      return res.status(500).json({
+        error: {
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
+        },
+      });
+    }
+  })
+);
+
+// PATCH /sessions/:id/exercises/:exerciseId - Update exercise status (skip)
+router.patch(
+  "/:id/exercises/:exerciseId",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const sessionId = req.params["id"] as string;
+      const exerciseId = req.params["exerciseId"] as string;
+      const data = updateSessionExerciseSchema.parse(req.body);
+      const userId = req.userId!;
+
+      // Verify session exists, is active, and belongs to user
+      const session = await prisma.workoutSession.findFirst({
+        where: { id: sessionId, userId },
+      });
+
+      if (!session) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Session not found",
+          },
+        });
+      }
+
+      if (session.status !== "in_progress") {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.SESSION_NOT_ACTIVE,
+            message: "Session is not active",
+          },
+        });
+      }
+
+      // Verify exercise belongs to session
+      const exercise = await prisma.sessionExercise.findFirst({
+        where: { id: exerciseId, sessionId },
+      });
+
+      if (!exercise) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Exercise not found in session",
+          },
+        });
+      }
+
+      const updatedExercise = await prisma.sessionExercise.update({
+        where: { id: exerciseId },
+        data: { status: data.status },
         include: {
           exercise: {
             select: { id: true, name: true, muscleGroups: true },
@@ -719,344 +624,470 @@ router.post("/:id/exercises/:exerciseId/substitute", withSessionLogging(async (r
           sets: { orderBy: { setNumber: "asc" } },
         },
       });
-    });
 
-    return res.status(201).json({ data: result });
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.VALIDATION_ERROR,
-          message: "Validation failed",
-          details: formatZodError(error),
-        },
-      });
-    }
-    console.error("Substitute exercise error:", error);
-    return res.status(500).json({
-      error: {
-        code: ErrorCodes.INTERNAL_ERROR,
-        message: "An unexpected error occurred",
-      },
-    });
-  }
-}));
-
-// PUT /sessions/:id/exercises/reorder - Reorder exercises
-router.put("/:id/exercises/reorder", withSessionLogging(async (req: AuthRequest, res: Response) => {
-  try {
-    const sessionId = req.params["id"] as string;
-    const data = reorderExercisesSchema.parse(req.body);
-    const userId = req.userId!;
-
-    // Verify session exists, is active, and belongs to user
-    const session = await prisma.workoutSession.findFirst({
-      where: { id: sessionId, userId },
-    });
-
-    if (!session) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Session not found",
-        },
-      });
-    }
-
-    if (session.status !== "in_progress") {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.SESSION_NOT_ACTIVE,
-          message: "Session is not active",
-        },
-      });
-    }
-
-    // Verify all exercise IDs belong to this session
-    const exercises = await prisma.sessionExercise.findMany({
-      where: {
-        sessionId,
-        id: { in: data.exerciseIds },
-        status: { notIn: ["substituted", "skipped"] },
-      },
-    });
-
-    if (exercises.length !== data.exerciseIds.length) {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.VALIDATION_ERROR,
-          message: "Some exercise IDs are invalid or not part of this session",
-        },
-      });
-    }
-
-    // Update positions in a transaction
-    await prisma.$transaction(
-      data.exerciseIds.map((id, index) =>
-        prisma.sessionExercise.update({
-          where: { id },
-          data: { position: index },
-        })
-      )
-    );
-
-    // Return updated exercises
-    const updatedExercises = await prisma.sessionExercise.findMany({
-      where: { sessionId, status: { notIn: ["substituted"] } },
-      orderBy: { position: "asc" },
-      include: {
-        exercise: {
-          select: { id: true, name: true, muscleGroups: true },
-        },
-        sets: { orderBy: { setNumber: "asc" } },
-      },
-    });
-
-    return res.json({ data: updatedExercises });
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.VALIDATION_ERROR,
-          message: "Validation failed",
-          details: formatZodError(error),
-        },
-      });
-    }
-    console.error("Reorder exercises error:", error);
-    return res.status(500).json({
-      error: {
-        code: ErrorCodes.INTERNAL_ERROR,
-        message: "An unexpected error occurred",
-      },
-    });
-  }
-}));
-
-// POST /sessions/:id/superset/:workoutItemId/replace - Replace superset with new exercises
-router.post("/:id/superset/:workoutItemId/replace", withSessionLogging(async (req: AuthRequest, res: Response) => {
-  try {
-    const sessionId = req.params["id"] as string;
-    const workoutItemId = req.params["workoutItemId"] as string;
-    const data = replaceSupersetSchema.parse(req.body);
-    const userId = req.userId!;
-
-    // Verify session exists, is active, and belongs to user
-    const session = await prisma.workoutSession.findFirst({
-      where: { id: sessionId, userId },
-    });
-
-    if (!session) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Session not found",
-        },
-      });
-    }
-
-    if (session.status !== "in_progress") {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.SESSION_NOT_ACTIVE,
-          message: "Session is not active",
-        },
-      });
-    }
-
-    // Find all session exercises belonging to this workoutItem (the superset)
-    const supersetExercises = await prisma.sessionExercise.findMany({
-      where: {
-        sessionId,
-        workoutItemId,
-        status: { notIn: ["substituted", "skipped"] },
-      },
-      include: {
-        sets: { orderBy: { setNumber: "asc" } },
-      },
-      orderBy: { position: "asc" },
-    });
-
-    if (supersetExercises.length === 0) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "No active exercises found for this superset",
-        },
-      });
-    }
-
-    // Verify all new exercises exist
-    const newExercises = await prisma.exercise.findMany({
-      where: { id: { in: data.exerciseIds } },
-    });
-
-    if (newExercises.length !== data.exerciseIds.length) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "One or more exercises not found",
-        },
-      });
-    }
-
-    // Get the first exercise for reference (we know it exists from the length check above)
-    const firstSupersetExercise = supersetExercises[0]!;
-
-    // Get the position of the first exercise in the superset (to place new exercises there)
-    const basePosition = firstSupersetExercise.position;
-
-    // Get the number of sets from the original exercise (to preserve set count)
-    const numberOfSets = firstSupersetExercise.sets.length;
-
-    // Fetch last performance for each new exercise to use as targets
-    const lastPerformances = await Promise.all(
-      data.exerciseIds.map(async (exerciseId) => {
-        const lastSessionExercise = await prisma.sessionExercise.findFirst({
-          where: {
-            exerciseId,
-            session: {
-              userId,
-              status: "completed",
-            },
-            status: { notIn: ["substituted", "skipped"] },
-            sets: {
-              some: {
-                completedAt: { not: null },
-              },
-            },
-          },
-          orderBy: {
-            session: {
-              completedAt: "desc",
-            },
-          },
-          include: {
-            sets: {
-              where: {
-                completedAt: { not: null },
-              },
-              orderBy: { setNumber: "asc" },
-            },
+      return res.json({ data: updatedExercise });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.VALIDATION_ERROR,
+            message: "Validation failed",
+            details: formatZodError(error),
           },
         });
-        return { exerciseId, lastPerformance: lastSessionExercise };
-      })
-    );
-
-    // Build a map of exerciseId -> last performance sets
-    const lastPerfMap = new Map(
-      lastPerformances.map((p) => [p.exerciseId, p.lastPerformance?.sets || null])
-    );
-
-    // Transaction: mark all superset exercises as substituted and create new ones
-    const result = await prisma.$transaction(async (tx) => {
-      // Mark all existing superset exercises as substituted
-      await tx.sessionExercise.updateMany({
-        where: {
-          id: { in: supersetExercises.map((e) => e.id) },
+      }
+      console.error("Update session exercise error:", error);
+      return res.status(500).json({
+        error: {
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
         },
-        data: { status: "substituted" },
+      });
+    }
+  })
+);
+
+// POST /sessions/:id/exercises/:exerciseId/substitute - Substitute exercise
+router.post(
+  "/:id/exercises/:exerciseId/substitute",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const sessionId = req.params["id"] as string;
+      const exerciseId = req.params["exerciseId"] as string;
+      const data = substituteExerciseSchema.parse(req.body);
+      const userId = req.userId!;
+
+      // Verify session exists, is active, and belongs to user
+      const session = await prisma.workoutSession.findFirst({
+        where: { id: sessionId, userId },
       });
 
-      // Create new exercises (keeping same position order)
-      const createdExercises = [];
-      for (const [i, exerciseId] of data.exerciseIds.entries()) {
-        const lastPerfSets = lastPerfMap.get(exerciseId);
+      if (!session) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Session not found",
+          },
+        });
+      }
 
-        // Build sets: use last performance as targets if available, else default to 10 reps @ 0kg
-        const setsToCreate = Array.from({ length: numberOfSets }, (_, idx) => {
-          const setNumber = idx + 1;
-          const lastSet = lastPerfSets?.find((s) => s.setNumber === setNumber);
+      if (session.status !== "in_progress") {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.SESSION_NOT_ACTIVE,
+            message: "Session is not active",
+          },
+        });
+      }
 
-          if (lastSet) {
-            return {
-              setNumber,
-              targetReps: lastSet.actualReps ?? 10,
-              targetWeight: lastSet.actualWeight ?? 0,
-            };
-          }
-          // No history for this set number - check if there's any set we can extrapolate from
-          const anyLastSet = lastPerfSets?.[lastPerfSets.length - 1];
-          if (anyLastSet) {
-            return {
-              setNumber,
-              targetReps: anyLastSet.actualReps ?? 10,
-              targetWeight: anyLastSet.actualWeight ?? 0,
-            };
-          }
-          // No history at all - use defaults
-          return {
-            setNumber,
-            targetReps: 10,
-            targetWeight: 0,
-          };
+      // Verify exercise belongs to session
+      const originalExercise = await prisma.sessionExercise.findFirst({
+        where: { id: exerciseId, sessionId },
+        include: {
+          sets: { orderBy: { setNumber: "asc" } },
+        },
+      });
+
+      if (!originalExercise) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Exercise not found in session",
+          },
+        });
+      }
+
+      // Verify new exercise exists
+      const newExercise = await prisma.exercise.findUnique({
+        where: { id: data.newExerciseId },
+      });
+
+      if (!newExercise) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "New exercise not found",
+          },
+        });
+      }
+
+      // Transaction: mark original as substituted and create new exercise
+      const result = await prisma.$transaction(async (tx) => {
+        // Mark original as substituted
+        await tx.sessionExercise.update({
+          where: { id: exerciseId },
+          data: { status: "substituted" },
         });
 
-        const created = await tx.sessionExercise.create({
+        // Create new exercise with same sets
+        return tx.sessionExercise.create({
           data: {
             sessionId,
-            exerciseId,
-            workoutItemId, // Keep the same workoutItemId to maintain grouping
-            position: basePosition + i * 0.001, // Use fractional position to keep them together
-            substitutedFromId: firstSupersetExercise.id,
+            exerciseId: data.newExerciseId,
+            workoutItemId: originalExercise.workoutItemId,
+            workoutItemExerciseId: originalExercise.workoutItemExerciseId,
+            position: originalExercise.position,
+            substitutedFromId: exerciseId,
             sets: {
-              create: setsToCreate,
+              create: originalExercise.sets.map((set) => ({
+                setNumber: set.setNumber,
+                targetReps: set.targetReps,
+                targetWeight: set.targetWeight,
+              })),
             },
           },
           include: {
             exercise: {
               select: { id: true, name: true, muscleGroups: true },
             },
-            workoutItem: {
-              select: { id: true, type: true, rounds: true, restAfter: true },
-            },
             sets: { orderBy: { setNumber: "asc" } },
           },
         });
-        createdExercises.push(created);
+      });
+
+      return res.status(201).json({ data: result });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.VALIDATION_ERROR,
+            message: "Validation failed",
+            details: formatZodError(error),
+          },
+        });
+      }
+      console.error("Substitute exercise error:", error);
+      return res.status(500).json({
+        error: {
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
+        },
+      });
+    }
+  })
+);
+
+// PUT /sessions/:id/exercises/reorder - Reorder exercises
+router.put(
+  "/:id/exercises/reorder",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const sessionId = req.params["id"] as string;
+      const data = reorderExercisesSchema.parse(req.body);
+      const userId = req.userId!;
+
+      // Verify session exists, is active, and belongs to user
+      const session = await prisma.workoutSession.findFirst({
+        where: { id: sessionId, userId },
+      });
+
+      if (!session) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Session not found",
+          },
+        });
       }
 
-      // Reorder all exercises to clean up positions
-      const allActiveExercises = await tx.sessionExercise.findMany({
+      if (session.status !== "in_progress") {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.SESSION_NOT_ACTIVE,
+            message: "Session is not active",
+          },
+        });
+      }
+
+      // Verify all exercise IDs belong to this session
+      const exercises = await prisma.sessionExercise.findMany({
         where: {
           sessionId,
-          status: { notIn: ["substituted"] },
+          id: { in: data.exerciseIds },
+          status: { notIn: ["substituted", "skipped"] },
+        },
+      });
+
+      if (exercises.length !== data.exerciseIds.length) {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.VALIDATION_ERROR,
+            message: "Some exercise IDs are invalid or not part of this session",
+          },
+        });
+      }
+
+      // Update positions in a transaction
+      await prisma.$transaction(
+        data.exerciseIds.map((id, index) =>
+          prisma.sessionExercise.update({
+            where: { id },
+            data: { position: index },
+          })
+        )
+      );
+
+      // Return updated exercises
+      const updatedExercises = await prisma.sessionExercise.findMany({
+        where: { sessionId, status: { notIn: ["substituted"] } },
+        orderBy: { position: "asc" },
+        include: {
+          exercise: {
+            select: { id: true, name: true, muscleGroups: true },
+          },
+          sets: { orderBy: { setNumber: "asc" } },
+        },
+      });
+
+      return res.json({ data: updatedExercises });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.VALIDATION_ERROR,
+            message: "Validation failed",
+            details: formatZodError(error),
+          },
+        });
+      }
+      console.error("Reorder exercises error:", error);
+      return res.status(500).json({
+        error: {
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
+        },
+      });
+    }
+  })
+);
+
+// POST /sessions/:id/superset/:workoutItemId/replace - Replace superset with new exercises
+router.post(
+  "/:id/superset/:workoutItemId/replace",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const sessionId = req.params["id"] as string;
+      const workoutItemId = req.params["workoutItemId"] as string;
+      const data = replaceSupersetSchema.parse(req.body);
+      const userId = req.userId!;
+
+      // Verify session exists, is active, and belongs to user
+      const session = await prisma.workoutSession.findFirst({
+        where: { id: sessionId, userId },
+      });
+
+      if (!session) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Session not found",
+          },
+        });
+      }
+
+      if (session.status !== "in_progress") {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.SESSION_NOT_ACTIVE,
+            message: "Session is not active",
+          },
+        });
+      }
+
+      // Find all session exercises belonging to this workoutItem (the superset)
+      const supersetExercises = await prisma.sessionExercise.findMany({
+        where: {
+          sessionId,
+          workoutItemId,
+          status: { notIn: ["substituted", "skipped"] },
+        },
+        include: {
+          sets: { orderBy: { setNumber: "asc" } },
         },
         orderBy: { position: "asc" },
       });
 
-      // Update positions to be clean integers
-      for (const [i, exercise] of allActiveExercises.entries()) {
-        await tx.sessionExercise.update({
-          where: { id: exercise.id },
-          data: { position: i },
+      if (supersetExercises.length === 0) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "No active exercises found for this superset",
+          },
         });
       }
 
-      return createdExercises;
-    });
+      // Verify all new exercises exist
+      const newExercises = await prisma.exercise.findMany({
+        where: { id: { in: data.exerciseIds } },
+      });
 
-    return res.status(201).json({ data: result });
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return res.status(400).json({
+      if (newExercises.length !== data.exerciseIds.length) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "One or more exercises not found",
+          },
+        });
+      }
+
+      // Get the first exercise for reference (we know it exists from the length check above)
+      const firstSupersetExercise = supersetExercises[0]!;
+
+      // Get the position of the first exercise in the superset (to place new exercises there)
+      const basePosition = firstSupersetExercise.position;
+
+      // Get the number of sets from the original exercise (to preserve set count)
+      const numberOfSets = firstSupersetExercise.sets.length;
+
+      // Fetch last performance for each new exercise to use as targets
+      const lastPerformances = await Promise.all(
+        data.exerciseIds.map(async (exerciseId) => {
+          const lastSessionExercise = await prisma.sessionExercise.findFirst({
+            where: {
+              exerciseId,
+              session: {
+                userId,
+                status: "completed",
+              },
+              status: { notIn: ["substituted", "skipped"] },
+              sets: {
+                some: {
+                  completedAt: { not: null },
+                },
+              },
+            },
+            orderBy: {
+              session: {
+                completedAt: "desc",
+              },
+            },
+            include: {
+              sets: {
+                where: {
+                  completedAt: { not: null },
+                },
+                orderBy: { setNumber: "asc" },
+              },
+            },
+          });
+          return { exerciseId, lastPerformance: lastSessionExercise };
+        })
+      );
+
+      // Build a map of exerciseId -> last performance sets
+      const lastPerfMap = new Map(
+        lastPerformances.map((p) => [p.exerciseId, p.lastPerformance?.sets || null])
+      );
+
+      // Transaction: mark all superset exercises as substituted and create new ones
+      const result = await prisma.$transaction(async (tx) => {
+        // Mark all existing superset exercises as substituted
+        await tx.sessionExercise.updateMany({
+          where: {
+            id: { in: supersetExercises.map((e) => e.id) },
+          },
+          data: { status: "substituted" },
+        });
+
+        // Create new exercises (keeping same position order)
+        const createdExercises = [];
+        for (const [i, exerciseId] of data.exerciseIds.entries()) {
+          const lastPerfSets = lastPerfMap.get(exerciseId);
+
+          // Build sets: use last performance as targets if available, else default to 10 reps @ 0kg
+          const setsToCreate = Array.from({ length: numberOfSets }, (_, idx) => {
+            const setNumber = idx + 1;
+            const lastSet = lastPerfSets?.find((s) => s.setNumber === setNumber);
+
+            if (lastSet) {
+              return {
+                setNumber,
+                targetReps: lastSet.actualReps ?? 10,
+                targetWeight: lastSet.actualWeight ?? 0,
+              };
+            }
+            // No history for this set number - check if there's any set we can extrapolate from
+            const anyLastSet = lastPerfSets?.[lastPerfSets.length - 1];
+            if (anyLastSet) {
+              return {
+                setNumber,
+                targetReps: anyLastSet.actualReps ?? 10,
+                targetWeight: anyLastSet.actualWeight ?? 0,
+              };
+            }
+            // No history at all - use defaults
+            return {
+              setNumber,
+              targetReps: 10,
+              targetWeight: 0,
+            };
+          });
+
+          const created = await tx.sessionExercise.create({
+            data: {
+              sessionId,
+              exerciseId,
+              workoutItemId, // Keep the same workoutItemId to maintain grouping
+              position: basePosition + i * 0.001, // Use fractional position to keep them together
+              substitutedFromId: firstSupersetExercise.id,
+              sets: {
+                create: setsToCreate,
+              },
+            },
+            include: {
+              exercise: {
+                select: { id: true, name: true, muscleGroups: true },
+              },
+              workoutItem: {
+                select: { id: true, type: true, rounds: true, restAfter: true },
+              },
+              sets: { orderBy: { setNumber: "asc" } },
+            },
+          });
+          createdExercises.push(created);
+        }
+
+        // Reorder all exercises to clean up positions
+        const allActiveExercises = await tx.sessionExercise.findMany({
+          where: {
+            sessionId,
+            status: { notIn: ["substituted"] },
+          },
+          orderBy: { position: "asc" },
+        });
+
+        // Update positions to be clean integers
+        for (const [i, exercise] of allActiveExercises.entries()) {
+          await tx.sessionExercise.update({
+            where: { id: exercise.id },
+            data: { position: i },
+          });
+        }
+
+        return createdExercises;
+      });
+
+      return res.status(201).json({ data: result });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.VALIDATION_ERROR,
+            message: "Validation failed",
+            details: formatZodError(error),
+          },
+        });
+      }
+      console.error("Replace superset error:", error);
+      return res.status(500).json({
         error: {
-          code: ErrorCodes.VALIDATION_ERROR,
-          message: "Validation failed",
-          details: formatZodError(error),
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
         },
       });
     }
-    console.error("Replace superset error:", error);
-    return res.status(500).json({
-      error: {
-        code: ErrorCodes.INTERNAL_ERROR,
-        message: "An unexpected error occurred",
-      },
-    });
-  }
-}));
+  })
+);
 
 // GET /sessions/:id/logs - Get API call logs for a session (debug)
 router.get("/:id/logs", async (req: AuthRequest, res: Response) => {
@@ -1102,243 +1133,264 @@ router.get("/:id/logs", async (req: AuthRequest, res: Response) => {
 });
 
 // POST /sessions/:id/exercises/:exerciseId/sets - Record set result
-router.post("/:id/exercises/:exerciseId/sets", withSessionLogging(async (req: AuthRequest, res: Response) => {
-  try {
-    const sessionId = req.params["id"] as string;
-    const exerciseId = req.params["exerciseId"] as string;
-    const data = recordSetResultSchema.parse(req.body);
-    const userId = req.userId!;
+router.post(
+  "/:id/exercises/:exerciseId/sets",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const sessionId = req.params["id"] as string;
+      const exerciseId = req.params["exerciseId"] as string;
+      const data = recordSetResultSchema.parse(req.body);
+      const userId = req.userId!;
 
-    console.log(`[SET-RECORD] Incoming: session=${sessionId} exercise=${exerciseId} set#${data.setNumber} reps=${data.actualReps} weight=${data.actualWeight} rpe=${data.rpe ?? 'n/a'}`)
+      console.log(
+        `[SET-RECORD] Incoming: session=${sessionId} exercise=${exerciseId} set#${data.setNumber} reps=${data.actualReps} weight=${data.actualWeight} rpe=${data.rpe ?? "n/a"}`
+      );
 
-    // Verify session exists, is active, and belongs to user
-    const session = await prisma.workoutSession.findFirst({
-      where: { id: sessionId, userId },
-    });
+      // Verify session exists, is active, and belongs to user
+      const session = await prisma.workoutSession.findFirst({
+        where: { id: sessionId, userId },
+      });
 
-    if (!session) {
-      console.warn(`[SET-RECORD] REJECTED: session ${sessionId} not found for user ${userId}`)
-      return res.status(404).json({
+      if (!session) {
+        console.warn(`[SET-RECORD] REJECTED: session ${sessionId} not found for user ${userId}`);
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Session not found",
+          },
+        });
+      }
+
+      if (session.status !== "in_progress") {
+        console.warn(
+          `[SET-RECORD] REJECTED: session ${sessionId} status=${session.status} (not in_progress)`
+        );
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.SESSION_NOT_ACTIVE,
+            message: "Session is not active",
+          },
+        });
+      }
+
+      // Verify exercise belongs to session
+      const exercise = await prisma.sessionExercise.findFirst({
+        where: { id: exerciseId, sessionId },
+      });
+
+      if (!exercise) {
+        console.warn(
+          `[SET-RECORD] REJECTED: exercise ${exerciseId} not found in session ${sessionId}`
+        );
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Exercise not found in session",
+          },
+        });
+      }
+
+      // Find the set by set number
+      const set = await prisma.sessionSet.findFirst({
+        where: {
+          sessionExerciseId: exerciseId,
+          setNumber: data.setNumber,
+        },
+      });
+
+      if (!set) {
+        console.warn(
+          `[SET-RECORD] REJECTED: set#${data.setNumber} not found for exercise ${exerciseId}`
+        );
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: `Set ${data.setNumber} not found for this exercise`,
+          },
+        });
+      }
+
+      // Update the set with actual results
+      const updatedSet = await prisma.sessionSet.update({
+        where: { id: set.id },
+        data: {
+          actualReps: data.actualReps,
+          actualWeight: data.actualWeight,
+          rpe: data.rpe ?? null,
+          completedAt: new Date(),
+        },
+      });
+
+      console.log(
+        `[SET-RECORD] SUCCESS: set ${set.id} (set#${data.setNumber}) → ${data.actualReps}reps@${data.actualWeight}kg`
+      );
+
+      return res.json({ data: updatedSet });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.VALIDATION_ERROR,
+            message: "Validation failed",
+            details: formatZodError(error),
+          },
+        });
+      }
+      console.error("Record set result error:", error);
+      return res.status(500).json({
         error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Session not found",
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
         },
       });
     }
-
-    if (session.status !== "in_progress") {
-      console.warn(`[SET-RECORD] REJECTED: session ${sessionId} status=${session.status} (not in_progress)`)
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.SESSION_NOT_ACTIVE,
-          message: "Session is not active",
-        },
-      });
-    }
-
-    // Verify exercise belongs to session
-    const exercise = await prisma.sessionExercise.findFirst({
-      where: { id: exerciseId, sessionId },
-    });
-
-    if (!exercise) {
-      console.warn(`[SET-RECORD] REJECTED: exercise ${exerciseId} not found in session ${sessionId}`)
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Exercise not found in session",
-        },
-      });
-    }
-
-    // Find the set by set number
-    const set = await prisma.sessionSet.findFirst({
-      where: {
-        sessionExerciseId: exerciseId,
-        setNumber: data.setNumber,
-      },
-    });
-
-    if (!set) {
-      console.warn(`[SET-RECORD] REJECTED: set#${data.setNumber} not found for exercise ${exerciseId}`)
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: `Set ${data.setNumber} not found for this exercise`,
-        },
-      });
-    }
-
-    // Update the set with actual results
-    const updatedSet = await prisma.sessionSet.update({
-      where: { id: set.id },
-      data: {
-        actualReps: data.actualReps,
-        actualWeight: data.actualWeight,
-        rpe: data.rpe ?? null,
-        completedAt: new Date(),
-      },
-    });
-
-    console.log(`[SET-RECORD] SUCCESS: set ${set.id} (set#${data.setNumber}) → ${data.actualReps}reps@${data.actualWeight}kg`)
-
-    return res.json({ data: updatedSet });
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.VALIDATION_ERROR,
-          message: "Validation failed",
-          details: formatZodError(error),
-        },
-      });
-    }
-    console.error("Record set result error:", error);
-    return res.status(500).json({
-      error: {
-        code: ErrorCodes.INTERNAL_ERROR,
-        message: "An unexpected error occurred",
-      },
-    });
-  }
-}));
+  })
+);
 
 // PUT /sessions/:id/sets/:setId - Update set
-router.put("/:id/sets/:setId", withSessionLogging(async (req: AuthRequest, res: Response) => {
-  try {
-    const sessionId = req.params["id"] as string;
-    const setId = req.params["setId"] as string;
-    const data = updateSetSchema.parse(req.body);
-    const userId = req.userId!;
+router.put(
+  "/:id/sets/:setId",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const sessionId = req.params["id"] as string;
+      const setId = req.params["setId"] as string;
+      const data = updateSetSchema.parse(req.body);
+      const userId = req.userId!;
 
-    console.log(`[SET-UPDATE] Incoming: session=${sessionId} setId=${setId} data=${JSON.stringify(data)}`)
+      console.log(
+        `[SET-UPDATE] Incoming: session=${sessionId} setId=${setId} data=${JSON.stringify(data)}`
+      );
 
-    // Verify session exists and belongs to user
-    const session = await prisma.workoutSession.findFirst({
-      where: { id: sessionId, userId },
-    });
+      // Verify session exists and belongs to user
+      const session = await prisma.workoutSession.findFirst({
+        where: { id: sessionId, userId },
+      });
 
-    if (!session) {
-      return res.status(404).json({
+      if (!session) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Session not found",
+          },
+        });
+      }
+
+      // Verify set belongs to session
+      const set = await prisma.sessionSet.findFirst({
+        where: { id: setId },
+        include: {
+          sessionExercise: {
+            select: { sessionId: true },
+          },
+        },
+      });
+
+      if (!set || set.sessionExercise.sessionId !== sessionId) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Set not found in session",
+          },
+        });
+      }
+
+      const updatedSet = await prisma.sessionSet.update({
+        where: { id: setId },
+        data: {
+          actualReps: data.actualReps ?? set.actualReps,
+          actualWeight: data.actualWeight ?? set.actualWeight,
+          rpe: data.rpe !== undefined ? data.rpe : set.rpe,
+        },
+      });
+
+      return res.json({ data: updatedSet });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.VALIDATION_ERROR,
+            message: "Validation failed",
+            details: formatZodError(error),
+          },
+        });
+      }
+      console.error("Update set error:", error);
+      return res.status(500).json({
         error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Session not found",
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
         },
       });
     }
-
-    // Verify set belongs to session
-    const set = await prisma.sessionSet.findFirst({
-      where: { id: setId },
-      include: {
-        sessionExercise: {
-          select: { sessionId: true },
-        },
-      },
-    });
-
-    if (!set || set.sessionExercise.sessionId !== sessionId) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Set not found in session",
-        },
-      });
-    }
-
-    const updatedSet = await prisma.sessionSet.update({
-      where: { id: setId },
-      data: {
-        actualReps: data.actualReps ?? set.actualReps,
-        actualWeight: data.actualWeight ?? set.actualWeight,
-        rpe: data.rpe !== undefined ? data.rpe : set.rpe,
-      },
-    });
-
-    return res.json({ data: updatedSet });
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.VALIDATION_ERROR,
-          message: "Validation failed",
-          details: formatZodError(error),
-        },
-      });
-    }
-    console.error("Update set error:", error);
-    return res.status(500).json({
-      error: {
-        code: ErrorCodes.INTERNAL_ERROR,
-        message: "An unexpected error occurred",
-      },
-    });
-  }
-}));
+  })
+);
 
 // DELETE /sessions/:id/sets/:setId - Delete set
-router.delete("/:id/sets/:setId", withSessionLogging(async (req: AuthRequest, res: Response) => {
-  try {
-    const sessionId = req.params["id"] as string;
-    const setId = req.params["setId"] as string;
-    const userId = req.userId!;
+router.delete(
+  "/:id/sets/:setId",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const sessionId = req.params["id"] as string;
+      const setId = req.params["setId"] as string;
+      const userId = req.userId!;
 
-    // Verify session exists and belongs to user
-    const session = await prisma.workoutSession.findFirst({
-      where: { id: sessionId, userId },
-    });
+      // Verify session exists and belongs to user
+      const session = await prisma.workoutSession.findFirst({
+        where: { id: sessionId, userId },
+      });
 
-    if (!session) {
-      return res.status(404).json({
+      if (!session) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Session not found",
+          },
+        });
+      }
+
+      if (session.status !== "in_progress") {
+        return res.status(400).json({
+          error: {
+            code: ErrorCodes.SESSION_NOT_ACTIVE,
+            message: "Session is not active",
+          },
+        });
+      }
+
+      // Verify set belongs to session
+      const set = await prisma.sessionSet.findFirst({
+        where: { id: setId },
+        include: {
+          sessionExercise: {
+            select: { sessionId: true },
+          },
+        },
+      });
+
+      if (!set || set.sessionExercise.sessionId !== sessionId) {
+        return res.status(404).json({
+          error: {
+            code: ErrorCodes.NOT_FOUND,
+            message: "Set not found in session",
+          },
+        });
+      }
+
+      await prisma.sessionSet.delete({
+        where: { id: setId },
+      });
+
+      return res.status(204).send();
+    } catch (error) {
+      console.error("Delete set error:", error);
+      return res.status(500).json({
         error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Session not found",
+          code: ErrorCodes.INTERNAL_ERROR,
+          message: "An unexpected error occurred",
         },
       });
     }
-
-    if (session.status !== "in_progress") {
-      return res.status(400).json({
-        error: {
-          code: ErrorCodes.SESSION_NOT_ACTIVE,
-          message: "Session is not active",
-        },
-      });
-    }
-
-    // Verify set belongs to session
-    const set = await prisma.sessionSet.findFirst({
-      where: { id: setId },
-      include: {
-        sessionExercise: {
-          select: { sessionId: true },
-        },
-      },
-    });
-
-    if (!set || set.sessionExercise.sessionId !== sessionId) {
-      return res.status(404).json({
-        error: {
-          code: ErrorCodes.NOT_FOUND,
-          message: "Set not found in session",
-        },
-      });
-    }
-
-    await prisma.sessionSet.delete({
-      where: { id: setId },
-    });
-
-    return res.status(204).send();
-  } catch (error) {
-    console.error("Delete set error:", error);
-    return res.status(500).json({
-      error: {
-        code: ErrorCodes.INTERNAL_ERROR,
-        message: "An unexpected error occurred",
-      },
-    });
-  }
-}));
+  })
+);
 
 export default router;
