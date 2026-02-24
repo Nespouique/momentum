@@ -56,11 +56,67 @@ const sessionInclude = {
   },
 };
 
+// Logging helpers for session API calls
+type SessionRequestHandler = (req: AuthRequest, res: Response) => Promise<void>
+
+type SessionLogContext = {
+  sessionId?: string
+  start: number
+}
+
+type SessionLogResponse = Response & {
+  locals: { sessionLog?: SessionLogContext }
+}
+
+const withSessionLogging = (handler: SessionRequestHandler): SessionRequestHandler => async (req, res) => {
+  const typedRes = res as SessionLogResponse
+  typedRes.locals.sessionLog = { start: Date.now() }
+
+  // Auto-extract sessionId from route params if available
+  const paramId = req.params?.['id'] as string | undefined
+  if (paramId) {
+    typedRes.locals.sessionLog.sessionId = paramId
+  }
+
+  try {
+    await handler(req, res)
+  } finally {
+    const context = typedRes.locals.sessionLog
+    if (context?.sessionId) {
+      const durationMs = Math.max(0, Math.round(Date.now() - context.start))
+      console.log(`[SESSION-LOG] ${req.method} ${req.originalUrl} → ${res.statusCode} (${durationMs}ms) session=${context.sessionId}`)
+      try {
+        await prisma.sessionApiCall.create({
+          data: {
+            sessionId: context.sessionId,
+            method: req.method,
+            path: req.originalUrl,
+            statusCode: res.statusCode,
+            durationMs,
+          },
+        })
+      } catch (logError) {
+        console.error('[SESSION-LOG] Failed to persist API call log:', logError)
+      }
+    }
+  }
+}
+
+function markSessionForLogging(res: Response, session: { id: string; status: string }) {
+  if (session.status !== 'in_progress') return
+  const typedRes = res as SessionLogResponse
+  const context = typedRes.locals.sessionLog
+  if (context) {
+    context.sessionId = session.id
+  }
+}
+
+
 // All routes require authentication
 router.use(authMiddleware);
 
 // GET /sessions/active - Get active session (must be before /:id)
-router.get("/active", async (req: AuthRequest, res: Response) => {
+router.get("/active", withSessionLogging(async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
 
@@ -73,6 +129,7 @@ router.get("/active", async (req: AuthRequest, res: Response) => {
       return res.json({ data: null });
     }
 
+    markSessionForLogging(res, session);
     return res.json({ data: session });
   } catch (error) {
     console.error("Get active session error:", error);
@@ -83,7 +140,7 @@ router.get("/active", async (req: AuthRequest, res: Response) => {
       },
     });
   }
-});
+}));
 
 // GET /sessions/last - Get last completed session for a workout
 router.get("/last", async (req: AuthRequest, res: Response) => {
@@ -196,7 +253,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
 });
 
 // GET /sessions/:id - Get single session with full details
-router.get("/:id", async (req: AuthRequest, res: Response) => {
+router.get("/:id", withSessionLogging(async (req: AuthRequest, res: Response) => {
   try {
     const id = req.params["id"] as string;
     const userId = req.userId!;
@@ -215,6 +272,7 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
       });
     }
 
+    markSessionForLogging(res, session);
     // Also get last completed session for comparison
     const lastSession = await prisma.workoutSession.findFirst({
       where: {
@@ -237,10 +295,10 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
       },
     });
   }
-});
+}));
 
 // POST /sessions - Start a new session
-router.post("/", async (req: AuthRequest, res: Response) => {
+router.post("/", withSessionLogging(async (req: AuthRequest, res: Response) => {
   try {
     const data = createSessionSchema.parse(req.body);
     const userId = req.userId!;
@@ -335,6 +393,7 @@ router.post("/", async (req: AuthRequest, res: Response) => {
       include: sessionInclude,
     });
 
+    markSessionForLogging(res, session);
     // Get last completed session for comparison
     const lastSession = await prisma.workoutSession.findFirst({
       where: {
@@ -365,10 +424,10 @@ router.post("/", async (req: AuthRequest, res: Response) => {
       },
     });
   }
-});
+}));
 
 // PATCH /sessions/:id - Update session (status/notes)
-router.patch("/:id", async (req: AuthRequest, res: Response) => {
+router.patch("/:id", withSessionLogging(async (req: AuthRequest, res: Response) => {
   try {
     const id = req.params["id"] as string;
     const data = updateSessionSchema.parse(req.body);
@@ -452,10 +511,10 @@ router.patch("/:id", async (req: AuthRequest, res: Response) => {
       },
     });
   }
-});
+}));
 
 // DELETE /sessions/:id - Delete session
-router.delete("/:id", async (req: AuthRequest, res: Response) => {
+router.delete("/:id", withSessionLogging(async (req: AuthRequest, res: Response) => {
   try {
     const id = req.params["id"] as string;
     const userId = req.userId!;
@@ -487,10 +546,10 @@ router.delete("/:id", async (req: AuthRequest, res: Response) => {
       },
     });
   }
-});
+}));
 
 // PATCH /sessions/:id/exercises/:exerciseId - Update exercise status (skip)
-router.patch("/:id/exercises/:exerciseId", async (req: AuthRequest, res: Response) => {
+router.patch("/:id/exercises/:exerciseId", withSessionLogging(async (req: AuthRequest, res: Response) => {
   try {
     const sessionId = req.params["id"] as string;
     const exerciseId = req.params["exerciseId"] as string;
@@ -564,10 +623,10 @@ router.patch("/:id/exercises/:exerciseId", async (req: AuthRequest, res: Respons
       },
     });
   }
-});
+}));
 
 // POST /sessions/:id/exercises/:exerciseId/substitute - Substitute exercise
-router.post("/:id/exercises/:exerciseId/substitute", async (req: AuthRequest, res: Response) => {
+router.post("/:id/exercises/:exerciseId/substitute", withSessionLogging(async (req: AuthRequest, res: Response) => {
   try {
     const sessionId = req.params["id"] as string;
     const exerciseId = req.params["exerciseId"] as string;
@@ -681,10 +740,10 @@ router.post("/:id/exercises/:exerciseId/substitute", async (req: AuthRequest, re
       },
     });
   }
-});
+}));
 
 // PUT /sessions/:id/exercises/reorder - Reorder exercises
-router.put("/:id/exercises/reorder", async (req: AuthRequest, res: Response) => {
+router.put("/:id/exercises/reorder", withSessionLogging(async (req: AuthRequest, res: Response) => {
   try {
     const sessionId = req.params["id"] as string;
     const data = reorderExercisesSchema.parse(req.body);
@@ -772,10 +831,10 @@ router.put("/:id/exercises/reorder", async (req: AuthRequest, res: Response) => 
       },
     });
   }
-});
+}));
 
 // POST /sessions/:id/superset/:workoutItemId/replace - Replace superset with new exercises
-router.post("/:id/superset/:workoutItemId/replace", async (req: AuthRequest, res: Response) => {
+router.post("/:id/superset/:workoutItemId/replace", withSessionLogging(async (req: AuthRequest, res: Response) => {
   try {
     const sessionId = req.params["id"] as string;
     const workoutItemId = req.params["workoutItemId"] as string;
@@ -997,15 +1056,60 @@ router.post("/:id/superset/:workoutItemId/replace", async (req: AuthRequest, res
       },
     });
   }
+}));
+
+// GET /sessions/:id/logs - Get API call logs for a session (debug)
+router.get("/:id/logs", async (req: AuthRequest, res: Response) => {
+  try {
+    const sessionId = req.params["id"] as string;
+    const userId = req.userId!;
+
+    // Verify session exists and belongs to user
+    const session = await prisma.workoutSession.findFirst({
+      where: { id: sessionId, userId },
+      select: { id: true, status: true, startedAt: true, completedAt: true },
+    });
+
+    if (!session) {
+      return res.status(404).json({
+        error: { code: ErrorCodes.NOT_FOUND, message: "Session not found" },
+      });
+    }
+
+    const logs = await prisma.sessionApiCall.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return res.json({
+      data: {
+        session: {
+          id: session.id,
+          status: session.status,
+          startedAt: session.startedAt,
+          completedAt: session.completedAt,
+        },
+        totalCalls: logs.length,
+        logs,
+      },
+    });
+  } catch (error) {
+    console.error("Get session logs error:", error);
+    return res.status(500).json({
+      error: { code: ErrorCodes.INTERNAL_ERROR, message: "An unexpected error occurred" },
+    });
+  }
 });
 
 // POST /sessions/:id/exercises/:exerciseId/sets - Record set result
-router.post("/:id/exercises/:exerciseId/sets", async (req: AuthRequest, res: Response) => {
+router.post("/:id/exercises/:exerciseId/sets", withSessionLogging(async (req: AuthRequest, res: Response) => {
   try {
     const sessionId = req.params["id"] as string;
     const exerciseId = req.params["exerciseId"] as string;
     const data = recordSetResultSchema.parse(req.body);
     const userId = req.userId!;
+
+    console.log(`[SET-RECORD] Incoming: session=${sessionId} exercise=${exerciseId} set#${data.setNumber} reps=${data.actualReps} weight=${data.actualWeight} rpe=${data.rpe ?? 'n/a'}`)
 
     // Verify session exists, is active, and belongs to user
     const session = await prisma.workoutSession.findFirst({
@@ -1013,6 +1117,7 @@ router.post("/:id/exercises/:exerciseId/sets", async (req: AuthRequest, res: Res
     });
 
     if (!session) {
+      console.warn(`[SET-RECORD] REJECTED: session ${sessionId} not found for user ${userId}`)
       return res.status(404).json({
         error: {
           code: ErrorCodes.NOT_FOUND,
@@ -1022,6 +1127,7 @@ router.post("/:id/exercises/:exerciseId/sets", async (req: AuthRequest, res: Res
     }
 
     if (session.status !== "in_progress") {
+      console.warn(`[SET-RECORD] REJECTED: session ${sessionId} status=${session.status} (not in_progress)`)
       return res.status(400).json({
         error: {
           code: ErrorCodes.SESSION_NOT_ACTIVE,
@@ -1036,6 +1142,7 @@ router.post("/:id/exercises/:exerciseId/sets", async (req: AuthRequest, res: Res
     });
 
     if (!exercise) {
+      console.warn(`[SET-RECORD] REJECTED: exercise ${exerciseId} not found in session ${sessionId}`)
       return res.status(404).json({
         error: {
           code: ErrorCodes.NOT_FOUND,
@@ -1053,6 +1160,7 @@ router.post("/:id/exercises/:exerciseId/sets", async (req: AuthRequest, res: Res
     });
 
     if (!set) {
+      console.warn(`[SET-RECORD] REJECTED: set#${data.setNumber} not found for exercise ${exerciseId}`)
       return res.status(404).json({
         error: {
           code: ErrorCodes.NOT_FOUND,
@@ -1071,6 +1179,8 @@ router.post("/:id/exercises/:exerciseId/sets", async (req: AuthRequest, res: Res
         completedAt: new Date(),
       },
     });
+
+    console.log(`[SET-RECORD] SUCCESS: set ${set.id} (set#${data.setNumber}) → ${data.actualReps}reps@${data.actualWeight}kg`)
 
     return res.json({ data: updatedSet });
   } catch (error) {
@@ -1091,15 +1201,17 @@ router.post("/:id/exercises/:exerciseId/sets", async (req: AuthRequest, res: Res
       },
     });
   }
-});
+}));
 
 // PUT /sessions/:id/sets/:setId - Update set
-router.put("/:id/sets/:setId", async (req: AuthRequest, res: Response) => {
+router.put("/:id/sets/:setId", withSessionLogging(async (req: AuthRequest, res: Response) => {
   try {
     const sessionId = req.params["id"] as string;
     const setId = req.params["setId"] as string;
     const data = updateSetSchema.parse(req.body);
     const userId = req.userId!;
+
+    console.log(`[SET-UPDATE] Incoming: session=${sessionId} setId=${setId} data=${JSON.stringify(data)}`)
 
     // Verify session exists and belongs to user
     const session = await prisma.workoutSession.findFirst({
@@ -1162,10 +1274,10 @@ router.put("/:id/sets/:setId", async (req: AuthRequest, res: Response) => {
       },
     });
   }
-});
+}));
 
 // DELETE /sessions/:id/sets/:setId - Delete set
-router.delete("/:id/sets/:setId", async (req: AuthRequest, res: Response) => {
+router.delete("/:id/sets/:setId", withSessionLogging(async (req: AuthRequest, res: Response) => {
   try {
     const sessionId = req.params["id"] as string;
     const setId = req.params["setId"] as string;
@@ -1227,6 +1339,6 @@ router.delete("/:id/sets/:setId", async (req: AuthRequest, res: Response) => {
       },
     });
   }
-});
+}));
 
 export default router;

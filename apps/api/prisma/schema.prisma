@@ -179,6 +179,7 @@ model WorkoutSession {
 
   exercises              SessionExercise[]
   progressionSuggestions ProgressionSuggestion[]
+  sessionApiCalls        SessionApiCall[]
 
   @@index([userId, status])
   @@index([workoutId])
@@ -328,6 +329,20 @@ model SyncDevice {
 
   @@index([userId])
   @@map("sync_devices")
+}
+
+model SessionApiCall {
+  id         String          @id @default(uuid())
+  sessionId  String          @map("session_id")
+  session    WorkoutSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  method     String
+  path       String
+  statusCode Int?            @map("status_code")
+  durationMs Int?            @map("duration_ms")
+  createdAt  DateTime        @default(now()) @map("created_at")
+
+  @@index([sessionId])
+  @@map("session_api_calls")
 }
 
 // ============================================
