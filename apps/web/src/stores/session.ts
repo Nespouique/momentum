@@ -13,6 +13,7 @@ import {
   reorderExercises as apiReorderExercises,
   SessionError,
 } from "@/lib/api/sessions";
+import { updateSet as apiUpdateSet } from "@/lib/api/sessions";
 import {
   getExerciseLastPerformance as apiGetExerciseLastPerformance,
   ExerciseLastPerformance,
@@ -21,6 +22,8 @@ import {
 // localStorage helpers for rest state persistence
 const REST_STATE_KEY = "momentum_rest_state";
 const PENDING_RESULTS_KEY = "momentum_pending_results";
+const COMPLETED_SET_IDS_KEY = "momentum_completed_set_ids";
+const SENT_RESULTS_KEY = "momentum_sent_results";
 
 interface PersistedRestState {
   sessionId: string;
@@ -68,6 +71,48 @@ function clearPendingResults(): void {
   localStorage.removeItem(PENDING_RESULTS_KEY);
 }
 
+function saveCompletedSetIds(ids: Map<string, string>): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(COMPLETED_SET_IDS_KEY, JSON.stringify(Array.from(ids.entries())));
+}
+
+function loadCompletedSetIds(): Map<string, string> {
+  if (typeof window === "undefined") return new Map();
+  try {
+    const stored = localStorage.getItem(COMPLETED_SET_IDS_KEY);
+    if (!stored) return new Map();
+    return new Map(JSON.parse(stored) as [string, string][]);
+  } catch {
+    return new Map();
+  }
+}
+
+function clearCompletedSetIds(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(COMPLETED_SET_IDS_KEY);
+}
+
+function saveSentResults(results: Map<string, SentResult>): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SENT_RESULTS_KEY, JSON.stringify(Array.from(results.entries())));
+}
+
+function loadSentResults(): Map<string, SentResult> {
+  if (typeof window === "undefined") return new Map();
+  try {
+    const stored = localStorage.getItem(SENT_RESULTS_KEY);
+    if (!stored) return new Map();
+    return new Map(JSON.parse(stored) as [string, SentResult][]);
+  } catch {
+    return new Map();
+  }
+}
+
+function clearSentResults(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(SENT_RESULTS_KEY);
+}
+
 function savePendingResults(results: Map<string, PendingResult>): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(PENDING_RESULTS_KEY, JSON.stringify(Array.from(results.entries())));
@@ -95,6 +140,13 @@ export type SessionScreen =
   | "summary"; // Session complete
 
 interface PendingResult {
+  reps: number;
+  weight: number;
+}
+
+// Tracks the values that were sent to the API in completeSet, so we can detect
+// if the user modified them during rest and issue a PUT in skipRest.
+interface SentResult {
   reps: number;
   weight: number;
 }
@@ -128,11 +180,20 @@ interface SessionState {
   // Pending results (before saving to API)
   pendingResults: Map<string, PendingResult>;
 
+  // Maps "exerciseId-setIndex" → setId returned by API after POST in completeSet
+  completedSetIds: Map<string, string>;
+
+  // Values that were actually sent to the API in completeSet (for change detection)
+  sentResults: Map<string, SentResult>;
+
   // Cache for last performance data (keyed by exerciseId)
   lastPerformanceCache: Map<string, ExerciseLastPerformance>;
 
   // Actions
-  fetchLastPerformance: (token: string, exerciseId: string) => Promise<ExerciseLastPerformance | null>;
+  fetchLastPerformance: (
+    token: string,
+    exerciseId: string
+  ) => Promise<ExerciseLastPerformance | null>;
   initSession: (token: string, workoutId: string) => Promise<void>;
   loadSession: (token: string, sessionId: string) => Promise<void>;
   loadActiveSession: (token: string) => Promise<WorkoutSession | null>;
@@ -154,8 +215,14 @@ interface SessionState {
   reset: () => void;
 
   // Helpers
-  isExerciseInSuperset: (exercise: SessionExercise | null | undefined, allActiveExercises: SessionExercise[]) => boolean;
-  getSupersetExerciseIds: (exercise: SessionExercise | null | undefined, allActiveExercises: SessionExercise[]) => string[];
+  isExerciseInSuperset: (
+    exercise: SessionExercise | null | undefined,
+    allActiveExercises: SessionExercise[]
+  ) => boolean;
+  getSupersetExerciseIds: (
+    exercise: SessionExercise | null | undefined,
+    allActiveExercises: SessionExercise[]
+  ) => string[];
   getCurrentExercise: () => SessionExercise | null;
   getNextExercise: () => SessionExercise | null;
   getCurrentSet: () => SessionSet | null;
@@ -185,8 +252,50 @@ const initialState = {
   supersetExerciseIndex: 0,
   supersetExerciseIds: [],
   pendingResults: new Map<string, PendingResult>(),
+  completedSetIds: new Map<string, string>(),
+  sentResults: new Map<string, SentResult>(),
   lastPerformanceCache: new Map<string, ExerciseLastPerformance>(),
 };
+
+// Helper to check if a pending result differs from what was sent and issue a PUT if so
+async function flushPendingResultUpdate(state: SessionState, key: string): Promise<void> {
+  const pendingResult = state.pendingResults.get(key);
+  const sentResult = state.sentResults.get(key);
+  const setId = state.completedSetIds.get(key);
+
+  if (!pendingResult || !setId || !state.session || !state.token) return;
+
+  // Check if the user modified the values during rest
+  const hasChanged =
+    !sentResult ||
+    pendingResult.reps !== sentResult.reps ||
+    pendingResult.weight !== sentResult.weight;
+
+  if (hasChanged) {
+    try {
+      await apiUpdateSet(state.token, state.session.id, setId, {
+        actualReps: pendingResult.reps,
+        actualWeight: pendingResult.weight,
+      });
+
+      // Update local session data
+      const updatedExercises = state.session.exercises.map((ex) => ({
+        ...ex,
+        sets: ex.sets.map((s) =>
+          s.id === setId
+            ? { ...s, actualReps: pendingResult.reps, actualWeight: pendingResult.weight }
+            : s
+        ),
+      }));
+
+      useSessionStore.setState({
+        session: { ...state.session, exercises: updatedExercises },
+      });
+    } catch (error) {
+      console.error("Failed to update set result:", error);
+    }
+  }
+}
 
 export const useSessionStore = create<SessionState>((set, get) => ({
   ...initialState,
@@ -219,6 +328,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   initSession: async (token: string, workoutId: string) => {
     set({ isLoading: true, error: null });
     try {
+      // Clean up any leftover localStorage from previous sessions
+      clearRestState();
+      clearPendingResults();
+      clearCompletedSetIds();
+      clearSentResults();
+
       const response = await apiStartSession(token, workoutId);
       const activeExercises = response.data.exercises.filter(
         (e) => e.status !== "substituted" && e.status !== "skipped"
@@ -232,9 +347,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         : 0;
       const isSuperset = supersetCount > 1;
       const supersetIds = isSuperset
-        ? activeExercises
-            .filter((e) => e.workoutItem?.id === workoutItemId)
-            .map((e) => e.id)
+        ? activeExercises.filter((e) => e.workoutItem?.id === workoutItemId).map((e) => e.id)
         : [];
 
       set({
@@ -250,6 +363,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         supersetExerciseIndex: 0,
         supersetExerciseIds: supersetIds,
         pendingResults: new Map(),
+        completedSetIds: new Map(),
+        sentResults: new Map(),
       });
     } catch (error) {
       const message = error instanceof SessionError ? error.message : "Failed to start session";
@@ -316,9 +431,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           supersetExerciseIds = supersetIds;
         } else {
           // All superset sets completed, check for exercises after superset
-          const nextNonSupersetIdx = activeExercises.findIndex(
-            (e) => !supersetIds.includes(e.id)
-          );
+          const nextNonSupersetIdx = activeExercises.findIndex((e) => !supersetIds.includes(e.id));
           if (nextNonSupersetIdx !== -1) {
             // Move to next exercise after superset
             currentExerciseIndex = nextNonSupersetIdx;
@@ -379,9 +492,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             }
             if (foundIncomplete) break;
             // Skip past all exercises in this superset
-            exIdx = activeExercises.findIndex(
-              (e) => e.id === supersetIds[supersetIds.length - 1]
-            );
+            exIdx = activeExercises.findIndex((e) => e.id === supersetIds[supersetIds.length - 1]);
           } else {
             // Single exercise - linear search
             for (let setIdx = 0; setIdx < exercise.sets.length; setIdx++) {
@@ -407,12 +518,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
       // Load pending results BEFORE loadRestState (which may clear rest state on expiry)
       const savedPendingResults = loadPendingResults();
+      const savedCompletedSetIds = loadCompletedSetIds();
+      const savedSentResults = loadSentResults();
 
       // Check for persisted rest state
       const persistedRest = loadRestState(sessionId);
 
       if (persistedRest) {
-        // Rest still active - restore with pending results
+        // Rest still active - restore with pending results and completed set IDs
         const remaining = Math.max(0, Math.ceil((persistedRest.restEndAt - Date.now()) / 1000));
         set({
           session,
@@ -431,9 +544,22 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           restDuration: persistedRest.restDuration,
           restTimeRemaining: remaining,
           pendingResults: savedPendingResults,
+          completedSetIds: savedCompletedSetIds,
+          sentResults: savedSentResults,
         });
       } else {
-        // No active rest - flush any saved pending results to API before clearing
+        // No active rest — two kinds of pending work to flush:
+        //
+        // 1. Failed POSTs: pendingResults entries whose set has no completedAt.
+        //    These are results that completeSet() couldn't send (network error).
+        //    → Re-send via POST.
+        //
+        // 2. Modified results: the user changed reps/weight during rest, then the
+        //    app was backgrounded until rest expired. The original POST succeeded
+        //    (set has completedAt) but the modified values were never sent.
+        //    → Send via PUT using the stored setId.
+
+        // Flush failed POSTs
         if (savedPendingResults.size > 0) {
           for (const [key, result] of savedPendingResults) {
             const lastDash = key.lastIndexOf("-");
@@ -459,18 +585,52 @@ export const useSessionStore = create<SessionState>((set, get) => ({
               }
             }
           }
-          clearPendingResults();
         }
 
+        // Flush modified results (user edited during rest, then app was backgrounded)
+        if (savedCompletedSetIds.size > 0) {
+          for (const [key, setId] of savedCompletedSetIds) {
+            const pendingResult = savedPendingResults.get(key);
+            const sentResult = savedSentResults.get(key);
+            if (!pendingResult) continue;
+
+            const hasChanged =
+              !sentResult ||
+              pendingResult.reps !== sentResult.reps ||
+              pendingResult.weight !== sentResult.weight;
+
+            if (hasChanged) {
+              try {
+                await apiUpdateSet(token, sessionId, setId, {
+                  actualReps: pendingResult.reps,
+                  actualWeight: pendingResult.weight,
+                });
+
+                // Update local session data
+                for (const ex of session.exercises) {
+                  for (const s of ex.sets) {
+                    if (s.id === setId) {
+                      s.actualReps = pendingResult.reps;
+                      s.actualWeight = pendingResult.weight;
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error("Failed to flush modified result for", key, error);
+              }
+            }
+          }
+        }
+
+        clearPendingResults();
+        clearCompletedSetIds();
+        clearSentResults();
+
         // Recompute screen based on (now-updated) session progress
-        const allSetsCompleted = activeExercises.every((ex) =>
-          ex.sets.every((s) => s.completedAt)
-        );
+        const allSetsCompleted = activeExercises.every((ex) => ex.sets.every((s) => s.completedAt));
 
         // Check if this is a fresh session (no sets completed at all)
-        const noSetsCompleted = activeExercises.every((ex) =>
-          ex.sets.every((s) => !s.completedAt)
-        );
+        const noSetsCompleted = activeExercises.every((ex) => ex.sets.every((s) => !s.completedAt));
 
         let currentScreen: SessionScreen;
         if (allSetsCompleted) {
@@ -500,6 +660,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           restTimeRemaining: 0,
           restDuration: 0,
           pendingResults: new Map(),
+          completedSetIds: new Map(),
+          sentResults: new Map(),
         });
       }
     } catch (error) {
@@ -641,32 +803,57 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     if (!state.session || !exercise || !currentSet) return;
 
-    // Helper to call API immediately (used when no rest screen follows)
+    // Always send the API call immediately to prevent data loss on app backgrounding
     const recordResultNow = async () => {
       if (!state.token) return;
       try {
-        await apiRecordSetResult(state.token, state.session!.id, exercise.id, {
+        const response = await apiRecordSetResult(state.token, state.session!.id, exercise.id, {
           setNumber: currentSet.setNumber,
           actualReps: result.reps,
           actualWeight: result.weight,
         });
-        // Update local state
+
+        // Store the setId and the sent values for later PUT if user modifies during rest
+        const key = `${exercise.id}-${state.currentSetIndex}`;
+        const newCompletedSetIds = new Map(get().completedSetIds);
+        newCompletedSetIds.set(key, response.data.id);
+        const newSentResults = new Map(get().sentResults);
+        newSentResults.set(key, { reps: result.reps, weight: result.weight });
+
+        // Update local session data to reflect the recorded result
         const updatedExercises = state.session!.exercises.map((ex) => {
           if (ex.id === exercise.id) {
             return {
               ...ex,
               sets: ex.sets.map((s) =>
                 s.id === currentSet.id
-                  ? { ...s, actualReps: result.reps, actualWeight: result.weight, completedAt: new Date().toISOString() }
+                  ? {
+                      ...s,
+                      actualReps: result.reps,
+                      actualWeight: result.weight,
+                      completedAt: new Date().toISOString(),
+                    }
                   : s
               ),
             };
           }
           return ex;
         });
-        set({ session: { ...state.session!, exercises: updatedExercises } });
+
+        set({
+          session: { ...state.session!, exercises: updatedExercises },
+          completedSetIds: newCompletedSetIds,
+          sentResults: newSentResults,
+        });
+        saveCompletedSetIds(newCompletedSetIds);
+        saveSentResults(newSentResults);
       } catch (error) {
         console.error("Failed to record set result:", error);
+        // On failure, store in pendingResults as fallback for retry in loadSession
+        const newPendingResults = new Map(get().pendingResults);
+        newPendingResults.set(`${exercise.id}-${state.currentSetIndex}`, result);
+        set({ pendingResults: newPendingResults });
+        savePendingResults(newPendingResults);
       }
     };
 
@@ -681,17 +868,20 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const isLastRound = state.supersetRound >= totalRounds;
 
       if (isLastInSuperset) {
-        // Store result for later (rest screen will follow)
-        // Key includes setIndex to avoid pollution between sets
+        // Store result for display on rest screen + send API call immediately
         const newPendingResults = new Map(state.pendingResults);
         newPendingResults.set(`${exercise.id}-${state.currentSetIndex}`, result);
         set({ pendingResults: newPendingResults });
         savePendingResults(newPendingResults);
 
+        // Send API call immediately (fire-and-forget, errors handled inside)
+        recordResultNow();
+
         if (isLastRound) {
           // End of superset
           const nextNonSupersetIdx = activeExercises.findIndex(
-            (e, i) => i > state.currentExerciseIndex && e.workoutItem?.id !== exercise.workoutItem?.id
+            (e, i) =>
+              i > state.currentExerciseIndex && e.workoutItem?.id !== exercise.workoutItem?.id
           );
 
           if (nextNonSupersetIdx === -1) {
@@ -781,12 +971,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         });
       }
     } else {
-      // Standard exercise logic - always goes to rest screen, so store result for later
-      // Key includes setIndex to avoid pollution between sets
+      // Standard exercise logic - store result for display AND send API call immediately
       const newPendingResults = new Map(state.pendingResults);
       newPendingResults.set(`${exercise.id}-${state.currentSetIndex}`, result);
       set({ pendingResults: newPendingResults });
       savePendingResults(newPendingResults);
+
+      // Send API call immediately (fire-and-forget, errors handled inside)
+      recordResultNow();
 
       const totalSets = exercise.sets.length;
       const isLastSet = state.currentSetIndex >= totalSets - 1;
@@ -880,54 +1072,55 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     const activeExercises = state.getActiveExercises();
     const currentExercise = state.getCurrentExercise();
-    const currentSet = state.getCurrentSet();
 
     // Clear persisted rest state
     clearRestState();
 
-    // Record the set result to API (if we have pending results)
-    // Key includes setIndex to match the key used when storing
-    if (state.session && state.token && currentExercise && currentSet) {
+    // Check if user modified the result during rest and send a PUT if so
+    if (state.session && state.token && currentExercise) {
+      // Handle single exercise pending result
       const pendingResultKey = `${currentExercise.id}-${state.currentSetIndex}`;
-      const pendingResult = state.pendingResults.get(pendingResultKey);
-      if (pendingResult) {
-        try {
-          await apiRecordSetResult(state.token, state.session.id, currentExercise.id, {
-            setNumber: currentSet.setNumber,
-            actualReps: pendingResult.reps,
-            actualWeight: pendingResult.weight,
-          });
+      await flushPendingResultUpdate(state, pendingResultKey);
 
-          // Update local state with result
-          const updatedExercises = state.session.exercises.map((ex) => {
-            if (ex.id === currentExercise.id) {
-              return {
-                ...ex,
-                sets: ex.sets.map((s) =>
-                  s.id === currentSet.id
-                    ? { ...s, actualReps: pendingResult.reps, actualWeight: pendingResult.weight, completedAt: new Date().toISOString() }
-                    : s
-                ),
-              };
-            }
-            return ex;
-          });
-
-          // Clear pending result for this exercise+set
-          const newPendingResults = new Map(state.pendingResults);
-          newPendingResults.delete(pendingResultKey);
-
-          set({
-            session: { ...state.session, exercises: updatedExercises },
-            pendingResults: newPendingResults,
-          });
-          savePendingResults(newPendingResults);
-        } catch (error) {
-          console.error("Failed to record set result:", error);
-          // Continue with navigation even if API fails
+      // Handle superset: flush all exercises in the superset round
+      if (state.isInSuperset) {
+        for (const exId of state.supersetExerciseIds) {
+          if (exId === currentExercise.id) continue; // Already handled above
+          const key = `${exId}-${state.currentSetIndex}`;
+          await flushPendingResultUpdate(get(), key);
         }
       }
     }
+
+    // Clear pending results and completed set IDs for the flushed keys
+    const newPendingResults = new Map(get().pendingResults);
+    const newCompletedSetIds = new Map(get().completedSetIds);
+    const newSentResults = new Map(get().sentResults);
+
+    if (currentExercise) {
+      const key = `${currentExercise.id}-${state.currentSetIndex}`;
+      newPendingResults.delete(key);
+      newCompletedSetIds.delete(key);
+      newSentResults.delete(key);
+
+      if (state.isInSuperset) {
+        for (const exId of state.supersetExerciseIds) {
+          const ssKey = `${exId}-${state.currentSetIndex}`;
+          newPendingResults.delete(ssKey);
+          newCompletedSetIds.delete(ssKey);
+          newSentResults.delete(ssKey);
+        }
+      }
+    }
+
+    set({
+      pendingResults: newPendingResults,
+      completedSetIds: newCompletedSetIds,
+      sentResults: newSentResults,
+    });
+    savePendingResults(newPendingResults);
+    saveCompletedSetIds(newCompletedSetIds);
+    saveSentResults(newSentResults);
 
     if (state.currentScreen === "rest") {
       // Check if this is the last set of the last exercise
@@ -1011,7 +1204,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const totalRounds = currentExercise?.sets.length || currentExercise?.workoutItem?.rounds || 1;
       const isLastRound = state.supersetRound >= totalRounds;
       const nextNonSupersetIdx = activeExercises.findIndex(
-        (e, i) => i > state.currentExerciseIndex && e.workoutItem?.id !== currentExercise?.workoutItem?.id
+        (e, i) =>
+          i > state.currentExerciseIndex && e.workoutItem?.id !== currentExercise?.workoutItem?.id
       );
 
       // IMPORTANT: Check if the current round's sets have actually been completed
@@ -1023,7 +1217,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         return ex?.sets[currentRoundSetIndex]?.completedAt;
       });
 
-      const isLastExerciseOverall = isLastRound && nextNonSupersetIdx === -1 && allSetsInCurrentRoundCompleted;
+      const isLastExerciseOverall =
+        isLastRound && nextNonSupersetIdx === -1 && allSetsInCurrentRoundCompleted;
 
       if (isLastExerciseOverall) {
         // Go to summary
@@ -1292,6 +1487,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       await apiUpdateSession(token, state.session.id, { status: "abandoned" });
       clearRestState();
       clearPendingResults();
+      clearCompletedSetIds();
+      clearSentResults();
       state.reset();
     } catch (error) {
       console.error("Failed to abandon session:", error);
@@ -1306,6 +1503,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       await apiUpdateSession(token, state.session.id, { status: "completed", notes });
       clearRestState();
       clearPendingResults();
+      clearCompletedSetIds();
+      clearSentResults();
       set({
         session: {
           ...state.session,
@@ -1335,7 +1534,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   // Helper to detect if an exercise is part of a superset by counting exercises with same workoutItemId
-  isExerciseInSuperset: (exercise: SessionExercise | null | undefined, allActiveExercises: SessionExercise[]) => {
+  isExerciseInSuperset: (
+    exercise: SessionExercise | null | undefined,
+    allActiveExercises: SessionExercise[]
+  ) => {
     if (!exercise?.workoutItem?.id) return false;
     const workoutItemId = exercise.workoutItem.id;
     const count = allActiveExercises.filter((e) => e.workoutItem?.id === workoutItemId).length;
@@ -1343,12 +1545,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   // Get all exercise IDs that share the same workoutItemId (superset members)
-  getSupersetExerciseIds: (exercise: SessionExercise | null | undefined, allActiveExercises: SessionExercise[]) => {
+  getSupersetExerciseIds: (
+    exercise: SessionExercise | null | undefined,
+    allActiveExercises: SessionExercise[]
+  ) => {
     if (!exercise?.workoutItem?.id) return [];
     const workoutItemId = exercise.workoutItem.id;
-    return allActiveExercises
-      .filter((e) => e.workoutItem?.id === workoutItemId)
-      .map((e) => e.id);
+    return allActiveExercises.filter((e) => e.workoutItem?.id === workoutItemId).map((e) => e.id);
   },
 
   // Helpers
