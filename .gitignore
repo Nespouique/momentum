@@ -38,6 +38,9 @@ nul
 .claude/settings.local.json
 .claude/*.ps1
 
+# OpenCode
+.opencode/package-lock.json
+
 # Testing
 coverage
 .nyc_output
