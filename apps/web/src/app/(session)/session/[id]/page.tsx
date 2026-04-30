@@ -165,6 +165,7 @@ export default function SessionPage({ params }: SessionPageProps) {
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
+        console.log("[VISIBILITY] App backgrounded");
         // User left the app — (re-)schedule notification if rest is still ongoing.
         // This is critical because cancelScheduledNotification() on return clears
         // everything, so leaving again without this would produce no notification.
@@ -181,6 +182,20 @@ export default function SessionPage({ params }: SessionPageProps) {
         const state = useSessionStore.getState();
         const restEndedWhileAway =
           state.isResting && state.restEndAt && state.restEndAt <= Date.now();
+
+        console.log("[VISIBILITY] App foregrounded", {
+          isResting: state.isResting,
+          restEndAt: state.restEndAt,
+          restEndedWhileAway,
+          currentScreen: state.currentScreen,
+          currentSetIndex: state.currentSetIndex,
+          pendingResultsKeys: Array.from(state.pendingResults.keys()),
+          pendingResultsValues: Array.from(state.pendingResults.entries()).map(
+            ([k, v]) => `${k}: ${v.reps}@${v.weight}kg`
+          ),
+          completedSetIdsKeys: Array.from(state.completedSetIds.keys()),
+          sentResultsKeys: Array.from(state.sentResults.keys()),
+        });
 
         // Tick to sync timer state (may call skipRest and transition screens)
         tick();
@@ -246,10 +261,21 @@ export default function SessionPage({ params }: SessionPageProps) {
     initAudio();
 
     // Key includes setIndex to get the correct pending result
-    const pendingResult = pendingResults.get(`${currentExercise.id}-${currentSetIndex}`) || {
+    const key = `${currentExercise.id}-${currentSetIndex}`;
+    const fromPending = pendingResults.get(key);
+    const pendingResult = fromPending || {
       reps: currentSet.targetReps,
       weight: currentSet.targetWeight || 0,
     };
+
+    console.log(`[HANDLE_COMPLETE_SET] set=${currentSet.setNumber}`, {
+      key,
+      source: fromPending ? "pendingResults" : "TARGET_FALLBACK",
+      reps: pendingResult.reps,
+      weight: pendingResult.weight,
+      targetReps: currentSet.targetReps,
+      targetWeight: currentSet.targetWeight,
+    });
 
     setIsSubmitting(true);
     await completeSet(token, pendingResult);
