@@ -148,7 +148,18 @@ export function ResultInput({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setEditValue(raw);
+                  // Sync valid values to the store immediately so
+                  // flushPendingResultUpdate always has the latest value,
+                  // even if the user never blurs the input.
+                  const parsed = parseFloat(raw);
+                  if (!isNaN(parsed) && raw !== "") {
+                    const newReps = Math.max(0, Math.min(100, Math.round(parsed)));
+                    onChange({ ...value, reps: newReps });
+                  }
+                }}
                 onBlur={commitEdit}
                 onKeyDown={handleKeyDown}
                 className={cn(
@@ -235,7 +246,15 @@ export function ResultInput({
                 inputMode="decimal"
                 step="0.5"
                 value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setEditValue(raw);
+                  const parsed = parseFloat(raw);
+                  if (!isNaN(parsed) && raw !== "") {
+                    const newWeight = Math.max(0, Math.min(500, Math.round(parsed * 2) / 2));
+                    onChange({ ...value, weight: newWeight });
+                  }
+                }}
                 onBlur={commitEdit}
                 onKeyDown={handleKeyDown}
                 className={cn(

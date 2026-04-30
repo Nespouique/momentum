@@ -263,24 +263,7 @@ async function flushPendingResultUpdate(state: SessionState, key: string): Promi
   const sentResult = state.sentResults.get(key);
   const setId = state.completedSetIds.get(key);
 
-  console.log(`[FLUSH] key=${key}`, {
-    hasPendingResult: !!pendingResult,
-    pendingResult,
-    hasSentResult: !!sentResult,
-    sentResult,
-    hasSetId: !!setId,
-    setId,
-  });
-
-  if (!pendingResult || !setId || !state.session || !state.token) {
-    console.warn(`[FLUSH] EARLY RETURN for key=${key} — missing:`, {
-      pendingResult: !pendingResult ? "MISSING" : "ok",
-      setId: !setId ? "MISSING" : "ok",
-      session: !state.session ? "MISSING" : "ok",
-      token: !state.token ? "MISSING" : "ok",
-    });
-    return;
-  }
+  if (!pendingResult || !setId || !state.session || !state.token) return;
 
   // Check if the user modified the values during rest
   const hasChanged =
@@ -288,20 +271,8 @@ async function flushPendingResultUpdate(state: SessionState, key: string): Promi
     pendingResult.reps !== sentResult.reps ||
     pendingResult.weight !== sentResult.weight;
 
-  console.log(`[FLUSH] key=${key} hasChanged=${hasChanged}`, {
-    pendingReps: pendingResult.reps,
-    pendingWeight: pendingResult.weight,
-    sentReps: sentResult?.reps,
-    sentWeight: sentResult?.weight,
-  });
-
   if (hasChanged) {
     try {
-      console.log(`[FLUSH] Sending PUT for key=${key}`, {
-        setId,
-        actualReps: pendingResult.reps,
-        actualWeight: pendingResult.weight,
-      });
       await apiUpdateSet(state.token, state.session.id, setId, {
         actualReps: pendingResult.reps,
         actualWeight: pendingResult.weight,
@@ -832,14 +803,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     if (!state.session || !exercise || !currentSet) return;
 
-    console.log(`[COMPLETE_SET] exercise=${exercise.exercise.name} set=${currentSet.setNumber}`, {
-      resultReps: result.reps,
-      resultWeight: result.weight,
-      targetReps: currentSet.targetReps,
-      targetWeight: currentSet.targetWeight,
-      setIndex: state.currentSetIndex,
-    });
-
     // Always send the API call immediately to prevent data loss on app backgrounding
     const recordResultNow = async () => {
       if (!state.token) return;
@@ -852,13 +815,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
         // Store the setId and the sent values for later PUT if user modifies during rest
         const key = `${exercise.id}-${state.currentSetIndex}`;
-
-        console.log(`[RECORD_RESULT_NOW] API completed for set=${currentSet.setNumber}`, {
-          key,
-          responseSetId: response.data.id,
-          sentReps: result.reps,
-          sentWeight: result.weight,
-        });
 
         const newCompletedSetIds = new Map(get().completedSetIds);
         newCompletedSetIds.set(key, response.data.id);
@@ -1111,13 +1067,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     // Prevent double-calls while async work is in progress
     if (!state.restEndAt) return;
-
-    console.log(`[SKIP_REST] screen=${state.currentScreen} setIndex=${state.currentSetIndex}`, {
-      pendingResultsKeys: Array.from(state.pendingResults.keys()),
-      completedSetIdsKeys: Array.from(state.completedSetIds.keys()),
-      sentResultsKeys: Array.from(state.sentResults.keys()),
-      isDocumentHidden: typeof document !== "undefined" ? document.hidden : "N/A",
-    });
 
     // Immediately clear restEndAt to prevent tick() from calling us again
     set({ restEndAt: null });
@@ -1571,10 +1520,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   updatePendingResult: (exerciseId: string, setIndex: number, result: PendingResult) => {
-    console.log(`[UPDATE_PENDING] exerciseId=${exerciseId} setIndex=${setIndex}`, {
-      reps: result.reps,
-      weight: result.weight,
-    });
     const state = get();
     const newPending = new Map(state.pendingResults);
     // Key includes setIndex to avoid pollution between sets
