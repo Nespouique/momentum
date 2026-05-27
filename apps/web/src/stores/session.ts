@@ -38,6 +38,11 @@ interface PersistedRestState {
   supersetExerciseIds: string[];
 }
 
+interface ResolvedPendingSet {
+  exerciseId: string;
+  set: SessionSet;
+}
+
 function saveRestState(state: PersistedRestState): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(REST_STATE_KEY, JSON.stringify(state));
@@ -127,6 +132,21 @@ function loadPendingResults(): Map<string, PendingResult> {
   } catch {
     return new Map();
   }
+}
+
+function resolvePendingSet(session: WorkoutSession, key: string): ResolvedPendingSet | null {
+  const lastDash = key.lastIndexOf("-");
+  if (lastDash === -1) return null;
+
+  const exerciseId = key.substring(0, lastDash);
+  const setIndex = parseInt(key.substring(lastDash + 1), 10);
+  if (Number.isNaN(setIndex)) return null;
+
+  const exercise = session.exercises.find((e) => e.id === exerciseId);
+  const set = exercise?.sets[setIndex];
+  if (!set) return null;
+
+  return { exerciseId, set };
 }
 
 export type SessionScreen =
@@ -261,29 +281,64 @@ const initialState = {
 async function flushPendingResultUpdate(state: SessionState, key: string): Promise<void> {
   const pendingResult = state.pendingResults.get(key);
   const sentResult = state.sentResults.get(key);
-  const setId = state.completedSetIds.get(key);
 
-  if (!pendingResult || !setId || !state.session || !state.token) return;
+  if (!pendingResult || !state.session || !state.token) return;
+
+  const resolvedSet = resolvePendingSet(state.session, key);
+  const completedSetId = state.completedSetIds.get(key);
+  const setId = completedSetId ?? resolvedSet?.set.id;
+
+  if (!setId) return;
+
+  const currentResult =
+    resolvedSet && resolvedSet.set.actualReps !== null
+      ? {
+          reps: resolvedSet.set.actualReps,
+          weight: resolvedSet.set.actualWeight ?? 0,
+        }
+      : null;
+  const baselineResult = sentResult ?? currentResult;
 
   // Check if the user modified the values during rest
   const hasChanged =
-    !sentResult ||
-    pendingResult.reps !== sentResult.reps ||
-    pendingResult.weight !== sentResult.weight;
+    !baselineResult ||
+    pendingResult.reps !== baselineResult.reps ||
+    pendingResult.weight !== baselineResult.weight;
 
   if (hasChanged) {
     try {
-      await apiUpdateSet(state.token, state.session.id, setId, {
-        actualReps: pendingResult.reps,
-        actualWeight: pendingResult.weight,
-      });
+      const updatedSet =
+        completedSetId || resolvedSet?.set.completedAt || resolvedSet?.set.actualReps !== null
+          ? (
+              await apiUpdateSet(state.token, state.session.id, setId, {
+                actualReps: pendingResult.reps,
+                actualWeight: pendingResult.weight,
+              })
+            ).data
+          : resolvedSet
+            ? (
+                await apiRecordSetResult(state.token, state.session.id, resolvedSet.exerciseId, {
+                  setNumber: resolvedSet.set.setNumber,
+                  actualReps: pendingResult.reps,
+                  actualWeight: pendingResult.weight,
+                })
+              ).data
+            : null;
+
+      if (!updatedSet) return;
 
       // Update local session data
       const updatedExercises = state.session.exercises.map((ex) => ({
         ...ex,
         sets: ex.sets.map((s) =>
-          s.id === setId
-            ? { ...s, actualReps: pendingResult.reps, actualWeight: pendingResult.weight }
+          s.id === updatedSet.id
+            ? {
+                ...s,
+                actualReps: updatedSet.actualReps,
+                actualWeight: updatedSet.actualWeight,
+                rpe: updatedSet.rpe,
+                completedAt: updatedSet.completedAt,
+              }
             : s
         ),
       }));
@@ -588,30 +643,68 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         }
 
         // Flush modified results (user edited during rest, then app was backgrounded)
-        if (savedCompletedSetIds.size > 0) {
-          for (const [key, setId] of savedCompletedSetIds) {
+        const resultKeysToFlush = new Set([
+          ...savedPendingResults.keys(),
+          ...savedCompletedSetIds.keys(),
+        ]);
+
+        if (resultKeysToFlush.size > 0) {
+          for (const key of resultKeysToFlush) {
             const pendingResult = savedPendingResults.get(key);
             const sentResult = savedSentResults.get(key);
             if (!pendingResult) continue;
 
+            const resolvedSet = resolvePendingSet(session, key);
+            const completedSetId = savedCompletedSetIds.get(key);
+            const setId = completedSetId ?? resolvedSet?.set.id;
+            if (!setId) continue;
+
+            const currentResult =
+              resolvedSet && resolvedSet.set.actualReps !== null
+                ? {
+                    reps: resolvedSet.set.actualReps,
+                    weight: resolvedSet.set.actualWeight ?? 0,
+                  }
+                : null;
+            const baselineResult = sentResult ?? currentResult;
+
             const hasChanged =
-              !sentResult ||
-              pendingResult.reps !== sentResult.reps ||
-              pendingResult.weight !== sentResult.weight;
+              !baselineResult ||
+              pendingResult.reps !== baselineResult.reps ||
+              pendingResult.weight !== baselineResult.weight;
 
             if (hasChanged) {
               try {
-                await apiUpdateSet(token, sessionId, setId, {
-                  actualReps: pendingResult.reps,
-                  actualWeight: pendingResult.weight,
-                });
+                const updatedSet =
+                  completedSetId ||
+                  resolvedSet?.set.completedAt ||
+                  resolvedSet?.set.actualReps !== null
+                    ? (
+                        await apiUpdateSet(token, sessionId, setId, {
+                          actualReps: pendingResult.reps,
+                          actualWeight: pendingResult.weight,
+                        })
+                      ).data
+                    : resolvedSet
+                      ? (
+                          await apiRecordSetResult(token, sessionId, resolvedSet.exerciseId, {
+                            setNumber: resolvedSet.set.setNumber,
+                            actualReps: pendingResult.reps,
+                            actualWeight: pendingResult.weight,
+                          })
+                        ).data
+                      : null;
+
+                if (!updatedSet) continue;
 
                 // Update local session data
                 for (const ex of session.exercises) {
                   for (const s of ex.sets) {
-                    if (s.id === setId) {
-                      s.actualReps = pendingResult.reps;
-                      s.actualWeight = pendingResult.weight;
+                    if (s.id === updatedSet.id) {
+                      s.actualReps = updatedSet.actualReps;
+                      s.actualWeight = updatedSet.actualWeight;
+                      s.rpe = updatedSet.rpe;
+                      s.completedAt = updatedSet.completedAt;
                     }
                   }
                 }
@@ -875,8 +968,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         set({ pendingResults: newPendingResults });
         savePendingResults(newPendingResults);
 
-        // Send API call immediately (fire-and-forget, errors handled inside)
-        recordResultNow();
+        await recordResultNow();
 
         if (isLastRound) {
           // End of superset
@@ -978,8 +1070,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       set({ pendingResults: newPendingResults });
       savePendingResults(newPendingResults);
 
-      // Send API call immediately (fire-and-forget, errors handled inside)
-      recordResultNow();
+      await recordResultNow();
 
       const totalSets = exercise.sets.length;
       const isLastSet = state.currentSetIndex >= totalSets - 1;

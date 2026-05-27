@@ -157,11 +157,31 @@ export default function SessionPage({ params }: SessionPageProps) {
     }
   }, [isResting, restEndAt, scheduleNotification]);
 
-  // Handle visibilitychange:
-  //  - hidden  → re-schedule notification if rest is ongoing (handles back-and-forth app switching)
+  // Handle page visibility/lifecycle changes:
+  //  - hidden  → re-schedule notification if rest is ongoing
   //  - visible → cancel notifications, sync timer, play catch-up beep
+  // pageshow/focus cover mobile unlock paths where visibilitychange can be unreliable.
   useEffect(() => {
     if (!session || session.status !== "in_progress") return;
+
+    const syncRestAfterForeground = () => {
+      // User is back — cancel any pending notifications (SW + page setTimeout)
+      // to avoid a duplicate alert firing after they've already returned
+      cancelScheduledNotification();
+
+      // Check rest state BEFORE tick (tick calls skipRest which clears restEndAt)
+      const state = useSessionStore.getState();
+      const restEndedWhileAway =
+        state.isResting && state.restEndAt && state.restEndAt <= Date.now();
+
+      // Tick to sync timer state (may call skipRest and transition screens)
+      tick();
+
+      // Play completion sound if rest ended while backgrounded
+      if (restEndedWhileAway) {
+        playCountdownBeep(0);
+      }
+    };
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -173,27 +193,25 @@ export default function SessionPage({ params }: SessionPageProps) {
           scheduleNotification(state.restEndAt);
         }
       } else {
-        // User is back — cancel any pending notifications (SW + page setTimeout)
-        // to avoid a duplicate alert firing after they've already returned
-        cancelScheduledNotification();
+        syncRestAfterForeground();
+      }
+    };
 
-        // Check rest state BEFORE tick (tick calls skipRest which clears restEndAt)
-        const state = useSessionStore.getState();
-        const restEndedWhileAway =
-          state.isResting && state.restEndAt && state.restEndAt <= Date.now();
-
-        // Tick to sync timer state (may call skipRest and transition screens)
-        tick();
-
-        // Play completion sound if rest ended while backgrounded
-        if (restEndedWhileAway) {
-          playCountdownBeep(0);
-        }
+    const handleForeground = () => {
+      if (!document.hidden) {
+        syncRestAfterForeground();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pageshow", handleForeground);
+    window.addEventListener("focus", handleForeground);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pageshow", handleForeground);
+      window.removeEventListener("focus", handleForeground);
+    };
   }, [session, tick, playCountdownBeep, scheduleNotification, cancelScheduledNotification]);
 
   // Fetch progression suggestions when entering summary screen
