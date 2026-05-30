@@ -328,8 +328,8 @@ docker compose exec -T postgres psql -U momentum momentum < backup_20260119.sql
 
 The project includes a GitHub Actions workflow that:
 
-1. **On every PR and push to main**: Runs lint and build checks
-2. **On push to main only**: Builds and pushes Docker images to DockerHub
+1. **On every PR to main**: Runs lint and build checks
+2. **On tag push (`v*`)**: Runs lint/build, then builds and pushes Docker images to DockerHub
 
 ### Required GitHub Secrets
 
@@ -344,6 +344,20 @@ Configure these secrets in your GitHub repository settings:
 
 - `latest`: Most recent build from main branch
 - `<short-sha>`: Specific commit (e.g., `abc1234`)
+
+## Release Process
+
+We keep a dedicated release commit so the version shown in the Profile page stays in sync.
+
+1. Bump `package.json` to the new version (e.g., `0.1.10`).
+2. Run lint: `npm run lint`.
+3. Commit the bump with the exact message `release: vX.Y.Z`.
+4. Tag that commit: `git tag vX.Y.Z`.
+5. Push `main` and the tag: `git push origin main && git push origin vX.Y.Z`.
+6. Create the GitHub Release:
+  - `gh release create vX.Y.Z --title vX.Y.Z --generate-notes`
+
+Pushing the `v*` tag triggers the Docker image build/push workflow.
 
 ### Docker Images
 
