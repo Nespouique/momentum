@@ -817,12 +817,34 @@ router.put(
         });
       }
 
+      const activeExerciseCount = await prisma.sessionExercise.count({
+        where: {
+          sessionId,
+          status: { notIn: ["substituted", "skipped"] },
+        },
+      });
+
+      let positionOffset = 0;
+
+      if (data.exerciseIds.length < activeExerciseCount) {
+        const excludedMax = await prisma.sessionExercise.aggregate({
+          where: {
+            sessionId,
+            status: { notIn: ["substituted", "skipped"] },
+            id: { notIn: data.exerciseIds },
+          },
+          _max: { position: true },
+        });
+
+        positionOffset = (excludedMax._max.position ?? -1) + 1;
+      }
+
       // Update positions in a transaction
       await prisma.$transaction(
         data.exerciseIds.map((id, index) =>
           prisma.sessionExercise.update({
             where: { id },
-            data: { position: index },
+            data: { position: positionOffset + index },
           })
         )
       );

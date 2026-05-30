@@ -582,18 +582,80 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       if (persistedRest) {
         // Rest still active - restore with pending results and completed set IDs
         const remaining = Math.max(0, Math.ceil((persistedRest.restEndAt - Date.now()) / 1000));
+        const safeExerciseIndex =
+          activeExercises.length === 0
+            ? 0
+            : Math.min(
+                Math.max(persistedRest.currentExerciseIndex, 0),
+                activeExercises.length - 1
+              );
+        const safeExercise = activeExercises[safeExerciseIndex];
+        const safeSetIndex = safeExercise
+          ? Math.min(
+              Math.max(persistedRest.currentSetIndex, 0),
+              Math.max(safeExercise.sets.length - 1, 0)
+            )
+          : 0;
+        const needsClamp =
+          safeExerciseIndex !== persistedRest.currentExerciseIndex ||
+          safeSetIndex !== persistedRest.currentSetIndex;
+
+        let isInSuperset = persistedRest.isInSuperset;
+        let supersetRound = persistedRest.supersetRound;
+        let supersetExerciseIndex = persistedRest.supersetExerciseIndex;
+        let supersetExerciseIds = persistedRest.supersetExerciseIds;
+
+        if (needsClamp) {
+          if (safeExercise?.workoutItem?.id) {
+            const workoutItemId = safeExercise.workoutItem.id;
+            const supersetExercises = activeExercises.filter(
+              (e) => e.workoutItem?.id === workoutItemId
+            );
+
+            if (supersetExercises.length > 1) {
+              isInSuperset = true;
+              supersetExerciseIds = supersetExercises.map((e) => e.id);
+              supersetExerciseIndex = supersetExerciseIds.indexOf(safeExercise.id);
+              supersetRound = safeSetIndex + 1;
+            } else {
+              isInSuperset = false;
+              supersetRound = 0;
+              supersetExerciseIndex = 0;
+              supersetExerciseIds = [];
+            }
+          } else {
+            isInSuperset = false;
+            supersetRound = 0;
+            supersetExerciseIndex = 0;
+            supersetExerciseIds = [];
+          }
+
+          saveRestState({
+            sessionId: persistedRest.sessionId,
+            restEndAt: persistedRest.restEndAt,
+            restDuration: persistedRest.restDuration,
+            currentScreen: persistedRest.currentScreen,
+            currentExerciseIndex: safeExerciseIndex,
+            currentSetIndex: safeSetIndex,
+            isInSuperset,
+            supersetRound,
+            supersetExerciseIndex,
+            supersetExerciseIds,
+          });
+        }
+
         set({
           session,
           lastSession: response.lastSession,
           token,
           isLoading: false,
-          currentExerciseIndex: persistedRest.currentExerciseIndex,
-          currentSetIndex: persistedRest.currentSetIndex,
+          currentExerciseIndex: safeExerciseIndex,
+          currentSetIndex: safeSetIndex,
           currentScreen: persistedRest.currentScreen,
-          isInSuperset: persistedRest.isInSuperset,
-          supersetRound: persistedRest.supersetRound,
-          supersetExerciseIndex: persistedRest.supersetExerciseIndex,
-          supersetExerciseIds: persistedRest.supersetExerciseIds,
+          isInSuperset,
+          supersetRound,
+          supersetExerciseIndex,
+          supersetExerciseIds,
           isResting: true,
           restEndAt: persistedRest.restEndAt,
           restDuration: persistedRest.restDuration,
@@ -1519,6 +1581,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const state = get();
     if (!state.session) return;
 
+    const currentExercise = state.getCurrentExercise();
+    const currentSet = state.getCurrentSet();
+    const navigationSnapshot = {
+      currentExerciseId: currentExercise?.id ?? null,
+      currentSetNumber: currentSet?.setNumber ?? null,
+      currentSetIndex: state.currentSetIndex,
+    };
+
     // Save timer state before reload
     const timerState = {
       isResting: state.isResting,
@@ -1536,7 +1606,85 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       await state.loadSession(token, state.session.id);
 
       // Restore timer state after reload
-      set(timerState);
+      const adjustedRestTimeRemaining = timerState.restEndAt
+        ? Math.max(0, Math.ceil((timerState.restEndAt - Date.now()) / 1000))
+        : timerState.restTimeRemaining;
+      set({ ...timerState, restTimeRemaining: adjustedRestTimeRemaining });
+
+      const updatedState = get();
+      const activeExercises = updatedState.getActiveExercises();
+
+      if (updatedState.session && activeExercises.length > 0) {
+        let resolvedExerciseIndex = -1;
+
+        if (navigationSnapshot.currentExerciseId) {
+          resolvedExerciseIndex = activeExercises.findIndex(
+            (e) => e.id === navigationSnapshot.currentExerciseId
+          );
+        }
+
+        if (resolvedExerciseIndex === -1) {
+          resolvedExerciseIndex = Math.min(
+            Math.max(updatedState.currentExerciseIndex, 0),
+            activeExercises.length - 1
+          );
+        }
+
+        const resolvedExercise = activeExercises[resolvedExerciseIndex];
+        if (!resolvedExercise) return;
+        let resolvedSetIndex = -1;
+
+        if (navigationSnapshot.currentSetNumber !== null) {
+          resolvedSetIndex = resolvedExercise.sets.findIndex(
+            (s) => s.setNumber === navigationSnapshot.currentSetNumber
+          );
+        }
+
+        if (resolvedSetIndex === -1) {
+          resolvedSetIndex = Math.min(
+            Math.max(navigationSnapshot.currentSetIndex, 0),
+            Math.max(resolvedExercise.sets.length - 1, 0)
+          );
+        }
+
+        const isInSuperset = updatedState.isExerciseInSuperset(
+          resolvedExercise,
+          activeExercises
+        );
+        const supersetExerciseIds = isInSuperset
+          ? updatedState.getSupersetExerciseIds(resolvedExercise, activeExercises)
+          : [];
+        const supersetExerciseIndex = isInSuperset
+          ? supersetExerciseIds.indexOf(resolvedExercise.id)
+          : 0;
+        const supersetRound = isInSuperset ? resolvedSetIndex + 1 : 0;
+
+        set({
+          currentExerciseIndex: resolvedExerciseIndex,
+          currentSetIndex: resolvedSetIndex,
+          isInSuperset,
+          supersetRound,
+          supersetExerciseIndex,
+          supersetExerciseIds,
+        });
+
+        const persistedRest = loadRestState(updatedState.session.id);
+
+        if (persistedRest) {
+          saveRestState({
+            sessionId: updatedState.session.id,
+            restEndAt: persistedRest.restEndAt,
+            restDuration: persistedRest.restDuration,
+            currentScreen: updatedState.currentScreen,
+            currentExerciseIndex: resolvedExerciseIndex,
+            currentSetIndex: resolvedSetIndex,
+            isInSuperset,
+            supersetRound,
+            supersetExerciseIndex,
+            supersetExerciseIds,
+          });
+        }
+      }
     } catch (error) {
       console.error("Failed to reorder exercises:", error);
     }
@@ -1565,7 +1713,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       await state.loadSession(token, state.session.id);
 
       // Restore timer state after reload
-      set(timerState);
+      const adjustedRestTimeRemaining = timerState.restEndAt
+        ? Math.max(0, Math.ceil((timerState.restEndAt - Date.now()) / 1000))
+        : timerState.restTimeRemaining;
+      set({ ...timerState, restTimeRemaining: adjustedRestTimeRemaining });
     } catch (error) {
       console.error("Failed to substitute exercise:", error);
     }
