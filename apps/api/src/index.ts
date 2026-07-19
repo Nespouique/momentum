@@ -52,7 +52,7 @@ if (HOST === "0.0.0.0") {
     })
   );
 }
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
 // Health check endpoint (before auth routes to avoid middleware interference)
 app.get("/health", async (_req, res) => {
