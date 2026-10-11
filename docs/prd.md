@@ -750,5 +750,5 @@ Merci de :
 2. Valider/affiner le schéma de base de données conceptuel
 3. Définir l'API design (endpoints, payloads, error handling)
 4. Documenter les patterns et conventions de code
-5. Produire le document d'architecture dans docs/architecture.md
+5. Produire les documents d'architecture par domaine dans docs/architecture/, avec docs/architecture/index.md comme point d'entrée
 ```

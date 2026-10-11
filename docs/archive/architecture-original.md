@@ -1,10 +1,15 @@
 # Momentum - Architecture Document
 
+> Historical reference, archived on 2026-10-11. This document preserves the
+> original architecture, including content not yet reconciled with the sharded
+> documentation. It is not an authoritative description of the current runtime.
+> Start with [the architecture index](../architecture/index.md) for active work.
+
 ## 1. Introduction
 
 ### 1.1 Purpose
 
-This document defines the comprehensive technical architecture for **Momentum**, a personal habit tracking web application with a strong focus on fitness and progressive overload tracking. It serves as the authoritative reference for all development decisions.
+This document defines the original comprehensive technical architecture for **Momentum**, a personal habit tracking web application with a strong focus on fitness and progressive overload tracking. It served as the initial reference for development decisions; current usage is governed by the archival notice above.
 
 ### 1.2 Scope
 

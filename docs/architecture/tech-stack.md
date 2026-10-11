@@ -1,330 +1,194 @@
-# Momentum - Tech Stack
-
-## 1. Overview
-
-Momentum is a **full-stack monorepo** application built with modern TypeScript technologies. This document provides a comprehensive reference of all technologies, their versions, and purposes.
-
----
-
-## 2. Project Structure
-
-```
-momentum/                     # Monorepo root
-├── apps/
-│   ├── api/                 # Express.js backend
-│   └── web/                 # Next.js frontend
-├── packages/
-│   └── shared/              # Shared types and utilities
-└── docker/                  # Docker configurations
-```
-
-**Workspace Manager**: npm workspaces
-
----
-
-## 3. Frontend Stack (apps/web)
-
-### 3.1 Core Framework
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Next.js** | 14.x | React framework with App Router, SSR |
-| **React** | 18.x | UI library |
-| **TypeScript** | 5.7.x | Type-safe JavaScript |
-
-### 3.2 Styling
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Tailwind CSS** | 3.4.x | Utility-first CSS framework |
-| **Shadcn UI** | - | Radix-based component library. We need to use always shadcn components to avoir custom components |
-| **class-variance-authority** | 0.7.x | Component variant management |
-| **clsx** | 2.x | Conditional class names |
-| **tailwind-merge** | 3.x | Merge Tailwind classes without conflicts |
-
-### 3.3 UI Components (Radix UI)
-
-| Component | Package |
-|-----------|---------|
-| Avatar | `@radix-ui/react-avatar` |
-| Checkbox | `@radix-ui/react-checkbox` |
-| Collapsible | `@radix-ui/react-collapsible` |
-| Dialog | `@radix-ui/react-dialog` |
-| Dropdown Menu | `@radix-ui/react-dropdown-menu` |
-| Label | `@radix-ui/react-label` |
-| Popover | `@radix-ui/react-popover` |
-| Select | `@radix-ui/react-select` |
-| Separator | `@radix-ui/react-separator` |
-| Tabs | `@radix-ui/react-tabs` |
-| Toast | `@radix-ui/react-toast` |
-| Toggle | `@radix-ui/react-toggle` |
-| Toggle Group | `@radix-ui/react-toggle-group` |
-
-### 3.4 State Management
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Zustand** | 5.x | Lightweight client state management |
-
-### 3.5 Forms & Validation
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **React Hook Form** | 7.x | Form state management |
-| **@hookform/resolvers** | 5.x | Zod integration for RHF |
-| **Zod** | 4.x | Schema validation |
-
-### 3.6 Data Visualization
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Recharts** | 2.x | Charts and graphs |
-
-### 3.7 Utilities
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **date-fns** | 4.x | Date manipulation |
-| **lucide-react** | 0.562.x | Icon library |
-| **react-day-picker** | 9.x | Date picker component |
-| **next-themes** | 0.4.x | Theme (dark mode) management |
-| **sonner** | 2.x | Toast notifications |
-| **vaul** | 1.x | Drawer component |
-
-### 3.8 Drag & Drop
-
-| Technology | Package | Purpose |
-|------------|---------|---------|
-| DnD Kit Core | `@dnd-kit/core` | Core drag and drop |
-| DnD Kit Sortable | `@dnd-kit/sortable` | Sortable lists |
-| DnD Kit Modifiers | `@dnd-kit/modifiers` | Drag modifiers |
-| DnD Kit Utilities | `@dnd-kit/utilities` | Utility functions |
-
----
-
-## 4. Backend Stack (apps/api)
-
-### 4.1 Core Framework
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Node.js** | 20 LTS | JavaScript runtime |
-| **Express.js** | 4.x | Web framework |
-| **TypeScript** | 5.7.x | Type-safe JavaScript |
-| **tsx** | 4.x | TypeScript execution with hot reload |
-
-### 4.2 Database
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **PostgreSQL** | 16.x | Relational database |
-| **Prisma** | 7.x | ORM & database toolkit |
-| **@prisma/adapter-pg** | 7.x | PostgreSQL driver adapter |
-| **pg** | 8.x | PostgreSQL client |
-
-### 4.3 Authentication & Security
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **bcrypt** | 6.x | Password hashing |
-| **jsonwebtoken** | 9.x | JWT token generation/verification |
-| **helmet** | 8.x | Security HTTP headers |
-| **cors** | 2.x | Cross-Origin Resource Sharing |
-
-### 4.4 Validation
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Zod** | 4.x | Schema validation |
-
-### 4.5 Development
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **tsx** | 4.x | TypeScript execution with watch mode |
-
----
-
-## 5. Shared Package (packages/shared)
-
-### 5.1 Purpose
-
-- TypeScript type definitions shared between frontend and backend
-- Constants and enums (e.g., `MUSCLE_GROUPS`)
-- API response interfaces
-
-### 5.2 Contents
-
-```typescript
-// Types exported
-export interface User { ... }
-export interface Exercise { ... }
-export interface ApiResponse<T> { ... }
-export const MUSCLE_GROUPS = [...] as const;
-export type MuscleGroup = (typeof MUSCLE_GROUPS)[number];
-```
-
----
-
-## 6. Development Tools
-
-### 6.1 Monorepo Root
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **npm workspaces** | - | Monorepo package management |
-| **concurrently** | 9.x | Run multiple commands |
-| **ESLint** | 8.x | Code linting |
-| **Prettier** | 3.x | Code formatting |
-| **TypeScript** | 5.x | Type checking |
-
-### 6.2 ESLint Plugins
-
-- `@typescript-eslint/eslint-plugin`
-- `@typescript-eslint/parser`
-- `eslint-config-prettier`
-
----
-
-## 7. Infrastructure
-
-### 7.1 Containerization
-
-| Technology | Purpose |
-|------------|---------|
-| **Docker** | Application containerization |
-| **Docker Compose** | Local development orchestration |
-
-### 7.2 Production Environment
-
-| Technology | Purpose |
-|------------|---------|
-| **Proxmox LXC** | Container host |
-| **Nginx Proxy Manager** | Reverse proxy & SSL |
-| **Portainer** | Container management UI |
-
----
-
-## 8. Available Scripts
-
-### 8.1 Root (package.json)
-
-| Script | Command | Description |
-|--------|---------|-------------|
-| `dev` | `npm run dev` | Start both API and Web in dev mode |
-| `dev:api` | `npm run dev:api` | Start API only |
-| `dev:web` | `npm run dev:web` | Start Web only |
-| `build` | `npm run build` | Build shared, then API, then Web |
-| `lint` | `npm run lint` | Lint all workspaces |
-| `format` | `npm run format` | Format code with Prettier |
-| `format:check` | `npm run format:check` | Check formatting |
-| `db:start` | `npm run db:start` | Start PostgreSQL container |
-| `db:stop` | `npm run db:stop` | Stop PostgreSQL container |
-| `db:reset` | `npm run db:reset` | Reset database (delete volumes) |
-
-### 8.2 API (apps/api/package.json)
-
-| Script | Command | Description |
-|--------|---------|-------------|
-| `dev` | `tsx watch src/index.ts` | Development with hot reload |
-| `build` | `prisma generate && tsc` | Build for production |
-| `start` | `node dist/index.js` | Start production server |
-| `db:generate` | `prisma generate` | Generate Prisma client |
-| `db:migrate` | `prisma migrate dev` | Run migrations |
-| `db:push` | `prisma db push` | Push schema to database |
-| `db:studio` | `prisma studio` | Open Prisma Studio |
-| `db:seed` | `prisma db seed` | Seed database |
-
-### 8.3 Web (apps/web/package.json)
-
-| Script | Command | Description |
-|--------|---------|-------------|
-| `dev` | `next dev` | Development server |
-| `build` | `next build` | Production build |
-| `start` | `next start` | Start production server |
-| `lint` | `next lint` | Lint Next.js app |
-
----
-
-## 9. Environment Variables
-
-### 9.1 API (.env)
-
-```bash
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/momentum"
-
-# JWT
-JWT_SECRET="your-secret-key"
-JWT_EXPIRES_IN="7d"
-
-# Server
-PORT=3001
-NODE_ENV="development"
-```
-
-### 9.2 Web (.env.local)
-
-```bash
-# API URL
-NEXT_PUBLIC_API_URL="http://localhost:3001"
-```
-
----
-
-## 10. Version Requirements
-
-### 10.1 Minimum Versions
-
-| Requirement | Version |
-|-------------|---------|
-| Node.js | >= 20.0.0 |
-| npm | >= 10.0.0 |
-| PostgreSQL | >= 16.0 |
-
-### 10.2 Recommended IDE
-
-- **VS Code** with extensions:
-  - ESLint
-  - Prettier
-  - Prisma
-  - Tailwind CSS IntelliSense
-  - TypeScript Vue Plugin (Volar)
-
----
-
-## 11. Development Workflow Notes
-
-### 11.1 Important: Server Management
-
-**DO NOT start development servers automatically** when running Claude Code or other AI assistants. The developer runs servers in separate terminals to:
-
-1. **Preserve hot reload**: Avoid restarting servers when checking compilation
-2. **Better log visibility**: Keep server logs in dedicated terminals
-3. **Independent control**: Restart only what's needed
-
-**Recommended workflow:**
-```bash
-# Terminal 1: Database
-npm run db:start
-
-# Terminal 2: API (with hot reload via tsx watch)
-npm run dev:api
-
-# Terminal 3: Web (with hot reload via Next.js)
-npm run dev:web
-```
-
-### 11.2 Build Verification
-
-To verify TypeScript compilation without restarting servers:
-```bash
-# Check types only (no emit)
-npx tsc --noEmit -p apps/api
-npx tsc --noEmit -p apps/web
-
-# Or use the build command which includes type checking
-npm run build -w @momentum/shared  # Build shared first
-npm run build -w @momentum/api     # Then API
-npm run build -w @momentum/web     # Then Web
-```
+# Momentum — Tech Stack
+
+## Scope and evidence
+
+Reconciled on 2026-10-11 with [AGENTS.md](../../AGENTS.md), all three workspace manifests,
+the [root manifest](../../package.json), and [package-lock.json](../../package-lock.json).
+**Declared** means the manifest range; **locked** means the exact dependency resolved for `npm ci`,
+not a measurement of a running production container. Repository behavior is distinguished from
+historical plans and recommendations throughout these documents.
+
+This document supersedes section 3 of the
+[original architecture](../archive/architecture-original.md#3-tech-stack). See
+[source tree](source-tree.md), [coding standards](coding-standards.md), and
+[deployment](deployment.md) for structure, conventions, commands, and operations.
+
+## Runtime and package management
+
+- npm workspaces: `apps/api`, `apps/web`, and `packages/shared`; no separate application lockfiles.
+- Root application version: `0.1.11`; workspace versions remain `0.1.0`. The lockfile's root metadata
+  still says `0.1.0`; it is dependency-resolution evidence, not the release-version authority.
+- Root `engines.node` declares `>=20.0.0`. Next.js 16.1.6 requires `>=20.9.0`; locked Prisma 7.3.0
+  requires `^20.19 || ^22.12 || >=24.0`. For the repository's Node 20 CI/Docker line, use **20.19+**.
+  Node 22.12+ or 24+ also satisfy Prisma's engine range, but are not the configured CI/image line.
+- CI selects Node `20`; both Dockerfiles select `node:20-alpine`. Neither pins a patch or digest.
+- npm 10+ is the documented working baseline, not an enforced `engines.npm` or `packageManager` pin.
+- PostgreSQL images are `postgres:16` in development and `postgres:16-alpine` in production Compose;
+  these are floating major tags, not exact server patch versions.
+
+## Frontend dependencies
+
+Source: [apps/web/package.json](../../apps/web/package.json).
+
+<!-- prettier-ignore -->
+| Package | Declared | Locked | Role |
+| --- | --- | --- | --- |
+| `next` | `^16.1.6` | `16.1.6` | App Router, standalone server, Turbopack |
+| `react`, `react-dom` | `^19.2.3` | `19.2.4` | UI runtime |
+| `tailwindcss`, `@tailwindcss/postcss` | `^4.1.18` | `4.1.18` | CSS and PostCSS integration |
+| `postcss` | `^8.4.49` | `8.5.6` | CSS processing |
+| `zustand` | `^5.0.10` | `5.0.11` | Persisted auth; in-memory session store with partial manual recovery |
+| `react-hook-form` | `^7.71.1` | `7.71.1` | Forms |
+| `@hookform/resolvers` | `^5.2.2` | `5.2.2` | Form-schema integration |
+| `zod` | `^4.3.5` | `4.3.6` | Validation |
+| `recharts` | `^2.15.4` | `2.15.4` | Charts |
+| `date-fns` | `^4.1.0` | `4.1.0` | Dates |
+| `lucide-react` | `^0.562.0` | `0.562.0` | Icons |
+| `@lucide/lab` | `^0.1.2` | `0.1.2` | Additional icons |
+| `@dnd-kit/core` | `^6.3.1` | `6.3.1` | Drag and drop |
+| `@dnd-kit/sortable` | `^10.0.0` | `10.0.0` | Sorting |
+| `@dnd-kit/modifiers` | `^9.0.0` | `9.0.0` | Drag modifiers |
+| `@dnd-kit/utilities` | `^3.2.2` | `3.2.2` | Drag utilities |
+| `class-variance-authority` | `^0.7.1` | `0.7.1` | Component variants |
+| `clsx` | `^2.1.1` | `2.1.1` | Conditional classes |
+| `tailwind-merge` | `^3.4.0` | `3.4.0` | Class merging |
+| `cmdk` | `^1.1.1` | `1.1.1` | Command UI |
+| `react-day-picker` | `^9.13.0` | `9.13.0` | Calendar |
+| `react-colorful` | `^5.6.1` | `5.6.1` | Color picker |
+| `sonner` | `^2.0.7` | `2.0.7` | Notifications |
+| `vaul` | `^1.1.2` | `1.1.2` | Drawers |
+| `next-themes` | `^0.4.6` | `0.4.6` | Available dependency; root currently forces dark mode |
+| `@base-ui/react` | `^1.1.0` | `1.1.0` | UI primitives |
+| `radix-ui` | `^1.4.3` | `1.4.3` | UI primitives |
+
+### Shadcn and Radix
+
+Shadcn components are source files in `src/components/ui`, not a versioned `shadcn-ui` runtime
+dependency. [components.json](../../apps/web/components.json) declares `new-york-v4`, zinc,
+CSS variables, RSC/TSX, Lucide, and the `@diceui` registry. Prefer existing primitives when composing
+feature components; this does not prohibit application-specific components.
+
+Individual Radix packages below have identical declared baselines (with `^`) and locked versions:
+
+<!-- prettier-ignore -->
+| `@radix-ui/` package suffix | Version |
+| --- | --- |
+| `react-avatar` | `1.1.11` |
+| `react-checkbox` | `1.3.3` |
+| `react-collapsible` | `1.1.12` |
+| `react-dialog` | `1.1.15` |
+| `react-dropdown-menu` | `2.1.16` |
+| `react-label` | `2.1.8` |
+| `react-popover` | `1.1.15` |
+| `react-select` | `2.2.6` |
+| `react-separator` | `1.1.8` |
+| `react-slot` | `1.2.4` |
+| `react-tabs` | `1.1.13` |
+| `react-toast` | `1.2.15` |
+| `react-toggle` | `1.1.10` |
+| `react-toggle-group` | `1.1.11` |
+
+Tailwind is configured through [postcss.config.mjs](../../apps/web/postcss.config.mjs) and
+[globals.css](../../apps/web/src/app/globals.css): `@import "tailwindcss"`, `@theme inline`,
+`@custom-variant`, and `@source inline`. No Tailwind config file is present, despite the stale
+`tailwind.config.ts` string in Shadcn metadata. User accent preferences drive `--primary`,
+`--primary-foreground`, and `--ring` dynamically.
+
+## Backend dependencies
+
+Source: [apps/api/package.json](../../apps/api/package.json).
+
+<!-- prettier-ignore -->
+| Package | Declared | Locked | Role |
+| --- | --- | --- | --- |
+| `express` | `^4.21.2` | `4.22.1` | HTTP API |
+| `prisma`, `@prisma/client`, `@prisma/adapter-pg` | `^7.2.0` | `7.3.0` | ORM, CLI, PostgreSQL adapter |
+| `pg` | `^8.17.1` | `8.18.0` | Driver and Hercules SQL imports |
+| `bcrypt` | `^6.0.0` | `6.0.0` | Password hashing |
+| `jsonwebtoken` | `^9.0.3` | `9.0.3` | Stateless JWT |
+| `helmet` | `^8.0.0` | `8.1.0` | API security headers |
+| `cors` | `^2.8.5` | `2.8.6` | API CORS middleware |
+| `dotenv` | `^16.6.1` | `16.6.1` | Environment loading |
+| `zod` | `^4.3.5` | `4.3.6` | Request validation |
+| `openai` | `^6.17.0` | `6.17.0` | AI coaching and icon suggestions |
+| `resend` | `^6.9.1` | `6.9.1` | Password-reset email |
+| `tsx` | `^4.21.0` | `4.21.0` | Development and migration scripts |
+| `ts-node-dev` | `^2.0.0` | `2.0.0` | Declared dev dependency; dev scripts use `tsx` |
+
+The Prisma `prisma-client` generator outputs to `src/generated/prisma` with `moduleFormat = "cjs"`.
+[prisma.config.ts](../../apps/api/prisma.config.ts) owns datasource URL, schema, migration path,
+and explicit seed command. [lib/prisma.ts](../../apps/api/src/lib/prisma.ts) instantiates the
+generated client with `PrismaPg` and a `pg.Pool`.
+
+Express 4 is the runtime even though `@types/express` declares `^5.0.0` and locks `5.0.6`.
+Do not infer Express 5 runtime semantics from those type declarations.
+
+Email and coaching clients are constructed unconditionally at module import. Their product features
+may be optional, but missing credentials can prevent API startup before `app.listen`: Resend 6.9.1
+rejects an empty/undefined effective key, and OpenAI 6.17.0 rejects an undefined effective key.
+See [initialization prerequisites and defect](deployment.md#eager-integration-initialization-defect)
+for the example/Compose mismatch and the limits of this source-only verification.
+
+## Shared package and development tooling
+
+[packages/shared/package.json](../../packages/shared/package.json) publishes local `dist/index.js`
+and declarations. Its source currently exports `User`, `ApiResponse<T>`, `HealthCheckResponse`,
+`Exercise`, `MUSCLE_GROUPS`, and `MuscleGroup`; it is not a complete shared domain-model package.
+See [contract caveats](coding-standards.md#api-contracts-and-errors).
+
+<!-- prettier-ignore -->
+| Package | Declared | Locked | Scope |
+| --- | --- | --- | --- |
+| `typescript` | `^5.7.3` | `5.9.3` | All three workspaces |
+| `eslint` | `^8.57.1` | `8.57.1` | Root |
+| `@typescript-eslint/parser`, `@typescript-eslint/eslint-plugin` | `^7.18.0` | `7.18.0` | Root |
+| `eslint-config-prettier` | `^9.1.0` | `9.1.2` | Root |
+| `prettier` | `^3.4.2` | `3.8.1` | Root |
+| `concurrently` | `^9.1.2` | `9.2.1` | Parallel API/web development |
+| `sql.js` | `^1.13.0` | `1.13.0` | Root; Hercules SQLite reader |
+| `@types/react` | Root override `^19.2.0` | `19.2.11` | React types |
+| `@types/react-dom` | Root override `^19.2.0` | `19.2.3` | React DOM types |
+| `@types/node` | `^20.17.12` | `20.19.31` | API/web |
+| `@types/bcrypt` | `^6.0.0` | `6.0.0` | API |
+| `@types/cors` | `^2.8.17` | `2.8.19` | API |
+| `@types/express` | `^5.0.0` | `5.0.6` | API |
+| `@types/jsonwebtoken` | `^9.0.10` | `9.0.10` | API |
+| `@types/pg` | `^8.16.0` | `8.16.0` | API |
+
+## Testing, infrastructure, and historical plans
+
+**Current:** API and web workspaces include scoped `test` scripts invoking Node's built-in
+`node:test` runner through the already-installed `tsx` package, with tests under each workspace's
+`test/` directory. No separate test framework, test-runner configuration, coverage script, Vitest,
+Supertest, Testing Library, or Playwright dependency is installed. These are executable unit and
+service/schema tests, not browser component or end-to-end coverage. CI currently runs lint and
+build, not these application tests. An external browser tool on a development host is not part of
+the repository test runner.
+
+Docker Compose provides development PostgreSQL and a production reference stack. GitHub Actions
+publishes API/web images to Docker Hub. The recorded homelab deployment uses Proxmox LXC 197,
+Dockhand/Hawser management, and Nginx Proxy Manager on a separate LXC; these host services are
+not npm dependencies. See [deployment](deployment.md#production-topology-and-compose).
+
+**Historical, not installed:** Next 14, React 18, Tailwind 3, Zustand 4, Zod 3, React Query,
+`pino`, `express-rate-limit`, GHCR publication, and the test pyramid in the monolith.
+React Query cache durations, JSON logging, rate limits, and coverage uploads therefore cannot be
+claimed as runtime guarantees. Future testing/observability recommendations are retained in
+[coding standards](coding-standards.md#testing-and-verification) and
+[deployment](deployment.md#monitoring-and-health-checks).
+
+## Library references
+
+Checked through Context7 for the relevant Next.js 16, Prisma 7, and Tailwind 4 behavior:
+
+- [Next.js 16 upgrade guide](https://nextjs.org/docs/app/guides/upgrading/version-16): `proxy.ts`,
+  direct ESLint CLI, Node requirement.
+- [Next.js standalone output](https://nextjs.org/docs/app/api-reference/config/next-config-js/output).
+- [Prisma system requirements](https://www.prisma.io/docs/orm/reference/system-requirements).
+- [Prisma production migrations](https://www.prisma.io/docs/orm/prisma-migrate/workflows/development-and-production).
+- [Tailwind PostCSS installation](https://tailwindcss.com/docs/installation/using-postcss).
+- [Shadcn documentation](https://ui.shadcn.com/docs).
+- [Zustand documentation](https://zustand.docs.pmnd.rs/).
+
+These references preserve applicable monolith section 18 links. Its React Query reference remains
+historical because that library is not part of the current application.

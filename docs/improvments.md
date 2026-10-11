@@ -33,6 +33,7 @@
 - [ ] Récapitulatif mensuel en partant des données de la bdd
 - [ ] Pouvoir avoir un trackable "au moins X fois par Y" ou "pas plus de X fois par Y"
 - [ ] Stats lorsque poids du corps afficher les reps
-- [ ] Vérifier si les stats prennent bien les vraies reps et pas les objectifs
-- [ ] Lorsqu'on ajoute une mesure il placeholder 75kg au lieu du poids précédent
+- [x] Vérifier si les stats prennent bien les vraies reps et pas les objectifs
+  - Vérifié le 11/10/2026 : volume, 1RM estimé et reps au poids maximal utilisent `actualReps` et `actualWeight`, sans recours aux objectifs. Validation de la route `/exercises/stats` avec données simulées : 8 reps à 50 kg (objectif 12) et 15 reps à 40 kg (objectif 10) donnent un volume de 1 000 kg, un 1RM estimé de 63,3 kg et 8 reps au poids maximal. Modifier uniquement les objectifs ne change pas les résultats ; 0 rep reste 0 et les séries sans résultat sont exclues.
+- [x] Lorsqu'on ajoute une mesure il placeholder 75kg au lieu du poids précédent
 - [ ] MCP server pour pouvoir poser des questions en langage naturel sur mes séances, et que l'IA puisse ajouter des séances en fonction de mes résultats passés

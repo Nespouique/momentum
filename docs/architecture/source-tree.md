@@ -1,379 +1,271 @@
-# Momentum - Source Tree
+# Momentum — Source Tree
 
-## 1. Overview
+## Scope
 
-This document provides a complete map of the Momentum codebase structure, explaining the purpose of each directory and key files.
+Repository map verified on 2026-10-11 against manifests, tracked paths, entry points, and
+[AGENTS.md](../../AGENTS.md). This is a structural map, not an exhaustive listing of generated
+files. It reconciles [section 11](../archive/architecture-original.md#11-project-structure) of
+the original monolith; hypothetical paths there are not current implementation requirements.
 
----
+## Root and workspace boundaries
 
-## 2. Root Directory
-
-```
+```text
 momentum/
-├── .bmad-core/              # BMAD methodology configuration
-├── .claude/                 # Claude Code settings
-├── .github/                 # GitHub Actions workflows
-├── .vscode/                 # VS Code workspace settings
-├── apps/                    # Application packages
-│   ├── api/                 # Express.js backend
-│   └── web/                 # Next.js frontend
-├── docker/                  # Docker configurations
-├── docs/                    # Project documentation
-├── node_modules/            # Dependencies (git-ignored)
-├── packages/                # Shared packages
-│   └── shared/              # Shared types and utilities
-├── web-bundles/             # Pre-built web bundles
-├── .dockerignore            # Docker ignore patterns
-├── .env.production.example  # Production env template
-├── .eslintrc.js             # ESLint configuration
-├── .gitignore               # Git ignore patterns
-├── .prettierignore          # Prettier ignore patterns
-├── .prettierrc              # Prettier configuration
-├── package.json             # Root package.json (workspaces)
-├── package-lock.json        # Dependency lock file
-├── README.md                # Project readme
-└── tsconfig.base.json       # Base TypeScript config
+├── .github/workflows/ci-cd.yml       # PR/tag lint-build; tag-only Docker publication
+├── .opencode/                       # Agent/project management framework
+├── _bmad/                           # BMAD framework
+├── _bmad-output/                    # Existing planning/implementation artifacts
+├── apps/
+│   ├── api/                         # @momentum/api; Express, port 3001
+│   └── web/                         # @momentum/web; Next.js, port 3000
+├── packages/shared/                 # @momentum/shared; shared types/constants
+├── docker/                          # Dockerfiles and reference Compose files
+├── scripts/                         # Hercules imports and icon generation
+├── docs/                            # Architecture, product, UX, stories, specs, archives
+├── web-bundles/                     # Agent/team/expansion-pack bundles, not app assets
+├── AGENTS.md                        # Contributor/agent conventions
+├── package.json                     # Root scripts, npm workspaces, app version
+├── package-lock.json                # Root lockfile (v3)
+├── tsconfig.base.json               # Shared compiler policy
+├── .eslintrc.js                     # ESLint 8 configuration
+├── .prettierrc                      # Formatting configuration
+├── .prettierignore
+├── .dockerignore
+├── .gitignore
+├── .env.production.example          # Reference production Compose inputs
+└── README.md
 ```
 
----
+`node_modules`, API/shared `dist`, Prisma generated client, web `.next`, and TypeScript build info
+are installation/build artifacts. They are not an additional workspace or application source.
+There is no root `.env.example`; see [environment setup](deployment.md#environment-configuration).
 
-## 3. Backend (apps/api)
+## API workspace
 
-```
+```text
 apps/api/
-├── dist/                    # Compiled JavaScript (git-ignored)
-├── node_modules/            # Package dependencies
-├── prisma/
-│   ├── migrations/          # Database migrations
-│   ├── schema.prisma        # Database schema definition
-│   └── seed.ts              # Database seed script
-├── src/
-│   ├── generated/
-│   │   └── prisma/          # Generated Prisma client
-│   ├── lib/
-│   │   └── prisma.ts        # Prisma client instance
-│   ├── middleware/
-│   │   └── auth.middleware.ts  # JWT authentication
-│   ├── routes/
-│   │   ├── auth.routes.ts      # /api/v1/auth/*
-│   │   ├── exercise.routes.ts  # /api/v1/exercises/*
-│   │   ├── measurement.routes.ts # /api/v1/measurements/*
-│   │   ├── profile.routes.ts   # /api/v1/profile/*
-│   │   ├── session.routes.ts   # /api/v1/sessions/*
-│   │   └── workout.routes.ts   # /api/v1/workouts/*
-│   ├── schemas/
-│   │   ├── auth.schema.ts      # Auth validation schemas
-│   │   ├── exercise.schema.ts  # Exercise validation
-│   │   ├── measurement.schema.ts # Measurement validation
-│   │   ├── profile.schema.ts   # Profile validation
-│   │   ├── session.schema.ts   # Session validation
-│   │   └── workout.schema.ts   # Workout validation
-│   ├── services/
-│   │   └── auth.service.ts     # Auth business logic
-│   └── index.ts             # Express app entry point
-├── package.json             # API package config
-├── prisma.config.ts         # Prisma configuration
-└── tsconfig.json            # TypeScript config
-```
-
-### 3.1 Key Files Explained
-
-| File | Purpose |
-|------|---------|
-| `src/index.ts` | Main Express server setup, middleware, route mounting |
-| `src/lib/prisma.ts` | Singleton Prisma client instance |
-| `prisma/schema.prisma` | Database models and relations |
-| `src/routes/*.routes.ts` | API endpoints organized by resource |
-| `src/schemas/*.schema.ts` | Zod validation schemas for requests |
-| `src/middleware/auth.middleware.ts` | JWT token verification |
-
----
-
-## 4. Frontend (apps/web)
-
-```
-apps/web/
-├── .next/                   # Next.js build output (git-ignored)
-├── node_modules/            # Package dependencies
-├── public/                  # Static assets
-├── src/
-│   ├── app/                 # Next.js App Router
-│   │   ├── (app)/           # Authenticated routes (layout group)
-│   │   │   ├── exercises/
-│   │   │   │   └── page.tsx    # Exercise library page
-│   │   │   ├── profile/
-│   │   │   │   ├── edit/
-│   │   │   │   │   └── page.tsx  # Edit profile page
-│   │   │   │   ├── measurements/
-│   │   │   │   │   ├── graphs/
-│   │   │   │   │   │   └── page.tsx  # Measurement graphs
-│   │   │   │   │   ├── [id]/
-│   │   │   │   │   │   └── page.tsx  # Single measurement
-│   │   │   │   │   └── page.tsx  # Measurements list
-│   │   │   │   └── page.tsx    # Profile overview
-│   │   │   ├── workouts/
-│   │   │   │   ├── new/
-│   │   │   │   │   └── page.tsx  # Create workout
-│   │   │   │   ├── [id]/
-│   │   │   │   │   └── edit/
-│   │   │   │   │       └── page.tsx  # Edit workout
-│   │   │   │   └── page.tsx    # Workouts list
-│   │   │   ├── layout.tsx      # App layout wrapper
-│   │   │   └── page.tsx        # Dashboard/home
-│   │   ├── (auth)/          # Unauthenticated routes
-│   │   │   ├── login/
-│   │   │   │   └── page.tsx
-│   │   │   ├── register/
-│   │   │   │   └── page.tsx
-│   │   │   └── layout.tsx
-│   │   ├── (session)/       # Full-screen session routes (no bottom nav)
-│   │   │   ├── session/[id]/
-│   │   │   │   └── page.tsx    # Active workout session
-│   │   │   └── layout.tsx
-│   │   ├── api/
-│   │   │   └── health/
-│   │   │       └── route.ts    # Health check endpoint
-│   │   ├── backend/
-│   │   │   └── [...path]/
-│   │   │       └── route.ts    # API proxy to backend
-│   │   ├── globals.css         # Global styles + Tailwind
-│   │   └── layout.tsx          # Root layout
-│   ├── components/
-│   │   ├── exercises/          # Exercise-related components
-│   │   │   ├── delete-exercise-dialog.tsx
-│   │   │   ├── exercise-card.tsx
-│   │   │   ├── exercise-form-modal.tsx
-│   │   │   ├── index.ts
-│   │   │   ├── muscle-group-badge.tsx
-│   │   │   └── muscle-group-filter.tsx
-│   │   ├── layout/             # Layout components
-│   │   │   ├── app-layout.tsx
-│   │   │   ├── desktop-sidebar.tsx
-│   │   │   ├── mobile-bottom-nav.tsx
-│   │   │   ├── nav-item.tsx
-│   │   │   └── page-header.tsx
-│   │   ├── ui/                 # Shadcn UI components
-│   │   │   ├── alert.tsx
-│   │   │   ├── avatar.tsx
-│   │   │   ├── badge.tsx
-│   │   │   ├── button.tsx
-│   │   │   ├── calendar.tsx
-│   │   │   ├── card.tsx
-│   │   │   ├── chart.tsx
-│   │   │   ├── checkbox.tsx
-│   │   │   ├── collapsible.tsx
-│   │   │   ├── confirm-delete-dialog.tsx
-│   │   │   ├── dialog.tsx
-│   │   │   ├── drawer.tsx
-│   │   │   ├── dropdown-menu.tsx
-│   │   │   ├── form.tsx
-│   │   │   ├── input.tsx
-│   │   │   ├── label.tsx
-│   │   │   ├── menu-item.tsx
-│   │   │   ├── menu-section.tsx
-│   │   │   ├── number-input.tsx
-│   │   │   ├── popover.tsx
-│   │   │   ├── select.tsx
-│   │   │   ├── separator.tsx
-│   │   │   ├── sheet.tsx
-│   │   │   ├── sonner.tsx
-│   │   │   ├── sortable.tsx
-│   │   │   ├── tabs.tsx
-│   │   │   ├── textarea.tsx
-│   │   │   ├── toast.tsx
-│   │   │   ├── toaster.tsx
-│   │   │   ├── toggle-group.tsx
-│   │   │   └── toggle.tsx
-│   │   ├── session/            # Active session components
-│   │   │   ├── screens/        # Full-page session screens
-│   │   │   │   ├── exercise-active-screen.tsx
-│   │   │   │   ├── rest-screen.tsx
-│   │   │   │   ├── transition-screen.tsx
-│   │   │   │   ├── reorder-exercises-screen.tsx
-│   │   │   │   ├── session-summary.tsx
-│   │   │   │   └── index.ts
-│   │   │   ├── timer-block.tsx       # Countdown timer with ±30s
-│   │   │   ├── result-input.tsx      # Reps/weight steppers
-│   │   │   ├── next-preview.tsx      # Next set/exercise preview
-│   │   │   ├── exercise-options-bar.tsx  # Skip/Postpone/Substitute
-│   │   │   ├── superset-progress.tsx # Superset round indicator
-│   │   │   └── index.ts
-│   │   └── workouts/           # Workout-related components
-│   │       ├── add-item-dialog.tsx
-│   │       ├── exercise-config-drawer.tsx
-│   │       ├── exercise-selector.tsx
-│   │       ├── rest-time-dialog.tsx
-│   │       ├── rest-time-picker.tsx
-│   │       ├── superset-config-drawer.tsx
-│   │       ├── workout-builder.tsx
-│   │       └── workout-item-cards.tsx
-│   ├── hooks/                  # Custom React hooks
-│   │   ├── use-timer-audio.ts  # Web Audio API for countdown
-│   │   └── use-wake-lock.ts    # Wake Lock API
-│   ├── lib/                    # Utility functions
-│   │   └── api/
-│   │       ├── sessions.ts     # Session API client
-│   │       └── workouts.ts     # Workout API client
-│   ├── stores/                 # Zustand stores
-│   │   ├── auth.ts             # Authentication state
-│   │   └── session.ts          # Active session state
-│   └── middleware.ts           # Next.js middleware (auth)
-├── next.config.js              # Next.js configuration
-├── package.json                # Web package config
-├── postcss.config.js           # PostCSS configuration
-├── tailwind.config.js          # Tailwind CSS config
-└── tsconfig.json               # TypeScript config
-```
-
-### 4.1 Route Groups Explained
-
-| Group | Purpose |
-|-------|---------|
-| `(app)` | Protected routes requiring authentication |
-| `(auth)` | Public routes for login/register |
-| `(session)` | Full-screen workout session (no bottom nav) |
-
-### 4.2 Component Organization
-
-| Directory | Purpose |
-|-----------|---------|
-| `ui/` | Reusable Shadcn/Radix UI primitives |
-| `layout/` | App shell, navigation, headers |
-| `exercises/` | Exercise library feature components |
-| `workouts/` | Workout builder feature components |
-| `session/` | Active workout session components |
-
----
-
-## 5. Shared Package (packages/shared)
-
-```
-packages/shared/
-├── dist/                    # Compiled output
-├── src/
-│   ├── types/
-│   │   └── index.ts         # Type definitions
-│   └── index.ts             # Package exports
+├── .env.example
 ├── package.json
-└── tsconfig.json
+├── tsconfig.json
+├── prisma.config.ts                 # URL, schema/migration paths, seed command
+├── prisma/
+│   ├── schema.prisma                # 17 models; generated client in src/generated/prisma
+│   ├── seed.ts                      # Development account and initial exercise catalog
+│   └── migrations/                  # 14 ordered SQL migrations + migration_lock.toml
+└── src/
+    ├── index.ts                     # Express middleware, route mounts, listener, /health
+    ├── data/valid-icons.ts          # Generated Lucide-name allowlist (tracked)
+    ├── lib/prisma.ts                # PrismaPg + pg.Pool client singleton
+    ├── middleware/auth.middleware.ts
+    ├── routes/                      # Domain routers (*.routes.ts)
+    ├── schemas/                     # Zod schemas (*.schema.ts)
+    ├── services/                    # Existing reusable domain services
+    └── test/                         # Query, entry-contract, and selected-day service tests
 ```
 
-### 5.1 Exported Types
+Routers and schemas cover auth, profile, measurements, exercises, workouts, sessions, progression,
+AI coaching, health sync, trackables, and tracking. `config.routes.ts` additionally exposes
+configuration. Services currently cover auth, password reset, email, AI coaching, progression,
+trackables, and tracking. Many CRUD operations remain in routers; there are no `controllers/`,
+generic `validators/`, `app.ts`/`server.ts`, or central route `index.ts` layers from the monolith.
 
-```typescript
-// User & Auth
-export interface User { ... }
-export interface ApiResponse<T> { ... }
-export interface HealthCheckResponse { ... }
+### Route mounts
 
-// Exercises
-export const MUSCLE_GROUPS = [...] as const;
-export type MuscleGroup = (typeof MUSCLE_GROUPS)[number];
-export interface Exercise { ... }
+Source: [apps/api/src/index.ts](../../apps/api/src/index.ts).
+
+<!-- prettier-ignore -->
+| API path | Router file | Responsibility |
+| --- | --- | --- |
+| `/auth` | `auth.routes.ts` | Register/login/logout/me and password reset |
+| `/profile` | `profile.routes.ts` | Profile, preferences, password |
+| `/measurements` | `measurement.routes.ts` | CRUD, latest, progress |
+| `/exercises` | `exercise.routes.ts` | Catalog, muscle groups, statistics |
+| `/workouts` | `workout.routes.ts` | Templates and nested configuration |
+| `/sessions` | `session.routes.ts` | Planned/ad-hoc sessions, exercises, sets, logs |
+| `/` | `progression.routes.ts` | Session suggestions/stagnation and `/progression-suggestions` |
+| `/config` | `config.routes.ts` | Runtime configuration |
+| `/sessions` | `ai-coaching.routes.ts` | Session coaching |
+| `/health-sync` | `health-sync.routes.ts` | Companion synchronization and activities |
+| `/trackables` | `trackable.routes.ts` | Items, goals, ordering, icon suggestions |
+| `/tracking` | `tracking.routes.ts` | Daily entries, today, and statistics |
+| `/health` | Entry point handler | API + database readiness |
+
+These are direct Express paths, not `/api/v1/*`. Browser clients prefix them with `/backend`;
+see [API specification](api-spec.md) and source routers for endpoint contracts.
+
+## Web workspace
+
+```text
+apps/web/
+├── .env.example
+├── components.json                  # Shadcn metadata and registry
+├── next.config.mjs                  # Standalone output; transpile shared; app version
+├── postcss.config.mjs               # @tailwindcss/postcss
+├── next-env.d.ts                     # Next.js-generated type references (runtime artifact)
+├── package.json
+├── tsconfig.json
+├── test/                             # daily-calendar, edit-controller, and read-coordinator tests
+├── public/
+│   ├── manifest.json
+│   ├── sw.js                        # Rest-timer notifications, no offline fetch cache
+│   ├── icon.svg
+│   └── icon-192.png
+└── src/
+    ├── app/
+    │   ├── (app)/                   # App shell and authenticated feature pages
+    │   │   ├── page.tsx             # Daily home/dashboard
+    │   │   ├── exercises/           # Catalog and stats
+    │   │   ├── profile/             # Edit, measurements, graphs, trackables
+    │   │   ├── sessions/[id]/       # Session detail
+    │   │   ├── settings/
+    │   │   └── workouts/            # List, new, [id]/edit
+    │   ├── (auth)/                  # Login, register, forgot/reset password
+    │   ├── (session)/               # session/[id] and ai-coach; shared AppLayout
+    │   ├── api/health/route.ts       # Web process health
+    │   ├── backend/[...path]/route.ts # HTTP forwarding to Express
+    │   ├── globals.css              # Tailwind 4 and semantic theme tokens
+    │   └── layout.tsx               # Fonts, dark theme, accent, toast, service worker
+    ├── components/
+    │   ├── ui/                      # Shadcn/Radix/Base UI primitives
+    │   ├── layout/                  # Shell, sidebar, bottom nav, page header
+    │   ├── exercises/
+    │   ├── workouts/                # Builder, cards, history/calendar sheets
+    │   ├── session/screens/         # Active/rest/transition/overview/ad-hoc/summary
+    │   ├── tracking/                # Daily progress, goals, sleep, activity, item controls
+    │   ├── theme/accent-color-provider.tsx
+    │   └── sw-register.tsx
+    ├── hooks/                       # Timer audio, wake lock, local-day lifecycle, toast
+    ├── lib/
+    │   ├── api/                     # auth, exercises, measurements, profile,
+    │   │                            # sessions, workouts, trackables, tracking
+    │   ├── validations/             # Frontend Zod validation
+    │   ├── daily-calendar.ts         # Local calendar arithmetic and timestamp bounds
+    │   ├── daily-edit-controller.ts  # Date-scoped optimistic edit helpers
+    │   ├── daily-read-coordinator.ts # Stale-read/date ownership guard
+    │   ├── constants/muscle-groups.ts
+    │   ├── icons.ts
+    │   ├── compose-refs.ts
+    │   └── utils.ts
+    ├── stores/auth.ts               # Persisted token/user and cookie synchronization
+    ├── stores/session.ts            # In-memory state machine; partial manual recovery
+    └── proxy.ts                     # Next.js 16 page redirects based on auth cookie
 ```
 
----
+Route groups do not add URL segments. `(app)` replaces the historical `(dashboard)` group;
+measurements live under `/profile/measurements`, and trackable settings under `/profile/trackables`.
+Active `/session/[id]` and regular `/sessions/[id]` details are separate routes. The
+[(session) layout](<../../apps/web/src/app/(session)/layout.tsx>) uses the shared `AppLayout`,
+not an independent full-screen shell. The [session store](../../apps/web/src/stores/session.ts)
+uses plain Zustand `create`, without `persist` middleware: it reloads session data from the API
+and manually restores selected rest/result metadata from `localStorage`. Recovery is partial,
+not persistence of the entire state machine or guaranteed offline restoration.
+Daily-home calendar/edit utilities and workspace test directories are present as listed above; test scripts
+use Node's built-in `node:test` runner via the installed `tsx` package, not an installed test
+framework. There is no standalone React Query `hooks/queries` tree or dedicated `progress/page.tsx`.
+No `tailwind.config.*` file or `src/middleware.ts` is present: CSS-first Tailwind and `src/proxy.ts`
+are the current implementations. The stale Shadcn config-path string is documented in
+[tech stack](tech-stack.md#shadcn-and-radix), not promoted into a real file.
 
-## 6. Docker Configuration (docker/)
+## Shared package
 
+```text
+packages/shared/
+├── package.json
+├── tsconfig.json
+└── src/
+    ├── index.ts                     # Re-exports ./types
+    └── types/index.ts               # User, Exercise, health/response types, muscle groups
 ```
+
+There are no shared `constants/` or `utils/` directories; constants currently live alongside types.
+`dist/index.js` and declarations are produced by its build. See
+[coding standards](coding-standards.md#typescript-rules) for API `.js` imports and web aliases.
+
+## Database navigation
+
+Sources: [schema.prisma](../../apps/api/prisma/schema.prisma) and
+[SQL migrations](../../apps/api/prisma/migrations).
+
+<!-- prettier-ignore -->
+| Models | Mapped tables |
+| --- | --- |
+| `User`, `Measurement`, `Exercise` | `users`, `measurements`, `exercises` |
+| `Workout`, `WorkoutItem`, `WorkoutItemExercise`, `WorkoutSet` | `workouts`, `workout_items`, `workout_item_exercises`, `workout_sets` |
+| `WorkoutSession`, `SessionExercise`, `SessionSet` | `workout_sessions`, `session_exercises`, `session_sets` |
+| `ProgressionSuggestion` | `progression_suggestions` |
+| `TrackableItem`, `TrackableGoal`, `DailyEntry` | `trackable_items`, `trackable_goals`, `daily_entries` |
+| `HealthActivity`, `SyncDevice`, `SessionApiCall` | `health_activities`, `sync_devices`, `session_api_calls` |
+
+Users own measurements, workouts, sessions, progression suggestions, health records/devices, and
+trackables. Templates contain ordered items, exercises, and sets; sessions contain recorded exercises
+and sets. Sessions can be planned or ad-hoc, so the template relation is nullable. Exercises form
+a shared catalog rather than user-owned rows. Trackables have goals and dated entries.
+
+The last migration adds the planned/ad-hoc consistency check and a partial unique index for one
+active session per user. Those SQL-only invariants and the migration's historical duplicate cleanup
+matter beyond the schema file. See [data models](data-models.md) and
+[migration operations](deployment.md#database-migrations-and-release-safety).
+
+## Docker and utility scripts
+
+```text
 docker/
-├── docker-compose.dev.yml   # Development PostgreSQL
-├── docker-compose.prod.yml  # Production full stack
-├── Dockerfile.api           # API container
-└── Dockerfile.web           # Web container
+├── Dockerfile.api                   # Build shared/API; migrate deploy before API start
+├── Dockerfile.web                   # Build shared/web; run apps/web/server.js
+├── docker-compose.dev.yml           # PostgreSQL only
+└── docker-compose.prod.yml          # Web, API, PostgreSQL, Prisma Studio
+
+scripts/
+├── generate-icon-list.mjs           # Root postinstall/generate-icons hook
+├── hercules-import-exercises.ts
+├── hercules-import-workouts.ts
+├── hercules-import-history.ts
+├── hercules-import-measurements.ts
+├── hercules-exercise-mapping.json
+├── hercules-workout-mapping.json
+├── hercules-caro-import-exercises.ts
+├── hercules-caro-import-workouts.ts
+├── hercules-caro-import-history.ts
+├── hercules-caro-import-measurements.ts
+├── hercules-caro-exercise-mapping.json
+└── hercules-caro-workout-mapping.json
 ```
 
----
+Hercules CLI inputs are hardcoded under `docs/features/`; mappings are target-database-specific.
+The available scripts, mapping order, fixed export inputs, ownership caveat, and partial
+idempotence are covered in [deployment](deployment.md#hercules-migration-procedure).
+Root icon generation writes the tracked API allowlist; it runs on `postinstall`, not a configured
+`prebuild` hook despite the script's older comment.
 
-## 7. Documentation (docs/)
+## Documentation and historical material
 
-```
-docs/
-├── architecture/            # Technical documentation
-│   ├── coding-standards.md  # Code conventions
-│   ├── source-tree.md       # This file
-│   └── tech-stack.md        # Technology reference
-├── architecture.md          # Main architecture document
-├── prd/                     # Product requirements (sharded)
-├── prd.md                   # Main PRD
-├── qa/                      # QA documentation
-└── stories/                 # User stories
-```
+[Architecture index](index.md) routes to [overview](overview.md), this document, [tech stack](tech-stack.md),
+[coding standards](coding-standards.md), [deployment](deployment.md), [data models](data-models.md),
+[API specification](api-spec.md), and [components/workflows](components-workflows.md).
+The independently reconciled [frontend architecture](frontend-architecture.md) and
+[backend architecture](backend-architecture.md) provide implementation-specific detail.
+Product/UX references include [PRD](../prd.md), [epics](../epics.md),
+[frontend specification](../front-end-spec.md), `docs/stories/`, `docs/specs/`, and `docs/features/`.
+The [archive](../archive/architecture-original.md) retains original design examples; applicable
+library references are consolidated in [tech stack](tech-stack.md#library-references).
 
----
+The monolith's `.bmad-core`, assistant-specific settings, PascalCase component filenames, split
+`ci.yml`/`deploy.yml`, alternate Dockerfile names, and controller/query-hook trees are historical
+or absent. Current management directories are `.opencode/` and `_bmad*`; `web-bundles` contains
+agent resources. Story 3.8 added scoped test directories; no separate test-runner configuration is
+present or required for the current built-in runner scripts.
 
-## 8. Database Schema Overview
+## Domain glossary
 
-```
-users
-  ├── measurements (1:N)
-  ├── workouts (1:N)
-  │     └── workout_items (1:N)
-  │           └── workout_item_exercises (1:N)
-  │                 ├── exercise (N:1) ← exercises
-  │                 └── workout_sets (1:N)
-  └── workout_sessions (1:N)
-        └── session_exercises (1:N)
-              ├── exercise (N:1) ← exercises
-              └── session_sets (1:N)
-```
+Adapted from [monolith section 18](../archive/architecture-original.md#18-appendix):
 
-### 8.1 Models
-
-| Model | Table | Purpose |
-|-------|-------|---------|
-| User | `users` | User accounts |
-| Measurement | `measurements` | Body measurements |
-| Exercise | `exercises` | Exercise library |
-| Workout | `workouts` | Workout templates |
-| WorkoutItem | `workout_items` | Items in workout (exercise or superset) |
-| WorkoutItemExercise | `workout_item_exercises` | Exercises within items |
-| WorkoutSet | `workout_sets` | Set configurations |
-| WorkoutSession | `workout_sessions` | Active/completed workout sessions |
-| SessionExercise | `session_exercises` | Exercises tracked in a session |
-| SessionSet | `session_sets` | Actual results for each set |
-
----
-
-## 9. API Routes Overview
-
-| Route | File | Methods |
-|-------|------|---------|
-| `/api/v1/auth/*` | `auth.routes.ts` | POST (register, login, logout) |
-| `/api/v1/profile/*` | `profile.routes.ts` | GET, PATCH, PUT |
-| `/api/v1/measurements/*` | `measurement.routes.ts` | CRUD |
-| `/api/v1/exercises/*` | `exercise.routes.ts` | CRUD |
-| `/api/v1/workouts/*` | `workout.routes.ts` | CRUD |
-| `/api/v1/sessions/*` | `session.routes.ts` | CRUD, active, exercises, sets |
-
----
-
-## 10. Import Conventions
-
-### 10.1 Web App Aliases
-
-```typescript
-// @/ maps to src/
-import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/stores/auth";
-```
-
-### 10.2 Shared Package
-
-```typescript
-// Import from @momentum/shared
-import { User, MUSCLE_GROUPS, type MuscleGroup } from "@momentum/shared";
-```
-
----
-
-## 11. Key Entry Points
-
-| Purpose | File |
-|---------|------|
-| API Server | `apps/api/src/index.ts` |
-| Web App | `apps/web/src/app/layout.tsx` |
-| Shared Types | `packages/shared/src/index.ts` |
-| Database Schema | `apps/api/prisma/schema.prisma` |
-| Root Scripts | `package.json` |
+<!-- prettier-ignore -->
+| Term | Meaning |
+| --- | --- |
+| Workout | Reusable template of exercises, sets, and targets |
+| Session | Recorded training execution; planned from a template or ad-hoc |
+| Set | One exercise effort with targets/results, commonly repetitions and weight |
+| Trackable | User/system item tracked through dated values and goals |
+| Streak | Consecutive qualifying days or goal periods; definitions depend on tracking logic |
+| Progressive overload | Increasing training stimulus; suggestions are domain-specific |
+| RPE | Rate of perceived exertion; the set field uses a 1–10 difficulty scale |

@@ -1,0 +1,40 @@
+# generated: 2026-10-11
+# project: momentum
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: docs/stories
+# scope: incremental-story-3.8
+#
+# This file tracks only the approved Story 3.8 increment, not the complete
+# Epic 3 backlog. Historical stories and their statuses remain authoritative
+# in docs/prd.md and docs/stories/ and have not been regenerated or inferred.
+# Increment source: docs/epics.md. The historical Epic 3 implementation plan
+# is supplemental context, not a source for expanding this tracking scope.
+# Canonical story: docs/stories/3.8.daily-home-navigation.md.
+# Preserve its existing filename; do not create a kebab-case duplicate.
+#
+# STATUS DEFINITIONS:
+# Epic: backlog -> in-progress -> done.
+# Story: backlog -> ready-for-dev -> in-progress -> review -> done.
+# Retrospective: optional or done.
+# Story 3.8 is done following user-reported overall manual acceptance; Epic 3
+# remains in progress and this status does not claim a formal code review or release.
+# This scoped file cannot establish completion of the full Epic 3.
+#
+# WORKFLOW NOTES:
+# Only Story 3.8 is selected for the next development workflow.
+# Preserve existing home behavior and browser-local calendar authority.
+# Do not add prerequisites on draft Stories 3.5-3.7 or regenerate the backlog.
+# Story 3.8 status records user acceptance; no formal BMAD/code review is claimed.
+
+generated: 2026-10-11
+project: momentum
+project_key: NOKEY
+tracking_system: file-system
+story_location: docs/stories
+scope: incremental-story-3.8
+
+development_status:
+  epic-3: in-progress
+  3-8-daily-home-navigation: done
+  epic-3-retrospective: optional
