@@ -163,6 +163,31 @@ export async function getMeasurement(
   return handleResponse<Measurement>(response);
 }
 
+export async function getPreviousMeasurements(token: string): Promise<{
+  weight: number | null;
+  bodyMeasurement: Measurement | null;
+}> {
+  let weight: number | null = null;
+  let bodyMeasurement: Measurement | null = null;
+  let page = 1;
+  let totalPages = 1;
+
+  // Search newest first, including older pages when recent entries omit a value.
+  while (page <= totalPages && (weight === null || bodyMeasurement === null)) {
+    const { data, pagination } = await getMeasurements(token, page, 50);
+    totalPages = pagination.totalPages;
+    if (weight === null) {
+      weight = data.find((measurement) => measurement.weight !== null)?.weight ?? null;
+    }
+    if (bodyMeasurement === null) {
+      bodyMeasurement = data.find(hasBodyMeasurements) ?? null;
+    }
+
+    page++;
+  }
+  return { weight, bodyMeasurement };
+}
+
 export async function getLatestMeasurement(
   token: string
 ): Promise<Measurement | null> {

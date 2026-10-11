@@ -1,5 +1,14 @@
 import { prisma } from "../lib/prisma.js";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
+import {
+  addDays,
+  format,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfDay,
+} from "date-fns";
+import type { DailyTrackingQueryInput } from "../schemas/tracking.schema.js";
 
 /**
  * Get the local date as a UTC midnight Date for Prisma DATE column queries.
@@ -11,14 +20,26 @@ function localDateForQuery(): { dateStr: string; date: Date } {
   return { dateStr, date: new Date(dateStr + "T00:00:00.000Z") };
 }
 
+function getMondayDate(dateKey: string): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year!, month! - 1, day!));
+  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+  return date.toISOString().slice(0, 10);
+}
+
 /**
  * Get today's complete tracking state
  */
-export async function getTodayTracking(userId: string) {
-  const { dateStr: todayStr, date: today } = localDateForQuery();
+export async function getTodayTracking(
+  userId: string,
+  query: DailyTrackingQueryInput = {},
+  database: Pick<typeof prisma, "trackableItem" | "dailyEntry" | "workoutSession"> = prisma
+) {
+  const todayStr = query.date ?? localDateForQuery().dateStr;
+  const today = new Date(`${todayStr}T00:00:00.000Z`);
 
   // Get all trackables for user with their active goals
-  const trackables = await prisma.trackableItem.findMany({
+  const trackables = await database.trackableItem.findMany({
     where: { userId },
     include: {
       goals: {
@@ -64,26 +85,26 @@ export async function getTodayTracking(userId: string) {
   }
 
   // Fetch period entries for weekly/monthly trackables in bulk
-  const pWeekStart = new Date(format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd") + "T00:00:00.000Z");
-  const pWeekEnd = new Date(format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd") + "T00:00:00.000Z");
-  const pMonthStart = new Date(format(startOfMonth(new Date()), "yyyy-MM-dd") + "T00:00:00.000Z");
-  const pMonthEnd = new Date(format(endOfMonth(new Date()), "yyyy-MM-dd") + "T00:00:00.000Z");
+  const pWeekStart = new Date(`${query.weekDateStart ?? getMondayDate(todayStr)}T00:00:00.000Z`);
+  const pMonthStart = new Date(
+    `${query.monthDateStart ?? `${todayStr.slice(0, 7)}-01`}T00:00:00.000Z`
+  );
 
   const [weekEntries, monthEntries] = await Promise.all([
     weeklyTrackableIds.length > 0
-      ? prisma.dailyEntry.findMany({
+      ? database.dailyEntry.findMany({
           where: {
             trackableId: { in: weeklyTrackableIds },
-            date: { gte: pWeekStart, lte: pWeekEnd },
+            date: { gte: pWeekStart, lte: today },
             value: { gt: 0 },
           },
         })
       : Promise.resolve([]),
     monthlyTrackableIds.length > 0
-      ? prisma.dailyEntry.findMany({
+      ? database.dailyEntry.findMany({
           where: {
             trackableId: { in: monthlyTrackableIds },
-            date: { gte: pMonthStart, lte: pMonthEnd },
+            date: { gte: pMonthStart, lte: today },
             value: { gt: 0 },
           },
         })
@@ -162,37 +183,46 @@ export async function getTodayTracking(userId: string) {
   });
 
   // Count workout sessions (from workout_sessions table)
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday
-  const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
-  const monthStart = startOfMonth(new Date());
-  const monthEnd = endOfMonth(new Date());
+  const todayStart = query.dayStart
+    ? new Date(query.dayStart)
+    : startOfDay(new Date(`${todayStr}T00:00:00`));
+  const todayEnd = query.nextDayStart
+    ? new Date(query.nextDayStart)
+    : startOfDay(addDays(new Date(`${todayStr}T00:00:00`), 1));
+  const selectedLocalDay = new Date(`${todayStr}T00:00:00`);
+  const weekStart = query.dayStart
+    ? new Date(query.weekStart!)
+    : startOfWeek(selectedLocalDay, { weekStartsOn: 1 });
+  const weekEnd = query.dayStart
+    ? todayEnd
+    : startOfDay(addDays(endOfWeek(selectedLocalDay, { weekStartsOn: 1 }), 1));
+  const monthStart = query.dayStart ? new Date(query.monthStart!) : startOfMonth(selectedLocalDay);
+  const monthEnd = query.dayStart ? todayEnd : startOfDay(addDays(endOfMonth(selectedLocalDay), 1));
 
   // Get workout trackable goal
   const workoutTrackable = systemTrackables.find((t) => t.name === "Séances de sport");
   const workoutGoal = workoutTrackable?.goals[0] ?? null;
 
   const [todaySessions, weekSessions, monthSessions] = await Promise.all([
-    prisma.workoutSession.count({
+    database.workoutSession.count({
       where: {
         userId,
         status: "completed",
-        completedAt: { gte: todayStart, lte: todayEnd },
+        completedAt: { gte: todayStart, lt: todayEnd },
       },
     }),
-    prisma.workoutSession.count({
+    database.workoutSession.count({
       where: {
         userId,
         status: "completed",
-        completedAt: { gte: weekStart, lte: weekEnd },
+        completedAt: { gte: weekStart, lt: weekEnd },
       },
     }),
-    prisma.workoutSession.count({
+    database.workoutSession.count({
       where: {
         userId,
         status: "completed",
-        completedAt: { gte: monthStart, lte: monthEnd },
+        completedAt: { gte: monthStart, lt: monthEnd },
       },
     }),
   ]);
@@ -202,7 +232,10 @@ export async function getTodayTracking(userId: string) {
     thisWeek: weekSessions,
     thisMonth: monthSessions,
     goal: workoutGoal
-      ? { targetValue: workoutGoal.targetValue, frequency: workoutGoal.frequency as "weekly" | "monthly" }
+      ? {
+          targetValue: workoutGoal.targetValue,
+          frequency: workoutGoal.frequency as "weekly" | "monthly",
+        }
       : null,
   };
 
@@ -410,12 +443,9 @@ export async function getSummary(
   date: Date = new Date()
 ) {
   // Use UTC midnight dates for Prisma DATE column queries
-  const startLocal = period === "week"
-    ? startOfWeek(date, { weekStartsOn: 1 })
-    : startOfMonth(date);
-  const endLocal = period === "week"
-    ? endOfWeek(date, { weekStartsOn: 1 })
-    : endOfMonth(date);
+  const startLocal =
+    period === "week" ? startOfWeek(date, { weekStartsOn: 1 }) : startOfMonth(date);
+  const endLocal = period === "week" ? endOfWeek(date, { weekStartsOn: 1 }) : endOfMonth(date);
   const start = new Date(format(startLocal, "yyyy-MM-dd") + "T00:00:00.000Z");
   const end = new Date(format(endLocal, "yyyy-MM-dd") + "T00:00:00.000Z");
 
@@ -472,7 +502,11 @@ export async function getSummary(
 
 // --- Helper functions ---
 
-function buildRingData(trackable: { id: string; entries: { value: number }[]; goals: { targetValue: number }[] } | undefined) {
+function buildRingData(
+  trackable:
+    | { id: string; entries: { value: number }[]; goals: { targetValue: number }[] }
+    | undefined
+) {
   if (!trackable) {
     return { value: 0, goal: 0, percentage: 0, trackableId: null };
   }
@@ -492,7 +526,11 @@ function buildRingData(trackable: { id: string; entries: { value: number }[]; go
   };
 }
 
-function buildSleepData(trackable: { id: string; entries: { value: number }[]; goals: { targetValue: number }[] } | undefined) {
+function buildSleepData(
+  trackable:
+    | { id: string; entries: { value: number }[]; goals: { targetValue: number }[] }
+    | undefined
+) {
   if (!trackable) {
     return { value: 0, goal: null, percentage: 0, trackableId: null };
   }

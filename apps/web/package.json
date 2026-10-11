@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:host": "next dev -H 0.0.0.0",
+    "test": "node --import tsx --test test/*.test.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint src --ext .ts,.tsx"

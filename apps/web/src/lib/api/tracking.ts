@@ -1,3 +1,5 @@
+import { getDailyDateContext } from "@/lib/daily-calendar";
+
 const API_URL = "/backend";
 
 // Response types based on Story 3.3 API spec
@@ -97,11 +99,7 @@ export class TrackingError extends Error {
   code: string;
   details?: Array<{ field: string; message: string }>;
 
-  constructor(
-    message: string,
-    code: string,
-    details?: Array<{ field: string; message: string }>
-  ) {
+  constructor(message: string, code: string, details?: Array<{ field: string; message: string }>) {
     super(message);
     this.code = code;
     this.details = details;
@@ -118,18 +116,26 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
   if (!response.ok) {
     const errorData = data as ApiError;
-    throw new TrackingError(
-      errorData.error.message,
-      errorData.error.code,
-      errorData.error.details
-    );
+    throw new TrackingError(errorData.error.message, errorData.error.code, errorData.error.details);
   }
 
   return data as T;
 }
 
-export async function getToday(token: string): Promise<TodayResponse> {
-  const response = await fetch(`${API_URL}/tracking/today`, {
+export async function getToday(token: string, date?: string): Promise<TodayResponse> {
+  const context = date ? getDailyDateContext(date) : null;
+  const query = context
+    ? `?${new URLSearchParams({
+        date: context.date,
+        dayStart: context.dayStart,
+        nextDayStart: context.nextDayStart,
+        weekStart: context.weekStart,
+        monthStart: context.monthStart,
+        weekDateStart: context.weekDateStart,
+        monthDateStart: context.monthDateStart,
+      })}`
+    : "";
+  const response = await fetch(`${API_URL}/tracking/today${query}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -148,10 +154,7 @@ export async function getRings(token: string): Promise<RingsResponse> {
   return handleResponse<RingsResponse>(response);
 }
 
-export async function upsertEntry(
-  token: string,
-  data: EntryInput
-): Promise<TrackableEntry> {
+export async function upsertEntry(token: string, data: EntryInput): Promise<TrackableEntry> {
   const response = await fetch(`${API_URL}/tracking/entries`, {
     method: "POST",
     headers: {

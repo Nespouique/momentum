@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import { authMiddleware, AuthRequest } from "../middleware/auth.middleware.js";
 import {
+  dailyTrackingQuerySchema,
   trackingEntriesQuerySchema,
   trackingSummaryQuerySchema,
   createEntrySchema,
@@ -38,10 +39,20 @@ router.use(authMiddleware);
 // GET /today - Get today's complete tracking state
 router.get("/today", async (req: AuthRequest, res: Response) => {
   try {
+    const query = dailyTrackingQuerySchema.parse(req.query);
     const userId = req.userId!;
-    const data = await getTodayTracking(userId);
+    const data = await getTodayTracking(userId, query);
     return res.json(data);
   } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        error: {
+          code: ErrorCodes.VALIDATION_ERROR,
+          message: "Validation failed",
+          details: formatZodError(error),
+        },
+      });
+    }
     console.error("Get today tracking error:", error);
     return res.status(500).json({
       error: {

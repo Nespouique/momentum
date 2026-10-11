@@ -35,10 +35,9 @@ import { PageHeader } from "@/components/layout";
 import { useAuthStore } from "@/stores/auth";
 import {
   getMeasurement,
-  getMeasurements,
+  getPreviousMeasurements,
   createMeasurement,
   updateMeasurement,
-  hasBodyMeasurements,
   type Measurement,
   type MeasurementInput,
 } from "@/lib/api/measurements";
@@ -187,15 +186,9 @@ export default function MeasurementFormPage() {
         if (isNew) {
           // For new measurements, use the last full measurement (with body data) as body placeholders
           // and the last measurement with weight for the weight placeholder
-          const { data: allMeasurements } = await getMeasurements(token);
-          const latestFull = allMeasurements.find(hasBodyMeasurements);
-          if (latestFull) {
-            setPreviousValues(latestFull);
-          }
-          const latestWithWeight = allMeasurements.find((m) => m.weight !== null);
-          if (latestWithWeight) {
-            setLatestWeight(latestWithWeight.weight);
-          }
+          const { weight, bodyMeasurement } = await getPreviousMeasurements(token);
+          setPreviousValues(bodyMeasurement);
+          setLatestWeight(weight);
         } else {
           // For editing, load the specific measurement
           const measurement = await getMeasurement(token, id);
@@ -383,7 +376,7 @@ export default function MeasurementFormPage() {
                   min={20}
                   max={500}
                   step={0.5}
-                  placeholder={getPlaceholder("weight") ?? "75.0"}
+                  placeholder={getPlaceholder("weight") ?? "Poids"}
                   className="flex-1"
                 />
               )}

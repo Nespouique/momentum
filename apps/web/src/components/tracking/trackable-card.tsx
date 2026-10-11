@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, Circle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -30,8 +30,12 @@ interface DashboardTrackable {
 
 interface TrackableCardProps {
   trackable: DashboardTrackable;
-  onToggle: (trackableId: string, value: number) => Promise<void>;
-  onUpdate: (trackableId: string, value: number) => Promise<void>;
+  date: string;
+  isPending: boolean;
+  draftValue?: string;
+  onToggle: (trackableId: string, value: number, date: string) => Promise<boolean>;
+  onUpdate: (trackableId: string, value: number, date: string) => Promise<boolean>;
+  onDraftChange: (trackableId: string, value: string | null, date: string) => void;
 }
 
 function getIcon(iconName: string) {
@@ -57,62 +61,102 @@ function formatFrequency(frequency: string): string {
 
 export function TrackableCard({
   trackable,
+  date,
+  isPending,
+  draftValue,
   onToggle,
   onUpdate,
+  onDraftChange,
 }: TrackableCardProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [inputValue, setInputValue] = useState(
-    trackable.entry?.value.toString() || ""
-  );
+  const [inputValue, setInputValue] = useState(trackable.entry?.value.toString() || "");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [localPending, setLocalPending] = useState(isPending);
+  const editDate = useRef(date);
+  const submitted = useRef(false);
+  const cancelled = useRef(false);
+  const toggleLock = useRef(false);
+  const numericLock = useRef(false);
 
   const Icon = getIcon(trackable.icon);
   const isCompleted = trackable.completed;
 
   const handleBooleanToggle = async () => {
-    if (isUpdating) return;
+    if (toggleLock.current) return;
+    toggleLock.current = true;
     setIsUpdating(true);
     try {
       const newValue = isCompleted ? 0 : 1;
-      await onToggle(trackable.id, newValue);
+      const saved = await onToggle(trackable.id, newValue, date);
+      if (!saved) throw new Error("The daily tracking update was not submitted");
+    } catch (error) {
+      console.error("Failed to toggle trackable:", error);
     } finally {
+      toggleLock.current = false;
       setIsUpdating(false);
     }
   };
 
   const handleNumberClick = () => {
-    if (!isEditing) {
+    if (!isEditing && !isPending && !localPending) {
       setIsEditing(true);
-      setInputValue(trackable.entry?.value.toString() || "");
+      setInputValue(draftValue ?? trackable.entry?.value.toString() ?? "");
+      editDate.current = date;
+      submitted.current = false;
+      cancelled.current = false;
     }
   };
 
-  const handleInputSubmit = async () => {
+  const handleInputSubmit = async (): Promise<boolean> => {
     if (!inputValue.trim()) {
+      submitted.current = true;
       setIsEditing(false);
-      return;
+      return false;
     }
 
     const value = parseInt(inputValue, 10);
     if (isNaN(value) || value < 0) {
+      submitted.current = true;
       setIsEditing(false);
-      return;
+      return true;
     }
 
+    if (submitted.current || cancelled.current || numericLock.current || isPending || localPending)
+      return false;
+    submitted.current = true;
+    numericLock.current = true;
+    setLocalPending(true);
     setIsUpdating(true);
     try {
-      await onUpdate(trackable.id, value);
+      const saved = await onUpdate(trackable.id, value, editDate.current);
+      if (!saved) {
+        submitted.current = false;
+        return false;
+      }
+      onDraftChange(trackable.id, null, editDate.current);
       setIsEditing(false);
+      return true;
+    } catch {
+      submitted.current = false;
+      return false;
     } finally {
+      numericLock.current = false;
+      setLocalPending(false);
       setIsUpdating(false);
     }
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      handleInputSubmit();
+      e.preventDefault();
+      const input = e.currentTarget as HTMLInputElement;
+      void handleInputSubmit().then((saved) => {
+        if (saved) input.blur();
+      });
     } else if (e.key === "Escape") {
+      cancelled.current = true;
       setIsEditing(false);
+      onDraftChange(trackable.id, null, editDate.current);
       setInputValue(trackable.entry?.value.toString() || "");
     }
   };
@@ -165,10 +209,7 @@ export function TrackableCard({
                   className="flex h-5 w-5 items-center justify-center rounded-full transition-all duration-300"
                   style={{ backgroundColor: `${trackable.color}20` }}
                 >
-                  <Check
-                    className="h-3 w-3"
-                    style={{ color: trackable.color }}
-                  />
+                  <Check className="h-3 w-3" style={{ color: trackable.color }} />
                 </div>
               )}
             </div>
@@ -193,8 +234,8 @@ export function TrackableCard({
                   />
                 </div>
                 <span className="text-xs tabular-nums text-muted-foreground/70">
-                  {trackable.goalProgress.current}/{trackable.goalProgress.target}
-                  {" "}/{" "}{formatFrequency(trackable.goalProgress.frequency)}
+                  {trackable.goalProgress.current}/{trackable.goalProgress.target} /{" "}
+                  {formatFrequency(trackable.goalProgress.frequency)}
                 </span>
               </div>
             )}
@@ -206,14 +247,17 @@ export function TrackableCard({
               <Checkbox
                 checked={isCompleted}
                 onCheckedChange={handleBooleanToggle}
-                disabled={isUpdating}
+                disabled={isUpdating || isPending || localPending || toggleLock.current}
                 className="h-6 w-6 transition-all duration-200 hover:scale-110 active:scale-95"
               />
             ) : isEditing ? (
               <Input
                 type="number"
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={(e) => {
+                  setInputValue(e.target.value);
+                  onDraftChange(trackable.id, e.target.value, editDate.current);
+                }}
                 onBlur={handleInputSubmit}
                 onKeyDown={handleInputKeyDown}
                 autoFocus
@@ -223,7 +267,7 @@ export function TrackableCard({
             ) : (
               <button
                 onClick={handleNumberClick}
-                disabled={isUpdating}
+                disabled={isUpdating || isPending || localPending}
                 className={cn(
                   "flex h-9 min-w-[60px] items-center justify-center rounded-lg border border-border/40 bg-secondary/30 px-3 text-sm font-semibold tabular-nums transition-all duration-200",
                   "hover:bg-secondary/50 active:scale-95 cursor-pointer"
@@ -235,9 +279,7 @@ export function TrackableCard({
                       ? formatDuration(trackable.entry.value)
                       : trackable.entry.value}
                     {trackable.unit && (
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        {trackable.unit}
-                      </span>
+                      <span className="ml-1 text-xs text-muted-foreground">{trackable.unit}</span>
                     )}
                   </span>
                 ) : (
