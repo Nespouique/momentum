@@ -5,6 +5,10 @@ export const createSessionSchema = z.object({
   workoutId: z.string().uuid("Invalid workout ID"),
 });
 
+export const adHocExerciseSchema = z.object({
+  exerciseId: z.string().uuid("Invalid exercise ID"),
+});
+
 // Update session (status change or notes)
 export const updateSessionSchema = z.object({
   status: z.enum(["completed", "abandoned"]).optional(),
@@ -44,9 +48,21 @@ export const replaceSupersetSchema = z.object({
 // Record set result
 export const recordSetResultSchema = z.object({
   setNumber: z.number().int().positive("Set number must be positive"),
-  actualReps: z.number().int().min(0, "Reps must be non-negative").max(100, "Reps must be at most 100"),
-  actualWeight: z.number().min(0, "Weight must be non-negative").max(1000, "Weight must be at most 1000"),
-  rpe: z.number().int().min(1, "RPE must be at least 1").max(10, "RPE must be at most 10").optional(),
+  actualReps: z
+    .number()
+    .int()
+    .min(0, "Reps must be non-negative")
+    .max(100, "Reps must be at most 100"),
+  actualWeight: z
+    .number()
+    .min(0, "Weight must be non-negative")
+    .max(1000, "Weight must be at most 1000"),
+  rpe: z
+    .number()
+    .int()
+    .min(1, "RPE must be at least 1")
+    .max(10, "RPE must be at most 10")
+    .optional(),
 });
 
 // Update set
@@ -63,6 +79,7 @@ export const lastSessionQuerySchema = z.object({
 
 // Export types
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
+export type AdHocExerciseInput = z.infer<typeof adHocExerciseSchema>;
 export type UpdateSessionInput = z.infer<typeof updateSessionSchema>;
 export type SessionQueryInput = z.infer<typeof sessionQuerySchema>;
 export type UpdateSessionExerciseInput = z.infer<typeof updateSessionExerciseSchema>;

@@ -22,6 +22,10 @@ export interface ChangePasswordData {
   newPassword: string;
 }
 
+export interface UserPreferences {
+  accentColor: string;
+}
+
 interface ApiError {
   error: {
     code: string;
@@ -34,11 +38,7 @@ class ProfileError extends Error {
   code: string;
   details?: Array<{ field: string; message: string }>;
 
-  constructor(
-    message: string,
-    code: string,
-    details?: Array<{ field: string; message: string }>
-  ) {
+  constructor(message: string, code: string, details?: Array<{ field: string; message: string }>) {
     super(message);
     this.code = code;
     this.details = details;
@@ -51,11 +51,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
   if (!response.ok) {
     const errorData = data as ApiError;
-    throw new ProfileError(
-      errorData.error.message,
-      errorData.error.code,
-      errorData.error.details
-    );
+    throw new ProfileError(errorData.error.message, errorData.error.code, errorData.error.details);
   }
 
   return data as T;
@@ -71,10 +67,7 @@ export async function getProfile(token: string): Promise<UserProfile> {
   return handleResponse<UserProfile>(response);
 }
 
-export async function updateProfile(
-  token: string,
-  data: UpdateProfileData
-): Promise<UserProfile> {
+export async function updateProfile(token: string, data: UpdateProfileData): Promise<UserProfile> {
   const response = await fetch(`${API_URL}/profile`, {
     method: "PATCH",
     headers: {
@@ -101,4 +94,28 @@ export async function changePassword(
   });
 
   return handleResponse<{ message: string }>(response);
+}
+
+export async function getPreferences(token: string): Promise<UserPreferences> {
+  const response = await fetch(`${API_URL}/profile/preferences`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  return handleResponse<UserPreferences>(response);
+}
+
+export async function updatePreferences(
+  token: string,
+  data: UserPreferences
+): Promise<UserPreferences> {
+  const response = await fetch(`${API_URL}/profile/preferences`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  return handleResponse<UserPreferences>(response);
 }

@@ -4,3 +4,4 @@ export { RestScreen } from "./rest-screen";
 export { TransitionScreen } from "./transition-screen";
 export { SessionSummary, type SummaryExercise, type SetModification } from "./session-summary";
 export { ReorderExercisesScreen, type ReorderItem } from "./reorder-exercises-screen";
+export { AdHocDecisionScreen } from "./ad-hoc-decision-screen";

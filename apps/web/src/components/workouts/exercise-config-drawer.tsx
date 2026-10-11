@@ -1,22 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NumberInput } from "@/components/ui/number-input";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import {
-  WorkoutItemExerciseFormData,
-  WorkoutSetFormData,
-  generateId,
-} from "./types";
+import { WorkoutItemExerciseFormData, WorkoutSetFormData, generateId } from "./types";
 
 const REST_PRESETS = [
   { label: "30s", value: 30 },
@@ -120,9 +111,7 @@ export function ExerciseConfigDrawer({
 
     const newSets = isLinked
       ? formData.sets.map((set) => ({ ...set, [field]: value }))
-      : formData.sets.map((set, index) =>
-          index === setIndex ? { ...set, [field]: value } : set
-        );
+      : formData.sets.map((set, index) => (index === setIndex ? { ...set, [field]: value } : set));
 
     setFormData({ ...formData, sets: newSets });
   };
@@ -169,10 +158,7 @@ export function ExerciseConfigDrawer({
           {/* Checkboxes for unified values */}
           <div className="flex flex-col gap-3">
             <label className="flex items-center gap-3 cursor-pointer">
-              <Checkbox
-                checked={formData.sameRepsForAll}
-                onCheckedChange={handleSameRepsChange}
-              />
+              <Checkbox checked={formData.sameRepsForAll} onCheckedChange={handleSameRepsChange} />
               <span className="text-sm">Mêmes reps pour toutes les séries</span>
             </label>
             <label className="flex items-center gap-3 cursor-pointer">
@@ -191,10 +177,7 @@ export function ExerciseConfigDrawer({
             <h4 className="text-sm font-medium mb-3">Configuration par série</h4>
             <div className="space-y-2">
               {formData.sets.map((set, index) => (
-                <div
-                  key={set.id}
-                  className="p-3 rounded-lg border border-zinc-800 bg-zinc-900/50"
-                >
+                <div key={set.id} className="p-3 rounded-lg border border-zinc-800 bg-zinc-900/50">
                   <div className="text-xs font-medium text-muted-foreground mb-3">
                     Série {set.setNumber}
                   </div>
@@ -232,9 +215,7 @@ export function ExerciseConfigDrawer({
           {/* Rest between sets (not for superset exercises) */}
           {!isSuperset && (
             <div>
-              <label className="text-sm font-medium mb-3 block">
-                Repos entre les séries
-              </label>
+              <label className="text-sm font-medium mb-3 block">Repos entre les séries</label>
 
               {/* Time inputs */}
               <div className="flex items-start justify-center gap-3 mb-4">
@@ -253,7 +234,9 @@ export function ExerciseConfigDrawer({
                   />
                   <span className="text-xs text-muted-foreground mt-1.5 block">min</span>
                 </div>
-                <span className="text-2xl font-bold text-muted-foreground h-9 flex items-center">:</span>
+                <span className="text-2xl font-bold text-muted-foreground h-9 flex items-center">
+                  :
+                </span>
                 <div className="text-center">
                   <NumberInput
                     value={formData.restBetweenSets % 60}
@@ -296,7 +279,7 @@ export function ExerciseConfigDrawer({
                       className={cn(
                         "flex-1 min-w-[50px]",
                         formData.restBetweenSets === preset.value &&
-                          "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                          "border-primary/50 bg-primary/10 text-primary"
                       )}
                     >
                       {preset.label}

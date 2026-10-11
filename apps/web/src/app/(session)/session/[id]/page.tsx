@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState, useCallback } from "react";
+import { use, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { X, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout";
@@ -24,6 +24,8 @@ import {
   replaceSuperset,
   getProgressionSuggestions,
   updateProgressionSuggestion,
+  addAdHocExercise,
+  SessionError,
 } from "@/lib/api/sessions";
 import { toast } from "sonner";
 import { type ProgressionSuggestion } from "@/components/session";
@@ -35,6 +37,7 @@ import {
   TransitionScreen,
   SessionSummary,
   ReorderExercisesScreen,
+  AdHocDecisionScreen,
   type SummaryExercise,
   type SetModification,
   type OverviewItem,
@@ -95,7 +98,9 @@ export default function SessionPage({ params }: SessionPageProps) {
   const [showSubstituteSheet, setShowSubstituteSheet] = useState(false);
   const [showOverviewReorderScreen, setShowOverviewReorderScreen] = useState(false);
   const [showOverviewSubstituteSheet, setShowOverviewSubstituteSheet] = useState(false);
+  const [showAdHocExerciseSelector, setShowAdHocExerciseSelector] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const addExerciseLockRef = useRef(false);
 
   // Progression suggestions state
   const [suggestions, setSuggestions] = useState<Map<string, ProgressionSuggestion>>(new Map());
@@ -128,12 +133,24 @@ export default function SessionPage({ params }: SessionPageProps) {
 
   // Pause/resume timer when sheets open/close
   useEffect(() => {
-    if (showReorderScreen || showSubstituteSheet || showOverviewReorderScreen || showOverviewSubstituteSheet) {
+    if (
+      showReorderScreen ||
+      showSubstituteSheet ||
+      showOverviewReorderScreen ||
+      showOverviewSubstituteSheet
+    ) {
       pauseTimer();
     } else {
       resumeTimer();
     }
-  }, [showReorderScreen, showSubstituteSheet, showOverviewReorderScreen, showOverviewSubstituteSheet, pauseTimer, resumeTimer]);
+  }, [
+    showReorderScreen,
+    showSubstituteSheet,
+    showOverviewReorderScreen,
+    showOverviewSubstituteSheet,
+    pauseTimer,
+    resumeTimer,
+  ]);
 
   // Play countdown beeps
   useEffect(() => {
@@ -216,7 +233,7 @@ export default function SessionPage({ params }: SessionPageProps) {
 
   // Fetch progression suggestions when entering summary screen
   useEffect(() => {
-    if (currentScreen !== "summary" || !token || !session) return;
+    if (currentScreen !== "summary" || !token || !session || session.type === "ad_hoc") return;
 
     const fetchSuggestions = async () => {
       try {
@@ -326,12 +343,7 @@ export default function SessionPage({ params }: SessionPageProps) {
         const exerciseIds = exercises.map((e) => e.id);
         // Fetch last performance for all exercises in parallel with API call
         await Promise.all([
-          replaceSuperset(
-            token,
-            session.id,
-            nextExercise.workoutItem.id,
-            exerciseIds
-          ),
+          replaceSuperset(token, session.id, nextExercise.workoutItem.id, exerciseIds),
           ...exerciseIds.map((id) => fetchLastPerformance(token, id)),
         ]);
         // Reload session to get updated exercises (cache is already populated)
@@ -374,14 +386,41 @@ export default function SessionPage({ params }: SessionPageProps) {
 
         // Complete the session
         await completeSession(token);
+        toast.success("Séance terminée");
         router.push("/workouts");
       } catch (error) {
         console.error("Failed to complete session:", error);
+        toast.error("Impossible de terminer la séance");
       } finally {
         setIsSubmitting(false);
       }
     },
     [token, session, completeSession, router]
+  );
+
+  const handleAddAdHocExercise = useCallback(
+    async (exercises: { id: string }[]) => {
+      const exercise = exercises[0];
+      if (!token || !session || !exercise || addExerciseLockRef.current) return;
+      addExerciseLockRef.current = true;
+      setIsSubmitting(true);
+      try {
+        await addAdHocExercise(token, session.id, exercise.id);
+        setShowAdHocExerciseSelector(false);
+        await loadSession(token, session.id);
+      } catch (error) {
+        console.error("Failed to add ad-hoc exercise:", error);
+        if (error instanceof SessionError && error.code === "CONFLICT") {
+          toast.error("Cet exercice est déjà présent dans la séance");
+        } else {
+          toast.error("Impossible d’ajouter cet exercice");
+        }
+      } finally {
+        addExerciseLockRef.current = false;
+        setIsSubmitting(false);
+      }
+    },
+    [token, session, loadSession]
   );
 
   // Progression suggestion handlers
@@ -476,12 +515,7 @@ export default function SessionPage({ params }: SessionPageProps) {
         const exerciseIds = exercises.map((e) => e.id);
         // Fetch last performance for all exercises in parallel with API call
         await Promise.all([
-          replaceSuperset(
-            token,
-            session.id,
-            firstExercise.workoutItem.id,
-            exerciseIds
-          ),
+          replaceSuperset(token, session.id, firstExercise.workoutItem.id, exerciseIds),
           ...exerciseIds.map((id) => fetchLastPerformance(token, id)),
         ]);
         // Reload session to get updated exercises (cache is already populated)
@@ -500,7 +534,7 @@ export default function SessionPage({ params }: SessionPageProps) {
   if (isLoading || !session) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -530,9 +564,7 @@ export default function SessionPage({ params }: SessionPageProps) {
         if (processedWorkoutItemIds.has(workoutItemId)) continue;
         processedWorkoutItemIds.add(workoutItemId);
 
-        const supersetExercises = remaining.filter(
-          (e) => e.workoutItem?.id === workoutItemId
-        );
+        const supersetExercises = remaining.filter((e) => e.workoutItem?.id === workoutItemId);
 
         // If multiple exercises share the same workoutItemId, it's a superset
         if (supersetExercises.length > 1) {
@@ -670,9 +702,7 @@ export default function SessionPage({ params }: SessionPageProps) {
       ? getLastSessionSet(currentExercise.id, currentSet.setNumber)
       : null;
   const lastNextSetData =
-    currentExercise && nextSet
-      ? getLastSessionSet(currentExercise.id, nextSet.setNumber)
-      : null;
+    currentExercise && nextSet ? getLastSessionSet(currentExercise.id, nextSet.setNumber) : null;
 
   // Check if next exercise is start of a superset (with multiple exercises)
   const isNextExerciseSuperset = () => {
@@ -713,9 +743,7 @@ export default function SessionPage({ params }: SessionPageProps) {
     if (!workoutItem) return null;
 
     // Get all exercises in this superset
-    const supersetExercises = activeExercises.filter(
-      (ex) => ex.workoutItem?.id === workoutItem.id
-    );
+    const supersetExercises = activeExercises.filter((ex) => ex.workoutItem?.id === workoutItem.id);
 
     // Use the number of sets from the first exercise (rounds = sets per exercise)
     const totalSets = supersetExercises[0]?.sets.length || workoutItem.rounds;
@@ -841,6 +869,18 @@ export default function SessionPage({ params }: SessionPageProps) {
           onSkipFirst={handleOverviewSkipFirst}
           onReorder={handleOverviewReorder}
           onSubstituteFirst={handleOverviewSubstitute}
+          isSubmitting={isSubmitting}
+        />
+      );
+    }
+
+    if (currentScreen === "ad-hoc-decision") {
+      const lastExercise = activeExercises[activeExercises.length - 1];
+      return (
+        <AdHocDecisionScreen
+          completedExerciseName={lastExercise?.exercise.name ?? "Exercice"}
+          onAddExercise={() => setShowAdHocExerciseSelector(true)}
+          onFinish={() => useSessionStore.setState({ currentScreen: "summary" })}
           isSubmitting={isSubmitting}
         />
       );
@@ -1071,7 +1111,7 @@ export default function SessionPage({ params }: SessionPageProps) {
       return (
         <SessionSummary
           sessionId={session.id}
-          workoutName={session.workout?.name || "Workout"}
+          workoutName={session.workout?.name || "À la volée"}
           duration={duration}
           exercises={summaryExercises}
           suggestions={suggestions}
@@ -1079,6 +1119,7 @@ export default function SessionPage({ params }: SessionPageProps) {
           onAcceptSuggestion={handleAcceptSuggestion}
           onDismissSuggestion={handleDismissSuggestion}
           isSubmitting={isSubmitting}
+          showAiCoach={session.type !== "ad_hoc"}
         />
       );
     }
@@ -1091,7 +1132,7 @@ export default function SessionPage({ params }: SessionPageProps) {
       {/* Header */}
       {currentScreen !== "summary" && (
         <PageHeader
-          title={session.workout?.name || "Workout"}
+          title={session.workout?.name || "À la volée"}
           actions={
             <Button
               variant="ghost"
@@ -1125,11 +1166,7 @@ export default function SessionPage({ params }: SessionPageProps) {
             >
               Continuer
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleAbandon}
-              className="w-full sm:w-auto"
-            >
+            <Button variant="destructive" onClick={handleAbandon} className="w-full sm:w-auto">
               Abandonner
             </Button>
           </DialogFooter>
@@ -1161,6 +1198,17 @@ export default function SessionPage({ params }: SessionPageProps) {
         footerMessage="1 exercice = standard, 2+ = nouveau superset"
       />
 
+      <ExerciseSelector
+        open={showAdHocExerciseSelector}
+        onOpenChange={setShowAdHocExerciseSelector}
+        mode="single"
+        onSelect={handleAddAdHocExercise}
+        title="Ajouter un exercice"
+        footerMessage="Les objectifs reprennent votre dernière performance."
+        disabledExerciseIds={session?.exercises.map((exercise) => exercise.exerciseId) ?? []}
+        isSubmitting={isSubmitting}
+      />
+
       {/* Overview reorder exercises sheet */}
       <ReorderExercisesScreen
         open={showOverviewReorderScreen}
@@ -1185,7 +1233,6 @@ export default function SessionPage({ params }: SessionPageProps) {
         }
         footerMessage="1 exercice = standard, 2+ = nouveau superset"
       />
-
     </div>
   );
 }

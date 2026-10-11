@@ -40,6 +40,7 @@ interface SessionSummaryProps {
   onAcceptSuggestion: (id: string) => Promise<void>;
   onDismissSuggestion: (id: string) => Promise<void>;
   isSubmitting?: boolean;
+  showAiCoach?: boolean;
 }
 
 export function SessionSummary({
@@ -52,6 +53,7 @@ export function SessionSummary({
   onAcceptSuggestion,
   onDismissSuggestion,
   isSubmitting = false,
+  showAiCoach = true,
 }: SessionSummaryProps) {
   // Local state for modifications (only tracks changes from original values)
   const [modifications, setModifications] = useState<Map<string, { reps: number; weight: number }>>(
@@ -70,7 +72,11 @@ export function SessionSummary({
 
   // Handle local set change
   const handleSetChange = useCallback(
-    (setId: string, originalValue: { reps: number; weight: number }, newValue: { reps: number; weight: number }) => {
+    (
+      setId: string,
+      originalValue: { reps: number; weight: number },
+      newValue: { reps: number; weight: number }
+    ) => {
       setModifications((prev) => {
         const next = new Map(prev);
         // Only track if different from original
@@ -110,9 +116,7 @@ export function SessionSummary({
   }, [modifications, onComplete]);
 
   // Filter to only show exercises with completed sets
-  const completedExercises = exercises.filter((ex) =>
-    ex.sets.some((s) => s.actualReps !== null)
-  );
+  const completedExercises = exercises.filter((ex) => ex.sets.some((s) => s.actualReps !== null));
 
   return (
     <div className="flex flex-col h-full px-4 py-6 overflow-y-auto">
@@ -128,14 +132,15 @@ export function SessionSummary({
           </p>
         </div>
 
-        {/* AI Coach link - always available */}
-        <Link
-          href={`/session/${sessionId}/ai-coach`}
-          className="inline-flex items-center gap-2 text-violet-400 hover:text-violet-300 text-sm font-medium mt-3 transition-colors underline underline-offset-2"
-        >
-          <Brain className="h-4 w-4" />
-          Revue des objectifs avec le coach IA
-        </Link>
+        {showAiCoach && (
+          <Link
+            href={`/session/${sessionId}/ai-coach`}
+            className="inline-flex items-center gap-2 text-violet-400 hover:text-violet-300 text-sm font-medium mt-3 transition-colors underline underline-offset-2"
+          >
+            <Brain className="h-4 w-4" />
+            Revue des objectifs avec le coach IA
+          </Link>
+        )}
       </div>
 
       {/* Exercises recap */}
@@ -155,12 +160,7 @@ export function SessionSummary({
 
       {/* Complete button */}
       <div className="sticky bottom-0 pt-4 bg-linear-to-t from-zinc-950 via-zinc-950/95 to-transparent -mx-4 px-4 pb-2">
-        <Button
-          onClick={handleComplete}
-          disabled={isSubmitting}
-          size="xl"
-          className="w-full"
-        >
+        <Button onClick={handleComplete} disabled={isSubmitting} size="xl" className="w-full">
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <span className="animate-spin h-4 w-4 border-2 border-zinc-900/30 border-t-zinc-900 rounded-full" />
@@ -181,7 +181,11 @@ interface ExerciseRecapProps {
   onAcceptSuggestion: (id: string) => Promise<void>;
   onDismissSuggestion: (id: string) => Promise<void>;
   getSetValue: (set: SummaryExercise["sets"][number]) => { reps: number; weight: number };
-  onSetChange: (setId: string, originalValue: { reps: number; weight: number }, newValue: { reps: number; weight: number }) => void;
+  onSetChange: (
+    setId: string,
+    originalValue: { reps: number; weight: number },
+    newValue: { reps: number; weight: number }
+  ) => void;
 }
 
 function ExerciseRecap({
@@ -205,7 +209,8 @@ function ExerciseRecap({
       <div className="px-4 py-3 border-b border-zinc-800/50">
         <h3 className="font-semibold text-zinc-100">{exercise.name}</h3>
         <p className="text-xs text-zinc-500 mt-0.5">
-          {completedSets.length} série{completedSets.length > 1 ? "s" : ""} complétée{completedSets.length > 1 ? "s" : ""}
+          {completedSets.length} série{completedSets.length > 1 ? "s" : ""} complétée
+          {completedSets.length > 1 ? "s" : ""}
         </p>
       </div>
 

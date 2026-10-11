@@ -47,6 +47,13 @@ interface SessionHistoryData {
   }>;
 }
 
+export class InvalidCoachingProposalError extends Error {
+  constructor() {
+    super("Coaching proposal no longer matches the workout template");
+    this.name = "InvalidCoachingProposalError";
+  }
+}
+
 /**
  * Build context from the last N sessions of the same workout
  */
@@ -84,8 +91,12 @@ export async function buildWorkoutContext(
     },
   });
 
-  if (!currentSession || !currentSession.workout) {
+  if (!currentSession) {
     throw new Error("Session not found");
+  }
+
+  if (currentSession.type === "ad_hoc" || !currentSession.workout || !currentSession.workoutId) {
+    throw new Error("AI coaching requires a planned workout session");
   }
 
   // Ensure progression suggestions are generated for this session (idempotent)
@@ -146,22 +157,20 @@ export async function buildWorkoutContext(
   };
 
   // Format historical sessions
-  const formattedHistorySessions: SessionHistoryData[] = historySessions.map(
-    (session) => ({
-      sessionDate: session.completedAt?.toISOString().split("T")[0] ?? "unknown",
-      exercises: session.exercises.map((ex) => ({
-        exerciseId: ex.exerciseId,
-        exerciseName: ex.exercise.name,
-        sets: ex.sets.map((set) => ({
-          setNumber: set.setNumber,
-          targetReps: set.targetReps,
-          targetWeight: set.targetWeight,
-          actualReps: set.actualReps,
-          actualWeight: set.actualWeight,
-        })),
+  const formattedHistorySessions: SessionHistoryData[] = historySessions.map((session) => ({
+    sessionDate: session.completedAt?.toISOString().split("T")[0] ?? "unknown",
+    exercises: session.exercises.map((ex) => ({
+      exerciseId: ex.exerciseId,
+      exerciseName: ex.exercise.name,
+      sets: ex.sets.map((set) => ({
+        setNumber: set.setNumber,
+        targetReps: set.targetReps,
+        targetWeight: set.targetWeight,
+        actualReps: set.actualReps,
+        actualWeight: set.actualWeight,
       })),
-    })
-  );
+    })),
+  }));
 
   return {
     workoutId: currentSession.workoutId,
@@ -175,9 +184,7 @@ export async function buildWorkoutContext(
 /**
  * Generate AI coaching advice - AI decides autonomously if changes are needed
  */
-export async function generateCoachingAdvice(
-  sessionId: string
-): Promise<AICoachingResponse> {
+export async function generateCoachingAdvice(sessionId: string): Promise<AICoachingResponse> {
   const context = await buildWorkoutContext(sessionId);
 
   // Build the prompt context with ALL exercises and their history
@@ -185,9 +192,7 @@ export async function generateCoachingAdvice(
     // Get history for this exercise
     const history = context.historySessions
       .map((session) => {
-        const historyEx = session.exercises.find(
-          (e) => e.exerciseId === ex.exerciseId
-        );
+        const historyEx = session.exercises.find((e) => e.exerciseId === ex.exerciseId);
         if (!historyEx) return null;
         return {
           date: session.sessionDate,
@@ -301,15 +306,11 @@ Analyse ces exercices et décide toi-même lesquels nécessitent des ajustements
 
     // Map to our response format, adding current values
     const proposals: AIProposal[] = parsed.proposals.map((p) => {
-      const currentEx = context.currentSession.exercises.find(
-        (e) => e.exerciseId === p.exerciseId
-      );
+      const currentEx = context.currentSession.exercises.find((e) => e.exerciseId === p.exerciseId);
 
       // Map sets with current values
       const sets: AIProposalSet[] = p.sets.map((suggestedSet) => {
-        const currentSet = currentEx?.sets.find(
-          (s) => s.setNumber === suggestedSet.setNumber
-        );
+        const currentSet = currentEx?.sets.find((s) => s.setNumber === suggestedSet.setNumber);
         return {
           setNumber: suggestedSet.setNumber,
           currentReps: currentSet?.targetReps ?? 10,
@@ -354,7 +355,7 @@ export async function applyCoachingProposals(
       targetWeight: number | null;
     }>;
   }>
-): Promise<void> {
+): Promise<number> {
   // Get the session to find the workout
   const session = await prisma.workoutSession.findUnique({
     where: { id: sessionId },
@@ -375,30 +376,57 @@ export async function applyCoachingProposals(
     throw new Error("Session not found");
   }
 
-  // Update each set individually
-  for (const proposal of proposals) {
-    const sessionExercise = session.exercises.find(
-      (e) => e.exerciseId === proposal.exerciseId
-    );
+  if (session.type === "ad_hoc" || !session.workoutId) {
+    throw new Error("AI coaching requires a planned workout session");
+  }
 
-    if (sessionExercise?.workoutItemExercise) {
-      const templateSets = sessionExercise.workoutItemExercise.sets;
+  return prisma.$transaction(async (tx) => {
+    let appliedCount = 0;
+    const proposedExerciseIds = new Set<string>();
 
+    for (const proposal of proposals) {
+      if (proposedExerciseIds.has(proposal.exerciseId)) {
+        throw new InvalidCoachingProposalError();
+      }
+      proposedExerciseIds.add(proposal.exerciseId);
+
+      const matchingExercises = session.exercises.filter(
+        (exercise) =>
+          exercise.exerciseId === proposal.exerciseId &&
+          exercise.status !== "skipped" &&
+          exercise.status !== "substituted"
+      );
+      const sessionExercise = matchingExercises[0];
+
+      if (matchingExercises.length !== 1 || !sessionExercise?.workoutItemExercise) {
+        throw new InvalidCoachingProposalError();
+      }
+
+      const setNumbers = new Set<number>();
       for (const setProposal of proposal.sets) {
-        const templateSet = templateSets.find(
-          (s) => s.setNumber === setProposal.setNumber
-        );
-
-        if (templateSet) {
-          await prisma.workoutSet.update({
-            where: { id: templateSet.id },
-            data: {
-              targetReps: setProposal.targetReps,
-              targetWeight: setProposal.targetWeight,
-            },
-          });
+        if (setNumbers.has(setProposal.setNumber)) {
+          throw new InvalidCoachingProposalError();
         }
+        setNumbers.add(setProposal.setNumber);
+
+        const templateSet = sessionExercise.workoutItemExercise.sets.find(
+          (set) => set.setNumber === setProposal.setNumber
+        );
+        if (!templateSet) {
+          throw new InvalidCoachingProposalError();
+        }
+
+        await tx.workoutSet.update({
+          where: { id: templateSet.id },
+          data: {
+            targetReps: setProposal.targetReps,
+            targetWeight: setProposal.targetWeight,
+          },
+        });
+        appliedCount += 1;
       }
     }
-  }
+
+    return appliedCount;
+  });
 }

@@ -4,6 +4,7 @@ import { authMiddleware, AuthRequest } from "../middleware/auth.middleware.js";
 import {
   updateProfileSchema,
   changePasswordSchema,
+  updatePreferencesSchema,
 } from "../schemas/profile.schema.js";
 import { hashPassword, comparePassword } from "../services/auth.service.js";
 import { ZodError } from "zod";
@@ -114,6 +115,57 @@ router.patch("/", async (req: AuthRequest, res: Response) => {
   }
 });
 
+// GET /profile/preferences - Get application preferences
+router.get("/preferences", async (req: AuthRequest, res: Response) => {
+  try {
+    const preferences = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { accentColor: true },
+    });
+
+    if (!preferences) {
+      return res.status(404).json({
+        error: { code: ErrorCodes.USER_NOT_FOUND, message: "User not found" },
+      });
+    }
+
+    return res.json(preferences);
+  } catch (error) {
+    console.error("Get preferences error:", error);
+    return res.status(500).json({
+      error: { code: ErrorCodes.INTERNAL_ERROR, message: "An unexpected error occurred" },
+    });
+  }
+});
+
+// PATCH /profile/preferences - Update application preferences
+router.patch("/preferences", async (req: AuthRequest, res: Response) => {
+  try {
+    const data = updatePreferencesSchema.parse(req.body);
+    const preferences = await prisma.user.update({
+      where: { id: req.userId },
+      data: { accentColor: data.accentColor },
+      select: { accentColor: true },
+    });
+
+    return res.json(preferences);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        error: {
+          code: ErrorCodes.VALIDATION_ERROR,
+          message: "Validation failed",
+          details: formatZodError(error),
+        },
+      });
+    }
+    console.error("Update preferences error:", error);
+    return res.status(500).json({
+      error: { code: ErrorCodes.INTERNAL_ERROR, message: "An unexpected error occurred" },
+    });
+  }
+});
+
 // PUT /profile/password - Change password
 router.put("/password", async (req: AuthRequest, res: Response) => {
   try {
@@ -134,10 +186,7 @@ router.put("/password", async (req: AuthRequest, res: Response) => {
     }
 
     // Verify current password
-    const isValidPassword = await comparePassword(
-      data.currentPassword,
-      user.passwordHash
-    );
+    const isValidPassword = await comparePassword(data.currentPassword, user.passwordHash);
 
     if (!isValidPassword) {
       return res.status(400).json({

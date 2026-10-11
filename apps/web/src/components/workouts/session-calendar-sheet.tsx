@@ -91,23 +91,18 @@ function groupSessionsByDate(sessions: EnrichedSession[]): Map<string, EnrichedS
   return grouped;
 }
 
-/**
- * Extracts muscle groups from a workout, sorted by frequency
- */
-function extractMuscleGroups(workout: Workout | null): MuscleGroup[] {
-  if (!workout) return [];
-
-  const allMuscleGroups = workout.items.flatMap((item) =>
-    item.exercises.flatMap((ex) => ex.exercise.muscleGroups)
-  );
-  const muscleGroupCounts = allMuscleGroups.reduce(
-    (acc, group) => {
-      acc[group] = (acc[group] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-  return Object.entries(muscleGroupCounts)
+function extractSessionMuscleGroups(session: SessionListItem): MuscleGroup[] {
+  const counts = session.exercises
+    .filter((item) => item.status === "completed")
+    .flatMap((item) => item.exercise.muscleGroups)
+    .reduce(
+      (acc, group) => {
+        acc[group] = (acc[group] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+  return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .map(([group]) => group as MuscleGroup);
 }
@@ -116,9 +111,7 @@ function extractMuscleGroups(workout: Workout | null): MuscleGroup[] {
  * Counts exercises that were actually performed in the session
  */
 function countPerformedExercises(session: SessionListItem): number {
-  return session.exercises.filter(
-    (ex) => ex.status !== "skipped" && ex.status !== "substituted"
-  ).length;
+  return session.exercises.filter((exercise) => exercise.status === "completed").length;
 }
 
 /**
@@ -126,8 +119,8 @@ function countPerformedExercises(session: SessionListItem): number {
  */
 function sessionToWorkoutLike(session: EnrichedSession): Workout {
   return {
-    id: session.workout.id,
-    name: session.workout.name,
+    id: session.workout?.id || session.id,
+    name: session.workout?.name || "À la volée",
     description: null,
     lastCompletedAt: session.completedAt,
     items: session.workoutData?.items || [],
@@ -256,7 +249,7 @@ export function SessionCalendarSheet({ open, onOpenChange }: SessionCalendarShee
       // Enrich sessions with workout data
       const enrichedSessions: EnrichedSession[] = result.data.map((session) => ({
         ...session,
-        workoutData: workouts.get(session.workoutId) || null,
+        workoutData: session.workoutId ? workouts.get(session.workoutId) || null : null,
       }));
 
       setSessions(enrichedSessions);
@@ -395,167 +388,163 @@ export function SessionCalendarSheet({ open, onOpenChange }: SessionCalendarShee
 
   return (
     <>
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-h-[85vh] flex flex-col">
-        <SheetHeader className="shrink-0">
-          <SheetTitle>Statistiques des séances</SheetTitle>
-          <SheetDescription>
-            Visualisez vos entrainements passés
-          </SheetDescription>
-        </SheetHeader>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="max-h-[85vh] flex flex-col">
+          <SheetHeader className="shrink-0">
+            <SheetTitle>Statistiques des séances</SheetTitle>
+            <SheetDescription>Visualisez vos entrainements passés</SheetDescription>
+          </SheetHeader>
 
-        <div className="mt-4 flex-1 overflow-y-auto scrollbar-thin">
-          {/* Month navigation */}
-          <div className="flex items-center justify-between mb-4">
-            <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <h3 className="text-lg font-semibold">
-              {MONTHS_FR[month]} {year}
-            </h3>
-            <Button variant="ghost" size="icon" onClick={handleNextMonth}>
-              <ChevronRight className="h-5 w-5" />
-            </Button>
-          </div>
+          <div className="mt-4 flex-1 overflow-y-auto scrollbar-thin">
+            {/* Month navigation */}
+            <div className="flex items-center justify-between mb-4">
+              <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <h3 className="text-lg font-semibold">
+                {MONTHS_FR[month]} {year}
+              </h3>
+              <Button variant="ghost" size="icon" onClick={handleNextMonth}>
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 mb-5">
-            <StatItem
-              title="Ce mois-ci"
-              period={MONTHS_FR[month]?.toLowerCase() ?? ""}
-              value={monthStats.current}
-              diff={monthDiff}
-              isLoading={statsLoading}
-            />
-            <StatItem
-              title="Cette année"
-              period={String(year)}
-              value={yearStats.current}
-              diff={yearDiff}
-              isLoading={statsLoading}
-            />
-          </div>
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4 mb-5">
+              <StatItem
+                title="Ce mois-ci"
+                period={MONTHS_FR[month]?.toLowerCase() ?? ""}
+                value={monthStats.current}
+                diff={monthDiff}
+                isLoading={statsLoading}
+              />
+              <StatItem
+                title="Cette année"
+                period={String(year)}
+                value={yearStats.current}
+                diff={yearDiff}
+                isLoading={statsLoading}
+              />
+            </div>
 
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {WEEKDAYS.map((day, i) => (
-              <div
-                key={i}
-                className="text-center text-xs font-medium text-muted-foreground py-2"
-              >
-                {day}
-              </div>
-            ))}
-          </div>
-
-          {/* Calendar grid */}
-          {isLoading ? (
-            <div className="grid grid-cols-7 gap-1">
-              {Array.from({ length: 35 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="aspect-square rounded-lg bg-zinc-900/40 animate-pulse"
-                />
+            {/* Weekday headers */}
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {WEEKDAYS.map((day, i) => (
+                <div key={i} className="text-center text-xs font-medium text-muted-foreground py-2">
+                  {day}
+                </div>
               ))}
             </div>
-          ) : (
-            <div className="grid grid-cols-7 gap-1">
-              {calendarDays.map(({ day, isCurrentMonth, dateKey }, index) => {
-                const daySessions = sessionsByDate.get(dateKey) || [];
-                const hasSession = daySessions.length > 0;
-                const isToday = dateKey === todayKey;
-                const isSelected = dateKey === selectedDay;
 
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleDayClick(dateKey, isCurrentMonth)}
-                    disabled={!isCurrentMonth}
-                    className={cn(
-                      "aspect-square rounded-lg border border-zinc-800/60 p-1 flex flex-col items-center transition-colors",
-                      isCurrentMonth
-                        ? "bg-zinc-900/40 cursor-pointer hover:border-zinc-600 hover:bg-zinc-800/60"
-                        : "bg-zinc-950/20 opacity-40",
-                      isToday && "border-primary/50",
-                      isSelected && "border-primary bg-zinc-800/80"
-                    )}
-                  >
-                    {/* Day number */}
-                    <span
+            {/* Calendar grid */}
+            {isLoading ? (
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: 35 }).map((_, i) => (
+                  <div key={i} className="aspect-square rounded-lg bg-zinc-900/40 animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-7 gap-1">
+                {calendarDays.map(({ day, isCurrentMonth, dateKey }, index) => {
+                  const daySessions = sessionsByDate.get(dateKey) || [];
+                  const hasSession = daySessions.length > 0;
+                  const isToday = dateKey === todayKey;
+                  const isSelected = dateKey === selectedDay;
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleDayClick(dateKey, isCurrentMonth)}
+                      disabled={!isCurrentMonth}
                       className={cn(
-                        "text-xs font-medium",
-                        isCurrentMonth ? "text-zinc-300" : "text-zinc-600",
-                        isToday && "text-primary"
+                        "aspect-square rounded-lg border border-zinc-800/60 p-1 flex flex-col items-center transition-colors",
+                        isCurrentMonth
+                          ? "bg-zinc-900/40 cursor-pointer hover:border-zinc-600 hover:bg-zinc-800/60"
+                          : "bg-zinc-950/20 opacity-40",
+                        isToday && "border-primary/50",
+                        isSelected && "border-primary bg-zinc-800/80"
                       )}
                     >
-                      {day}
-                    </span>
+                      {/* Day number */}
+                      <span
+                        className={cn(
+                          "text-xs font-medium",
+                          isCurrentMonth ? "text-zinc-300" : "text-zinc-600",
+                          isToday && "text-primary"
+                        )}
+                      >
+                        {day}
+                      </span>
 
-                    {/* Session dots */}
-                    {hasSession && (
-                      <div className="flex-1 flex items-center justify-center">
-                        <SessionDots count={daySessions.length} />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                      {/* Session dots */}
+                      {hasSession && (
+                        <div className="flex-1 flex items-center justify-center">
+                          <SessionDots count={daySessions.length} />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
-          {/* Selected day sessions list */}
-          {selectedDay && (
-            <div className="mt-4 pt-4 border-t border-zinc-800">
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                {formatSelectedDate(selectedDay)}
-                {selectedDaySessions.length > 0 && (
-                  <> - {selectedDaySessions.length} séance{selectedDaySessions.length > 1 ? "s" : ""}</>
+            {/* Selected day sessions list */}
+            {selectedDay && (
+              <div className="mt-4 pt-4 border-t border-zinc-800">
+                <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                  {formatSelectedDate(selectedDay)}
+                  {selectedDaySessions.length > 0 && (
+                    <>
+                      {" "}
+                      - {selectedDaySessions.length} séance
+                      {selectedDaySessions.length > 1 ? "s" : ""}
+                    </>
+                  )}
+                </h4>
+                {selectedDaySessions.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedDaySessions.map((session) => (
+                      <WorkoutCard
+                        key={session.id}
+                        workout={sessionToWorkoutLike(session)}
+                        variant="history"
+                        completedExerciseCount={countPerformedExercises(session)}
+                        sessionDate={session.completedAt}
+                        overrideMuscleGroups={extractSessionMuscleGroups(session)}
+                        onEdit={() => handleSessionClick(session)}
+                        onDelete={() => handleDeleteClick(session)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucune séance</p>
                 )}
-              </h4>
-              {selectedDaySessions.length > 0 ? (
-                <div className="space-y-3">
-                  {selectedDaySessions.map((session) => (
-                    <WorkoutCard
-                      key={session.id}
-                      workout={sessionToWorkoutLike(session)}
-                      variant="history"
-                      completedExerciseCount={countPerformedExercises(session)}
-                      sessionDate={session.completedAt}
-                      overrideMuscleGroups={extractMuscleGroups(session.workoutData)}
-                      onEdit={() => handleSessionClick(session)}
-                      onDelete={() => handleDeleteClick(session)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Aucune séance</p>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* Legend */}
-          <div className="mt-4 pt-4 border-t border-zinc-800">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="h-2 w-2 rounded-full bg-white" />
-              <span>Séance terminée</span>
+            {/* Legend */}
+            <div className="mt-4 pt-4 border-t border-zinc-800">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="h-2 w-2 rounded-full bg-white" />
+                <span>Séance terminée</span>
+              </div>
             </div>
           </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+        </SheetContent>
+      </Sheet>
 
-    {/* Delete confirmation dialog */}
-    <ConfirmDeleteDialog
-      open={!!deletingSession}
-      onOpenChange={(open) => {
-        if (!open) setDeletingSession(null);
-      }}
-      title="Supprimer cette séance"
-      description="Cette action est irréversible. Les données de cette séance seront définitivement supprimées."
-      onConfirm={handleDeleteConfirm}
-      isDeleting={isDeleting}
-    />
-  </>
+      {/* Delete confirmation dialog */}
+      <ConfirmDeleteDialog
+        open={!!deletingSession}
+        onOpenChange={(open) => {
+          if (!open) setDeletingSession(null);
+        }}
+        title="Supprimer cette séance"
+        description="Cette action est irréversible. Les données de cette séance seront définitivement supprimées."
+        onConfirm={handleDeleteConfirm}
+        isDeleting={isDeleting}
+      />
+    </>
   );
 }
 
@@ -570,15 +559,10 @@ function SessionDots({ count }: { count: number }) {
   return (
     <div className="flex flex-wrap gap-0.5 justify-center items-center max-w-[calc(100%-4px)]">
       {Array.from({ length: displayCount }).map((_, i) => (
-        <div
-          key={i}
-          className="h-1.5 w-1.5 rounded-full bg-white shrink-0"
-        />
+        <div key={i} className="h-1.5 w-1.5 rounded-full bg-white shrink-0" />
       ))}
       {showOverflow && (
-        <span className="text-[8px] font-medium text-zinc-400 ml-0.5">
-          +{count - displayCount}
-        </span>
+        <span className="text-[8px] font-medium text-zinc-400 ml-0.5">+{count - displayCount}</span>
       )}
     </div>
   );
@@ -637,18 +621,12 @@ function StatItem({
     <div className="space-y-0.5 text-center">
       {/* Title + period */}
       <div className="flex items-baseline justify-center gap-1.5">
-        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
-          {title}
-        </span>
-        <span className="text-xs text-zinc-600">
-          {period}
-        </span>
+        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">{title}</span>
+        <span className="text-xs text-zinc-600">{period}</span>
       </div>
 
       {/* Value - hero element */}
-      <div className="text-3xl font-bold tracking-tight text-zinc-100 tabular-nums">
-        {value}
-      </div>
+      <div className="text-3xl font-bold tracking-tight text-zinc-100 tabular-nums">{value}</div>
 
       {/* Trend indicator */}
       <div className="flex items-center justify-center gap-1.5">
@@ -663,7 +641,10 @@ function StatItem({
           {isPositive && <TrendingUp className="h-3 w-3" />}
           {isNegative && <TrendingDown className="h-3 w-3" />}
           {!isPositive && !isNegative && <Minus className="h-3 w-3" />}
-          <span>{isPositive ? "+" : ""}{diff}</span>
+          <span>
+            {isPositive ? "+" : ""}
+            {diff}
+          </span>
         </div>
         <span className="text-[10px] text-zinc-600">
           vs {title === "Ce mois-ci" ? "mois préc." : "année préc."}
@@ -672,4 +653,3 @@ function StatItem({
     </div>
   );
 }
-

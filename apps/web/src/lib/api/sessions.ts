@@ -2,7 +2,13 @@ const API_URL = "/backend";
 
 // Types matching the backend schema
 export type SessionStatus = "in_progress" | "completed" | "abandoned";
-export type SessionExerciseStatus = "pending" | "in_progress" | "completed" | "skipped" | "substituted";
+export type SessionExerciseStatus =
+  | "pending"
+  | "in_progress"
+  | "completed"
+  | "skipped"
+  | "substituted";
+export type SessionType = "planned" | "ad_hoc";
 
 export interface SessionSet {
   id: string;
@@ -41,12 +47,13 @@ export interface SessionExercise {
 
 export interface WorkoutSession {
   id: string;
-  workoutId: string;
+  workoutId: string | null;
   workout: {
     id: string;
     name: string;
     description: string | null;
-  };
+  } | null;
+  type: SessionType;
   status: SessionStatus;
   startedAt: string;
   completedAt: string | null;
@@ -56,16 +63,21 @@ export interface WorkoutSession {
 
 export interface SessionListItem {
   id: string;
-  workoutId: string;
+  workoutId: string | null;
   workout: {
     id: string;
     name: string;
-  };
+  } | null;
+  type: SessionType;
   status: SessionStatus;
   startedAt: string;
   completedAt: string | null;
   notes: string | null;
-  exercises: { id: string; status: SessionExerciseStatus }[];
+  exercises: Array<{
+    id: string;
+    status: SessionExerciseStatus;
+    exercise: { id: string; name: string; muscleGroups: string[] };
+  }>;
 }
 
 export interface SessionListResponse {
@@ -129,10 +141,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 // Session endpoints
-export async function startSession(
-  token: string,
-  workoutId: string
-): Promise<SessionResponse> {
+export async function startSession(token: string, workoutId: string): Promise<SessionResponse> {
   const response = await fetch(`${API_URL}/sessions`, {
     method: "POST",
     headers: {
@@ -145,10 +154,23 @@ export async function startSession(
   return handleResponse<SessionResponse>(response);
 }
 
-export async function getSession(
+export async function startAdHocSession(
   token: string,
-  id: string
+  exerciseId: string
 ): Promise<SessionResponse> {
+  const response = await fetch(`${API_URL}/sessions/ad-hoc`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ exerciseId }),
+  });
+
+  return handleResponse<SessionResponse>(response);
+}
+
+export async function getSession(token: string, id: string): Promise<SessionResponse> {
   const response = await fetch(`${API_URL}/sessions/${id}`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -158,9 +180,7 @@ export async function getSession(
   return handleResponse<SessionResponse>(response);
 }
 
-export async function getActiveSession(
-  token: string
-): Promise<{ data: WorkoutSession | null }> {
+export async function getActiveSession(token: string): Promise<{ data: WorkoutSession | null }> {
   const response = await fetch(`${API_URL}/sessions/active`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -243,6 +263,23 @@ export async function deleteSession(token: string, id: string): Promise<void> {
 }
 
 // Exercise endpoints
+export async function addAdHocExercise(
+  token: string,
+  sessionId: string,
+  exerciseId: string
+): Promise<{ data: SessionExercise }> {
+  const response = await fetch(`${API_URL}/sessions/${sessionId}/exercises`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ exerciseId }),
+  });
+
+  return handleResponse<{ data: SessionExercise }>(response);
+}
+
 export async function skipExercise(
   token: string,
   sessionId: string,
@@ -266,14 +303,17 @@ export async function substituteExercise(
   exerciseId: string,
   newExerciseId: string
 ): Promise<{ data: SessionExercise }> {
-  const response = await fetch(`${API_URL}/sessions/${sessionId}/exercises/${exerciseId}/substitute`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ newExerciseId }),
-  });
+  const response = await fetch(
+    `${API_URL}/sessions/${sessionId}/exercises/${exerciseId}/substitute`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ newExerciseId }),
+    }
+  );
 
   return handleResponse<{ data: SessionExercise }>(response);
 }
@@ -301,14 +341,17 @@ export async function replaceSuperset(
   workoutItemId: string,
   exerciseIds: string[]
 ): Promise<{ data: SessionExercise[] }> {
-  const response = await fetch(`${API_URL}/sessions/${sessionId}/superset/${workoutItemId}/replace`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ exerciseIds }),
-  });
+  const response = await fetch(
+    `${API_URL}/sessions/${sessionId}/superset/${workoutItemId}/replace`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ exerciseIds }),
+    }
+  );
 
   return handleResponse<{ data: SessionExercise[] }>(response);
 }
@@ -359,11 +402,7 @@ export async function updateSet(
   return handleResponse<{ data: SessionSet }>(response);
 }
 
-export async function deleteSet(
-  token: string,
-  sessionId: string,
-  setId: string
-): Promise<void> {
+export async function deleteSet(token: string, sessionId: string, setId: string): Promise<void> {
   const response = await fetch(`${API_URL}/sessions/${sessionId}/sets/${setId}`, {
     method: "DELETE",
     headers: {

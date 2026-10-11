@@ -123,7 +123,7 @@
   --destructive-foreground: hsl(0 0% 98%);
   --border: hsl(0 0% 15%);
   --input: hsl(0 0% 15%);
-  --ring: hsl(217 91% 60%);
+  --ring: var(--primary);
   --radius: 0.5rem;
 
   /* Custom accent colors */
@@ -153,7 +153,7 @@
   --destructive-foreground: hsl(0 0% 98%);
   --border: hsl(0 0% 15%);
   --input: hsl(0 0% 15%);
-  --ring: hsl(217 91% 60%);
+  --ring: var(--primary);
 }
 
 @layer base {

@@ -4,6 +4,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  accentColor: string;
 }
 
 export interface AuthResponse {
@@ -24,11 +25,7 @@ class AuthError extends Error {
   code: string;
   details?: Array<{ field: string; message: string }>;
 
-  constructor(
-    message: string,
-    code: string,
-    details?: Array<{ field: string; message: string }>
-  ) {
+  constructor(message: string, code: string, details?: Array<{ field: string; message: string }>) {
     super(message);
     this.code = code;
     this.details = details;
@@ -41,11 +38,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
   if (!response.ok) {
     const errorData = data as ApiError;
-    throw new AuthError(
-      errorData.error.message,
-      errorData.error.code,
-      errorData.error.details
-    );
+    throw new AuthError(errorData.error.message, errorData.error.code, errorData.error.details);
   }
 
   return data as T;
@@ -114,7 +107,7 @@ export async function resetPassword(token: string, password: string): Promise<vo
   });
 
   if (!response.ok) {
-    const data = await response.json() as ApiError;
+    const data = (await response.json()) as ApiError;
     throw new AuthError(data.error.message, data.error.code, data.error.details);
   }
 }

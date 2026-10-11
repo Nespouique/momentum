@@ -40,7 +40,7 @@ export interface ExerciseLastPerformance {
   workout: {
     id: string;
     name: string;
-  };
+  } | null;
   sets: Array<{
     setNumber: number;
     actualReps: number | null;
@@ -61,11 +61,7 @@ export class ExerciseError extends Error {
   code: string;
   details?: Array<{ field: string; message: string }>;
 
-  constructor(
-    message: string,
-    code: string,
-    details?: Array<{ field: string; message: string }>
-  ) {
+  constructor(message: string, code: string, details?: Array<{ field: string; message: string }>) {
     super(message);
     this.code = code;
     this.details = details;
@@ -82,11 +78,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
   if (!response.ok) {
     const errorData = data as ApiError;
-    throw new ExerciseError(
-      errorData.error.message,
-      errorData.error.code,
-      errorData.error.details
-    );
+    throw new ExerciseError(errorData.error.message, errorData.error.code, errorData.error.details);
   }
 
   return data as T;
@@ -116,10 +108,7 @@ export async function getExercises(
   return handleResponse<ExerciseListResponse>(response);
 }
 
-export async function getExercise(
-  token: string,
-  id: string
-): Promise<Exercise> {
+export async function getExercise(token: string, id: string): Promise<Exercise> {
   const response = await fetch(`${API_URL}/exercises/${id}`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -134,10 +123,7 @@ export async function getMuscleGroups(): Promise<MuscleGroupsResponse> {
   return handleResponse<MuscleGroupsResponse>(response);
 }
 
-export async function createExercise(
-  token: string,
-  data: CreateExerciseInput
-): Promise<Exercise> {
+export async function createExercise(token: string, data: CreateExerciseInput): Promise<Exercise> {
   const response = await fetch(`${API_URL}/exercises`, {
     method: "POST",
     headers: {
@@ -167,10 +153,7 @@ export async function updateExercise(
   return handleResponse<Exercise>(response);
 }
 
-export async function deleteExercise(
-  token: string,
-  id: string
-): Promise<void> {
+export async function deleteExercise(token: string, id: string): Promise<void> {
   const response = await fetch(`${API_URL}/exercises/${id}`, {
     method: "DELETE",
     headers: {
@@ -202,9 +185,7 @@ export interface ExerciseStatsResponse {
   data: PracticedExercise[];
 }
 
-export async function getExerciseStats(
-  token: string
-): Promise<ExerciseStatsResponse> {
+export async function getExerciseStats(token: string): Promise<ExerciseStatsResponse> {
   const response = await fetch(`${API_URL}/exercises/stats`, {
     headers: {
       Authorization: `Bearer ${token}`,

@@ -34,9 +34,16 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, birthDate?: string, height?: number | null) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    birthDate?: string,
+    height?: number | null
+  ) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;
+  updateUser: (patch: Partial<User>) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -63,7 +70,13 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      register: async (name: string, email: string, password: string, birthDate?: string, height?: number | null) => {
+      register: async (
+        name: string,
+        email: string,
+        password: string,
+        birthDate?: string,
+        height?: number | null
+      ) => {
         set({ isLoading: true });
         try {
           const response = await apiRegister(name, email, password, birthDate, height);
@@ -111,6 +124,12 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
         }
+      },
+
+      updateUser: (patch: Partial<User>) => {
+        set((state) => ({
+          user: state.user ? { ...state.user, ...patch } : null,
+        }));
       },
     }),
     {

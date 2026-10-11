@@ -5,6 +5,7 @@ import { applyCoachingSchema } from "../schemas/ai-coaching.schema.js";
 import {
   generateCoachingAdvice,
   applyCoachingProposals,
+  InvalidCoachingProposalError,
 } from "../services/ai-coaching.service.js";
 import { ZodError } from "zod";
 
@@ -14,6 +15,7 @@ const router = Router();
 const ErrorCodes = {
   VALIDATION_ERROR: "VALIDATION_ERROR",
   NOT_FOUND: "NOT_FOUND",
+  AI_COACHING_NOT_AVAILABLE: "AI_COACHING_NOT_AVAILABLE",
   SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
   INTERNAL_ERROR: "INTERNAL_ERROR",
 } as const;
@@ -34,16 +36,6 @@ router.post("/:id/ai-coaching", async (req: AuthRequest, res: Response) => {
     const sessionId = req.params["id"] as string;
     const userId = req.userId!;
 
-    // Check if OpenAI API key is configured
-    if (!process.env["OPENAI_API_KEY"]) {
-      return res.status(503).json({
-        error: {
-          code: ErrorCodes.SERVICE_UNAVAILABLE,
-          message: "AI coaching is not available",
-        },
-      });
-    }
-
     // Verify session exists and belongs to user
     const session = await prisma.workoutSession.findFirst({
       where: { id: sessionId, userId },
@@ -58,6 +50,25 @@ router.post("/:id/ai-coaching", async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (session.type === "ad_hoc" || !session.workoutId) {
+      return res.status(409).json({
+        error: {
+          code: ErrorCodes.AI_COACHING_NOT_AVAILABLE,
+          message: "AI coaching requires a planned workout session",
+        },
+      });
+    }
+
+    // Check if OpenAI API key is configured
+    if (!process.env["OPENAI_API_KEY"]) {
+      return res.status(503).json({
+        error: {
+          code: ErrorCodes.SERVICE_UNAVAILABLE,
+          message: "AI coaching is not available",
+        },
+      });
+    }
+
     // Generate coaching advice
     const advice = await generateCoachingAdvice(sessionId);
 
@@ -67,10 +78,7 @@ router.post("/:id/ai-coaching", async (req: AuthRequest, res: Response) => {
     return res.status(500).json({
       error: {
         code: ErrorCodes.INTERNAL_ERROR,
-        message:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
+        message: error instanceof Error ? error.message : "An unexpected error occurred",
       },
     });
   }
@@ -97,13 +105,22 @@ router.post("/:id/apply-coaching", async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (session.type === "ad_hoc" || !session.workoutId) {
+      return res.status(409).json({
+        error: {
+          code: ErrorCodes.AI_COACHING_NOT_AVAILABLE,
+          message: "AI coaching requires a planned workout session",
+        },
+      });
+    }
+
     // Apply the proposals
-    await applyCoachingProposals(sessionId, data.proposals);
+    const appliedCount = await applyCoachingProposals(sessionId, data.proposals);
 
     return res.json({
       data: {
         success: true,
-        appliedCount: data.proposals.length,
+        appliedCount,
       },
     });
   } catch (error) {
@@ -116,14 +133,19 @@ router.post("/:id/apply-coaching", async (req: AuthRequest, res: Response) => {
         },
       });
     }
+    if (error instanceof InvalidCoachingProposalError) {
+      return res.status(409).json({
+        error: {
+          code: ErrorCodes.VALIDATION_ERROR,
+          message: error.message,
+        },
+      });
+    }
     console.error("Apply AI coaching error:", error);
     return res.status(500).json({
       error: {
         code: ErrorCodes.INTERNAL_ERROR,
-        message:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
+        message: error instanceof Error ? error.message : "An unexpected error occurred",
       },
     });
   }

@@ -1,12 +1,7 @@
 "use client";
 
 import { Dumbbell, Repeat } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 interface AddItemDialogProps {
@@ -40,12 +35,12 @@ export function AddItemDialog({
               "flex items-center gap-4 p-4 rounded-xl",
               "border border-zinc-800 bg-zinc-900/50",
               "transition-all duration-200",
-              "hover:border-orange-500/50 hover:bg-orange-500/10",
+              "hover:border-primary/50 hover:bg-primary/10",
               "text-left"
             )}
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-500/20">
-              <Dumbbell className="h-5 w-5 text-orange-400" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20">
+              <Dumbbell className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h3 className="font-semibold">Exercice simple</h3>

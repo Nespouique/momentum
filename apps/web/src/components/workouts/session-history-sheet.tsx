@@ -13,11 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { WorkoutCard } from "./workout-card";
 import { useAuthStore } from "@/stores/auth";
-import {
-  getSessions,
-  deleteSession,
-  type SessionListItem,
-} from "@/lib/api/sessions";
+import { getSessions, deleteSession, type SessionListItem } from "@/lib/api/sessions";
 import { getWorkouts, type Workout } from "@/lib/api/workouts";
 import { type MuscleGroup } from "@/lib/constants/muscle-groups";
 import { toast } from "sonner";
@@ -33,23 +29,18 @@ interface EnrichedSession extends SessionListItem {
   workoutData: Workout | null;
 }
 
-/**
- * Extracts muscle groups from a workout, sorted by frequency
- */
-function extractMuscleGroups(workout: Workout | null): MuscleGroup[] {
-  if (!workout) return [];
-
-  const allMuscleGroups = workout.items.flatMap((item) =>
-    item.exercises.flatMap((ex) => ex.exercise.muscleGroups)
-  );
-  const muscleGroupCounts = allMuscleGroups.reduce(
-    (acc, group) => {
-      acc[group] = (acc[group] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-  return Object.entries(muscleGroupCounts)
+function extractSessionMuscleGroups(session: SessionListItem): MuscleGroup[] {
+  const counts = session.exercises
+    .filter((item) => item.status === "completed")
+    .flatMap((item) => item.exercise.muscleGroups)
+    .reduce(
+      (acc, group) => {
+        acc[group] = (acc[group] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+  return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .map(([group]) => group as MuscleGroup);
 }
@@ -59,9 +50,7 @@ function extractMuscleGroups(workout: Workout | null): MuscleGroup[] {
  * (not skipped and not substituted - substituted exercises are replaced by new ones)
  */
 function countPerformedExercises(session: SessionListItem): number {
-  return session.exercises.filter(
-    (ex) => ex.status !== "skipped" && ex.status !== "substituted"
-  ).length;
+  return session.exercises.filter((exercise) => exercise.status === "completed").length;
 }
 
 /**
@@ -69,8 +58,8 @@ function countPerformedExercises(session: SessionListItem): number {
  */
 function sessionToWorkoutLike(session: EnrichedSession): Workout {
   return {
-    id: session.workout.id,
-    name: session.workout.name,
+    id: session.workout?.id || session.id,
+    name: session.workout?.name || "À la volée",
     description: null,
     lastCompletedAt: session.completedAt,
     items: session.workoutData?.items || [],
@@ -111,48 +100,51 @@ export function SessionHistorySheet({ open, onOpenChange }: SessionHistorySheetP
   }, [token]);
 
   // Load sessions with pagination
-  const loadSessions = useCallback(async (offset = 0, append = false) => {
-    if (!token) return;
+  const loadSessions = useCallback(
+    async (offset = 0, append = false) => {
+      if (!token) return;
 
-    if (offset === 0) {
-      setIsLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
-
-    try {
-      // Load workouts first if not already loaded
-      let workouts = workoutsMapRef.current;
-      if (workouts.size === 0) {
-        workouts = await loadWorkouts();
-      }
-
-      const result = await getSessions(token, {
-        status: "completed",
-        limit: PAGE_SIZE,
-        offset,
-      });
-
-      // Enrich sessions with workout data
-      const enrichedSessions: EnrichedSession[] = result.data.map((session) => ({
-        ...session,
-        workoutData: workouts.get(session.workoutId) || null,
-      }));
-
-      if (append) {
-        setSessions((prev) => [...prev, ...enrichedSessions]);
+      if (offset === 0) {
+        setIsLoading(true);
       } else {
-        setSessions(enrichedSessions);
+        setIsLoadingMore(true);
       }
-      setTotalSessions(result.total);
-    } catch (error) {
-      console.error("Failed to load sessions:", error);
-      toast.error("Erreur lors du chargement de l'historique");
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
-  }, [token, loadWorkouts]);
+
+      try {
+        // Load workouts first if not already loaded
+        let workouts = workoutsMapRef.current;
+        if (workouts.size === 0) {
+          workouts = await loadWorkouts();
+        }
+
+        const result = await getSessions(token, {
+          status: "completed",
+          limit: PAGE_SIZE,
+          offset,
+        });
+
+        // Enrich sessions with workout data
+        const enrichedSessions: EnrichedSession[] = result.data.map((session) => ({
+          ...session,
+          workoutData: session.workoutId ? workouts.get(session.workoutId) || null : null,
+        }));
+
+        if (append) {
+          setSessions((prev) => [...prev, ...enrichedSessions]);
+        } else {
+          setSessions(enrichedSessions);
+        }
+        setTotalSessions(result.total);
+      } catch (error) {
+        console.error("Failed to load sessions:", error);
+        toast.error("Erreur lors du chargement de l'historique");
+      } finally {
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [token, loadWorkouts]
+  );
 
   // Load sessions when sheet opens
   useEffect(() => {
@@ -236,7 +228,7 @@ export function SessionHistorySheet({ open, onOpenChange }: SessionHistorySheetP
                     variant="history"
                     completedExerciseCount={countPerformedExercises(session)}
                     sessionDate={session.completedAt}
-                    overrideMuscleGroups={extractMuscleGroups(session.workoutData)}
+                    overrideMuscleGroups={extractSessionMuscleGroups(session)}
                     onEdit={() => handleSessionClick(session)}
                     onDelete={() => handleDeleteClick(session)}
                   />

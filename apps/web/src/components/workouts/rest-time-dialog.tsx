@@ -106,7 +106,9 @@ export function RestTimeDialog({
               />
               <span className="text-xs text-muted-foreground mt-1.5 block">min</span>
             </div>
-            <span className="text-2xl font-bold text-muted-foreground h-9 flex items-center">:</span>
+            <span className="text-2xl font-bold text-muted-foreground h-9 flex items-center">
+              :
+            </span>
             <div className="text-center">
               <NumberInput
                 value={seconds}
@@ -131,8 +133,7 @@ export function RestTimeDialog({
                   onClick={() => handlePreset(preset.value)}
                   className={cn(
                     "flex-1 min-w-[50px]",
-                    currentTotal === preset.value &&
-                      "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                    currentTotal === preset.value && "border-primary/50 bg-primary/10 text-primary"
                   )}
                 >
                   {preset.label}
@@ -146,9 +147,7 @@ export function RestTimeDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annuler
           </Button>
-          <Button onClick={handleConfirm}>
-            Confirmer
-          </Button>
+          <Button onClick={handleConfirm}>Confirmer</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

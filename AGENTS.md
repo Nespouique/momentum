@@ -182,6 +182,10 @@ JWT stateless auth via `authMiddleware`. The middleware extends `Request` as `Au
 Prisma 7 with PostgreSQL adapter (pg). Singleton instance in `src/lib/prisma.ts`.
 Schema: `apps/api/prisma/schema.prisma` (17 models).
 
+User UI preferences are persisted on `User` (currently `accentColor`). The web app applies the
+accent dynamically through CSS variables (`--primary`, `--primary-foreground`, `--ring`); do not
+hardcode a brand color for selected controls or primary actions.
+
 ## Web Patterns
 
 ### Framework & UI Stack
@@ -197,6 +201,9 @@ Zustand stores with persist middleware:
 
 - `src/stores/auth.ts` — auth state + cookie sync
 - `src/stores/session.ts` — workout session state machine
+
+Workout sessions can be `planned` (linked to a workout) or `ad_hoc` ("À la volée", no workout).
+Always handle `WorkoutSession.workout` and `workoutId` as nullable in API responses and UI.
 
 ### API Client
 

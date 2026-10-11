@@ -157,6 +157,7 @@ export type SessionScreen =
   | "superset-exercise" // Active exercise in superset
   | "superset-rest" // Rest between superset rounds
   | "superset-transition" // End of superset
+  | "ad-hoc-decision" // Choose another exercise or finish an ad-hoc session
   | "summary"; // Session complete
 
 interface PendingResult {
@@ -278,17 +279,18 @@ const initialState = {
 };
 
 // Helper to check if a pending result differs from what was sent and issue a PUT if so
-async function flushPendingResultUpdate(state: SessionState, key: string): Promise<void> {
+async function flushPendingResultUpdate(state: SessionState, key: string): Promise<boolean> {
   const pendingResult = state.pendingResults.get(key);
   const sentResult = state.sentResults.get(key);
 
-  if (!pendingResult || !state.session || !state.token) return;
+  if (!pendingResult) return true;
+  if (!state.session || !state.token) return false;
 
   const resolvedSet = resolvePendingSet(state.session, key);
   const completedSetId = state.completedSetIds.get(key);
   const setId = completedSetId ?? resolvedSet?.set.id;
 
-  if (!setId) return;
+  if (!setId) return false;
 
   const currentResult =
     resolvedSet && resolvedSet.set.actualReps !== null
@@ -325,7 +327,7 @@ async function flushPendingResultUpdate(state: SessionState, key: string): Promi
               ).data
             : null;
 
-      if (!updatedSet) return;
+      if (!updatedSet) return false;
 
       // Update local session data
       const updatedExercises = state.session.exercises.map((ex) => ({
@@ -346,10 +348,14 @@ async function flushPendingResultUpdate(state: SessionState, key: string): Promi
       useSessionStore.setState({
         session: { ...state.session, exercises: updatedExercises },
       });
+      return true;
     } catch (error) {
       console.error("Failed to update set result:", error);
+      return false;
     }
   }
+
+  return true;
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -433,6 +439,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     try {
       const response = await apiGetSession(token, sessionId);
       const session = response.data;
+
+      if (session.type === "ad_hoc") {
+        await Promise.all(
+          session.exercises
+            .filter(
+              (exercise) => exercise.status !== "skipped" && exercise.status !== "substituted"
+            )
+            .map((exercise) => get().fetchLastPerformance(token, exercise.exerciseId))
+        );
+      }
 
       // Calculate navigation state from completed sets
       const activeExercises = session.exercises.filter(
@@ -585,10 +601,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         const safeExerciseIndex =
           activeExercises.length === 0
             ? 0
-            : Math.min(
-                Math.max(persistedRest.currentExerciseIndex, 0),
-                activeExercises.length - 1
-              );
+            : Math.min(Math.max(persistedRest.currentExerciseIndex, 0), activeExercises.length - 1);
         const safeExercise = activeExercises[safeExerciseIndex];
         const safeSetIndex = safeExercise
           ? Math.min(
@@ -676,6 +689,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         //    (set has completedAt) but the modified values were never sent.
         //    → Send via PUT using the stored setId.
 
+        const unresolvedResultKeys = new Set([
+          ...savedPendingResults.keys(),
+          ...savedCompletedSetIds.keys(),
+        ]);
+
         // Flush failed POSTs
         if (savedPendingResults.size > 0) {
           for (const [key, result] of savedPendingResults) {
@@ -714,7 +732,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           for (const key of resultKeysToFlush) {
             const pendingResult = savedPendingResults.get(key);
             const sentResult = savedSentResults.get(key);
-            if (!pendingResult) continue;
+            if (!pendingResult) {
+              unresolvedResultKeys.delete(key);
+              continue;
+            }
 
             const resolvedSet = resolvePendingSet(session, key);
             const completedSetId = savedCompletedSetIds.get(key);
@@ -770,16 +791,28 @@ export const useSessionStore = create<SessionState>((set, get) => ({
                     }
                   }
                 }
+                unresolvedResultKeys.delete(key);
               } catch (error) {
                 console.error("Failed to flush modified result for", key, error);
               }
+            } else {
+              unresolvedResultKeys.delete(key);
             }
           }
         }
 
-        clearPendingResults();
-        clearCompletedSetIds();
-        clearSentResults();
+        const remainingPendingResults = new Map(
+          [...savedPendingResults].filter(([key]) => unresolvedResultKeys.has(key))
+        );
+        const remainingCompletedSetIds = new Map(
+          [...savedCompletedSetIds].filter(([key]) => unresolvedResultKeys.has(key))
+        );
+        const remainingSentResults = new Map(
+          [...savedSentResults].filter(([key]) => unresolvedResultKeys.has(key))
+        );
+        savePendingResults(remainingPendingResults);
+        saveCompletedSetIds(remainingCompletedSetIds);
+        saveSentResults(remainingSentResults);
 
         // Recompute screen based on (now-updated) session progress
         const allSetsCompleted = activeExercises.every((ex) => ex.sets.every((s) => s.completedAt));
@@ -789,10 +822,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
         let currentScreen: SessionScreen;
         if (allSetsCompleted) {
-          currentScreen = "summary";
+          currentScreen = session.type === "ad_hoc" ? "ad-hoc-decision" : "summary";
         } else if (noSetsCompleted) {
-          // Fresh session - show overview
-          currentScreen = "overview";
+          currentScreen = session.type === "ad_hoc" ? "exercise" : "overview";
         } else {
           // In progress - show exercise
           currentScreen = isSuperset ? "superset-exercise" : "exercise";
@@ -814,9 +846,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           restEndAt: null,
           restTimeRemaining: 0,
           restDuration: 0,
-          pendingResults: new Map(),
-          completedSetIds: new Map(),
-          sentResults: new Map(),
+          pendingResults: remainingPendingResults,
+          completedSetIds: remainingCompletedSetIds,
+          sentResults: remainingSentResults,
         });
       }
     } catch (error) {
@@ -1234,47 +1266,41 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (state.session && state.token && currentExercise) {
       // Handle single exercise pending result
       const pendingResultKey = `${currentExercise.id}-${state.currentSetIndex}`;
-      await flushPendingResultUpdate(state, pendingResultKey);
+      const flushedKeys = new Set<string>();
+      if (await flushPendingResultUpdate(state, pendingResultKey)) {
+        flushedKeys.add(pendingResultKey);
+      }
 
       // Handle superset: flush all exercises in the superset round
       if (state.isInSuperset) {
         for (const exId of state.supersetExerciseIds) {
           if (exId === currentExercise.id) continue; // Already handled above
           const key = `${exId}-${state.currentSetIndex}`;
-          await flushPendingResultUpdate(get(), key);
+          if (await flushPendingResultUpdate(get(), key)) {
+            flushedKeys.add(key);
+          }
         }
       }
-    }
 
-    // Clear pending results and completed set IDs for the flushed keys
-    const newPendingResults = new Map(get().pendingResults);
-    const newCompletedSetIds = new Map(get().completedSetIds);
-    const newSentResults = new Map(get().sentResults);
-
-    if (currentExercise) {
-      const key = `${currentExercise.id}-${state.currentSetIndex}`;
-      newPendingResults.delete(key);
-      newCompletedSetIds.delete(key);
-      newSentResults.delete(key);
-
-      if (state.isInSuperset) {
-        for (const exId of state.supersetExerciseIds) {
-          const ssKey = `${exId}-${state.currentSetIndex}`;
-          newPendingResults.delete(ssKey);
-          newCompletedSetIds.delete(ssKey);
-          newSentResults.delete(ssKey);
-        }
+      // Keep failed writes persisted for the next retry instead of dropping user input.
+      const newPendingResults = new Map(get().pendingResults);
+      const newCompletedSetIds = new Map(get().completedSetIds);
+      const newSentResults = new Map(get().sentResults);
+      for (const key of flushedKeys) {
+        newPendingResults.delete(key);
+        newCompletedSetIds.delete(key);
+        newSentResults.delete(key);
       }
-    }
 
-    set({
-      pendingResults: newPendingResults,
-      completedSetIds: newCompletedSetIds,
-      sentResults: newSentResults,
-    });
-    savePendingResults(newPendingResults);
-    saveCompletedSetIds(newCompletedSetIds);
-    saveSentResults(newSentResults);
+      set({
+        pendingResults: newPendingResults,
+        completedSetIds: newCompletedSetIds,
+        sentResults: newSentResults,
+      });
+      savePendingResults(newPendingResults);
+      saveCompletedSetIds(newCompletedSetIds);
+      saveSentResults(newSentResults);
+    }
 
     if (state.currentScreen === "rest") {
       // Check if this is the last set of the last exercise
@@ -1283,9 +1309,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const isLastExercise = state.currentExerciseIndex >= activeExercises.length - 1;
 
       if (isLastSet && isLastExercise) {
-        // Go to summary
+        // Ad-hoc sessions can be extended after each exercise
         set({
-          currentScreen: "summary",
+          currentScreen: state.session?.type === "ad_hoc" ? "ad-hoc-decision" : "summary",
           isResting: false,
           restEndAt: null,
           restTimeRemaining: 0,
@@ -1375,9 +1401,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         isLastRound && nextNonSupersetIdx === -1 && allSetsInCurrentRoundCompleted;
 
       if (isLastExerciseOverall) {
-        // Go to summary
         set({
-          currentScreen: "summary",
+          currentScreen: state.session?.type === "ad_hoc" ? "ad-hoc-decision" : "summary",
           isResting: false,
           restEndAt: null,
           restTimeRemaining: 0,
@@ -1647,10 +1672,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           );
         }
 
-        const isInSuperset = updatedState.isExerciseInSuperset(
-          resolvedExercise,
-          activeExercises
-        );
+        const isInSuperset = updatedState.isExerciseInSuperset(resolvedExercise, activeExercises);
         const supersetExerciseIds = isInSuperset
           ? updatedState.getSupersetExerciseIds(resolvedExercise, activeExercises)
           : [];
@@ -1739,18 +1761,28 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   completeSession: async (token: string, notes?: string) => {
-    const state = get();
+    let state = get();
     if (!state.session) return;
 
     try {
-      await apiUpdateSession(token, state.session.id, { status: "completed", notes });
+      for (const key of state.pendingResults.keys()) {
+        if (!(await flushPendingResultUpdate(get(), key))) {
+          throw new Error("Pending set results could not be saved");
+        }
+      }
+
+      state = get();
+      const currentSession = state.session;
+      if (!currentSession) return;
+
+      await apiUpdateSession(token, currentSession.id, { status: "completed", notes });
       clearRestState();
       clearPendingResults();
       clearCompletedSetIds();
       clearSentResults();
       set({
         session: {
-          ...state.session,
+          ...currentSession,
           status: "completed",
           completedAt: new Date().toISOString(),
           notes: notes || null,
@@ -1758,6 +1790,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       });
     } catch (error) {
       console.error("Failed to complete session:", error);
+      throw error;
     }
   },
 

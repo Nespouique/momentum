@@ -16,6 +16,7 @@ const ErrorCodes = {
   VALIDATION_ERROR: "VALIDATION_ERROR",
   NOT_FOUND: "NOT_FOUND",
   FORBIDDEN: "FORBIDDEN",
+  PROGRESSION_NOT_AVAILABLE: "PROGRESSION_NOT_AVAILABLE",
   INTERNAL_ERROR: "INTERNAL_ERROR",
 } as const;
 
@@ -49,6 +50,10 @@ router.get(
             message: "Session not found",
           },
         });
+      }
+
+      if (session.type === "ad_hoc") {
+        return res.json({ data: [] });
       }
 
       // Allow suggestions for in_progress (on summary screen) and completed sessions
@@ -94,117 +99,128 @@ router.get(
 );
 
 // GET /sessions/:sessionId/stagnation - Detect stagnating exercises
-router.get(
-  "/sessions/:sessionId/stagnation",
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const sessionId = req.params["sessionId"] as string;
-      const userId = req.userId!;
+router.get("/sessions/:sessionId/stagnation", async (req: AuthRequest, res: Response) => {
+  try {
+    const sessionId = req.params["sessionId"] as string;
+    const userId = req.userId!;
 
-      // Verify session exists and belongs to user
-      const session = await prisma.workoutSession.findFirst({
-        where: { id: sessionId, userId },
-      });
+    // Verify session exists and belongs to user
+    const session = await prisma.workoutSession.findFirst({
+      where: { id: sessionId, userId },
+    });
 
-      if (!session) {
-        return res.status(404).json({
-          error: {
-            code: ErrorCodes.NOT_FOUND,
-            message: "Session not found",
-          },
-        });
-      }
-
-      // Ensure suggestions are generated (idempotent)
-      await evaluateSession(sessionId);
-
-      // Get exercises with pending suggestions (same logic as progressive overload)
-      const pendingSuggestions = await prisma.progressionSuggestion.findMany({
-        where: {
-          sessionId,
-          status: "pending",
-        },
-        select: { exerciseId: true },
-      });
-      const stagnatingExerciseIds = pendingSuggestions.map((s) => s.exerciseId);
-
-      // Check if AI coaching is available (API key configured)
-      const aiAvailable = !!process.env["OPENAI_API_KEY"];
-
-      return res.json({
-        data: {
-          hasStagnation: stagnatingExerciseIds.length > 0,
-          stagnatingExerciseIds,
-          aiCoachingAvailable: aiAvailable && stagnatingExerciseIds.length > 0,
-        },
-      });
-    } catch (error) {
-      console.error("Detect stagnation error:", error);
-      return res.status(500).json({
+    if (!session) {
+      return res.status(404).json({
         error: {
-          code: ErrorCodes.INTERNAL_ERROR,
-          message: "An unexpected error occurred",
+          code: ErrorCodes.NOT_FOUND,
+          message: "Session not found",
         },
       });
     }
+
+    if (session.type === "ad_hoc") {
+      return res.json({
+        data: {
+          hasStagnation: false,
+          stagnatingExerciseIds: [],
+          aiCoachingAvailable: false,
+        },
+      });
+    }
+
+    // Ensure suggestions are generated (idempotent)
+    await evaluateSession(sessionId);
+
+    // Get exercises with pending suggestions (same logic as progressive overload)
+    const pendingSuggestions = await prisma.progressionSuggestion.findMany({
+      where: {
+        sessionId,
+        status: "pending",
+      },
+      select: { exerciseId: true },
+    });
+    const stagnatingExerciseIds = pendingSuggestions.map((s) => s.exerciseId);
+
+    // Check if AI coaching is available (API key configured)
+    const aiAvailable = !!process.env["OPENAI_API_KEY"];
+
+    return res.json({
+      data: {
+        hasStagnation: stagnatingExerciseIds.length > 0,
+        stagnatingExerciseIds,
+        aiCoachingAvailable: aiAvailable && stagnatingExerciseIds.length > 0,
+      },
+    });
+  } catch (error) {
+    console.error("Detect stagnation error:", error);
+    return res.status(500).json({
+      error: {
+        code: ErrorCodes.INTERNAL_ERROR,
+        message: "An unexpected error occurred",
+      },
+    });
   }
-);
+});
 
 // PATCH /progression-suggestions/:id - Accept or dismiss a suggestion
-router.patch(
-  "/progression-suggestions/:id",
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const suggestionId = req.params["id"] as string;
-      const userId = req.userId!;
-      const data = updateSuggestionSchema.parse(req.body);
+router.patch("/progression-suggestions/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    const suggestionId = req.params["id"] as string;
+    const userId = req.userId!;
+    const data = updateSuggestionSchema.parse(req.body);
 
-      // Verify suggestion exists and belongs to user
-      const suggestion = await prisma.progressionSuggestion.findFirst({
-        where: { id: suggestionId, userId },
-      });
+    // Verify suggestion exists and belongs to user
+    const suggestion = await prisma.progressionSuggestion.findFirst({
+      where: { id: suggestionId, userId },
+      include: { session: { select: { type: true } } },
+    });
 
-      if (!suggestion) {
-        return res.status(404).json({
-          error: {
-            code: ErrorCodes.NOT_FOUND,
-            message: "Suggestion not found",
-          },
-        });
-      }
-
-      // Update the suggestion and optionally the workout template
-      const updatedSuggestion = await respondToSuggestion(
-        suggestionId,
-        data.status
-      );
-
-      return res.json({
-        data: {
-          id: updatedSuggestion.id,
-          status: updatedSuggestion.status,
-          respondedAt: updatedSuggestion.respondedAt,
-        },
-      });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({
-          error: {
-            code: ErrorCodes.VALIDATION_ERROR,
-            message: "Validation failed",
-            details: formatZodError(error),
-          },
-        });
-      }
-      console.error("Update suggestion error:", error);
-      return res.status(500).json({
+    if (!suggestion) {
+      return res.status(404).json({
         error: {
-          code: ErrorCodes.INTERNAL_ERROR,
-          message: "An unexpected error occurred",
+          code: ErrorCodes.NOT_FOUND,
+          message: "Suggestion not found",
         },
       });
     }
+
+    if (suggestion.session.type === "ad_hoc") {
+      return res.status(409).json({
+        error: {
+          code: ErrorCodes.PROGRESSION_NOT_AVAILABLE,
+          message: "Progression is not available for ad-hoc sessions",
+        },
+      });
+    }
+
+    // Update the suggestion and optionally the workout template
+    const updatedSuggestion = await respondToSuggestion(suggestionId, data.status);
+
+    return res.json({
+      data: {
+        id: updatedSuggestion.id,
+        status: updatedSuggestion.status,
+        respondedAt: updatedSuggestion.respondedAt,
+      },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        error: {
+          code: ErrorCodes.VALIDATION_ERROR,
+          message: "Validation failed",
+          details: formatZodError(error),
+        },
+      });
+    }
+    console.error("Update suggestion error:", error);
+    return res.status(500).json({
+      error: {
+        code: ErrorCodes.INTERNAL_ERROR,
+        message: "An unexpected error occurred",
+      },
+    });
   }
-);
+});
 
 export default router;

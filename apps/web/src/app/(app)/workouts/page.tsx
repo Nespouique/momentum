@@ -1,21 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { X, Plus, Play, History, CalendarDays } from "lucide-react";
+import { X, Plus, Play, History, CalendarDays, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { WorkoutCard, SessionHistorySheet, SessionCalendarSheet } from "@/components/workouts";
+import { ExerciseSelector } from "@/components/workouts/exercise-selector";
 import { useAuthStore } from "@/stores/auth";
-import {
-  getWorkouts,
-  deleteWorkout,
-  duplicateWorkout,
-  type Workout,
-} from "@/lib/api/workouts";
+import { getWorkouts, deleteWorkout, duplicateWorkout, type Workout } from "@/lib/api/workouts";
 import {
   startSession,
+  startAdHocSession,
   getActiveSession,
   updateSession,
   SessionError,
@@ -39,7 +36,6 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-
 export default function WorkoutsPage() {
   const router = useRouter();
   const { token } = useAuthStore();
@@ -51,6 +47,9 @@ export default function WorkoutsPage() {
   const [isAbandoningSession, setIsAbandoningSession] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showAdHocSelector, setShowAdHocSelector] = useState(false);
+  const [isStartingSession, setIsStartingSession] = useState(false);
+  const startSessionLockRef = useRef(false);
 
   // Load workouts
   const loadWorkouts = useCallback(async () => {
@@ -132,7 +131,9 @@ export default function WorkoutsPage() {
   };
 
   const handleStartClick = async (workout: Workout) => {
-    if (!token || activeSession) return;
+    if (!token || activeSession || startSessionLockRef.current) return;
+    startSessionLockRef.current = true;
+    setIsStartingSession(true);
 
     try {
       const result = await startSession(token, workout.id);
@@ -149,6 +150,32 @@ export default function WorkoutsPage() {
         console.error("Failed to start session:", error);
         toast.error("Erreur lors du démarrage de la séance");
       }
+    } finally {
+      startSessionLockRef.current = false;
+      setIsStartingSession(false);
+    }
+  };
+
+  const handleStartAdHoc = async (exercises: { id: string }[]) => {
+    const exercise = exercises[0];
+    if (!token || activeSession || !exercise || startSessionLockRef.current) return;
+    startSessionLockRef.current = true;
+    setIsStartingSession(true);
+    try {
+      const result = await startAdHocSession(token, exercise.id);
+      setShowAdHocSelector(false);
+      router.push(`/session/${result.data.id}`);
+    } catch (error) {
+      if (error instanceof SessionError && error.code === "SESSION_ALREADY_ACTIVE") {
+        setShowAdHocSelector(false);
+        loadActiveSession();
+      } else {
+        console.error("Failed to start ad-hoc session:", error);
+        toast.error("Erreur lors du démarrage de la séance");
+      }
+    } finally {
+      startSessionLockRef.current = false;
+      setIsStartingSession(false);
     }
   };
 
@@ -235,7 +262,7 @@ export default function WorkoutsPage() {
             <div className="flex-1 min-w-0">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">En cours</p>
               <p className="font-medium text-zinc-100 truncate">
-                {activeSession.workout?.name || "Workout"}
+                {activeSession.workout?.name || "À la volée"}
               </p>
             </div>
 
@@ -267,6 +294,23 @@ export default function WorkoutsPage() {
         </>
       )}
 
+      {!activeSession && (
+        <button
+          type="button"
+          onClick={() => setShowAdHocSelector(true)}
+          disabled={isStartingSession}
+          className="mb-4 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 text-left transition-colors hover:bg-primary/10"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Zap className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-medium">À la volée</p>
+            <p className="text-sm text-muted-foreground">Choisir un exercice et commencer</p>
+          </div>
+        </button>
+      )}
+
       {workouts.length === 0 ? (
         <EmptyState onAdd={handleAddClick} />
       ) : (
@@ -280,7 +324,7 @@ export default function WorkoutsPage() {
                 onDelete={() => handleDeleteClick(workout)}
                 onDuplicate={() => handleDuplicateClick(workout)}
                 onStart={() => handleStartClick(workout)}
-                startDisabled={!!activeSession}
+                startDisabled={!!activeSession || isStartingSession}
               />
             ))}
           </div>
@@ -329,6 +373,16 @@ export default function WorkoutsPage() {
 
       {/* Session Calendar Sheet */}
       <SessionCalendarSheet open={showCalendar} onOpenChange={setShowCalendar} />
+
+      <ExerciseSelector
+        open={showAdHocSelector}
+        onOpenChange={setShowAdHocSelector}
+        mode="single"
+        onSelect={handleStartAdHoc}
+        title="Premier exercice"
+        footerMessage="Choisissez votre premier exercice."
+        isSubmitting={isStartingSession}
+      />
     </div>
   );
 }

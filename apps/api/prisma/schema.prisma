@@ -19,6 +19,7 @@ model User {
   birthDate       DateTime? @map("birth_date") @db.Date
   height          Float?    // in cm
   goalDescription String?   @map("goal_description")
+  accentColor     String    @default("#FAFAFA") @map("accent_color")
   passwordResetToken     String?   @map("password_reset_token")
   passwordResetExpiresAt DateTime? @map("password_reset_expires_at")
   createdAt              DateTime  @default(now()) @map("created_at")
@@ -158,6 +159,11 @@ enum SessionStatus {
   abandoned
 }
 
+enum SessionType {
+  planned
+  ad_hoc
+}
+
 enum SessionExerciseStatus {
   pending
   in_progress
@@ -170,8 +176,9 @@ model WorkoutSession {
   id          String        @id @default(uuid())
   userId      String        @map("user_id")
   user        User          @relation(fields: [userId], references: [id])
-  workoutId   String        @map("workout_id")
-  workout     Workout       @relation(fields: [workoutId], references: [id])
+  workoutId   String?       @map("workout_id")
+  workout     Workout?      @relation(fields: [workoutId], references: [id])
+  type        SessionType   @default(planned)
   status      SessionStatus @default(in_progress)
   startedAt   DateTime      @default(now()) @map("started_at")
   completedAt DateTime?     @map("completed_at")

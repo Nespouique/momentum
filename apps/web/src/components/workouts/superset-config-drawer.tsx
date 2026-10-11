@@ -2,12 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Dumbbell } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { NumberInput } from "@/components/ui/number-input";
 import { Separator } from "@/components/ui/separator";
@@ -74,11 +69,7 @@ export function SupersetConfigDrawer({
 
         <div className="flex-1 overflow-y-auto py-4 px-1 -mx-1 space-y-6">
           {/* Edit exercises button */}
-          <Button
-            variant="outline"
-            className="w-full gap-2"
-            onClick={onEditExercises}
-          >
+          <Button variant="outline" className="w-full gap-2" onClick={onEditExercises}>
             <Dumbbell className="h-4 w-4" />
             Sélection des exercices
           </Button>
@@ -101,9 +92,7 @@ export function SupersetConfigDrawer({
 
           {/* Rest between rounds */}
           <div>
-            <label className="text-sm font-medium mb-3 block">
-              Repos entre les séries
-            </label>
+            <label className="text-sm font-medium mb-3 block">Repos entre les séries</label>
 
             {/* Time inputs */}
             <div className="flex items-start justify-center gap-3 mb-4">
@@ -122,7 +111,9 @@ export function SupersetConfigDrawer({
                 />
                 <span className="text-xs text-muted-foreground mt-1.5 block">min</span>
               </div>
-              <span className="text-2xl font-bold text-muted-foreground h-9 flex items-center">:</span>
+              <span className="text-2xl font-bold text-muted-foreground h-9 flex items-center">
+                :
+              </span>
               <div className="text-center">
                 <NumberInput
                   value={restBetweenRounds % 60}
@@ -165,7 +156,7 @@ export function SupersetConfigDrawer({
                     className={cn(
                       "flex-1 min-w-[50px]",
                       restBetweenRounds === preset.value &&
-                        "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        "border-primary/50 bg-primary/10 text-primary"
                     )}
                   >
                     {preset.label}

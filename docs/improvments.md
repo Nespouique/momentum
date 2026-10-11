@@ -1,5 +1,5 @@
 - [ ] Améliorer la login/register page
-- [ ] Settings globaux de l'app (avec modification de la couleur d'accentuation)
+- [x] Settings globaux de l'app (avec modification de la couleur d'accentuation)
 - [x] Traduction en français de tous les éléments
 - [x] Imports depuis bdd Hercules
 - [x] Mettre par défaut les mesures de la fois précédente
@@ -20,12 +20,19 @@
 - [x] Revoir et tester l'écran de récapitulatif de la séance (avec confettis)
 - [x] Supprimer l'icon ou la mettre en blanc sur la preview de l'exercice
 - [x] Ajouter une icon statistiques sur les cartes des exercices dans la liste des exercices
-- [ ] Pouvoir ajouter une série pendant la séance
 - [x] Bug quand je fais passer, si c'est un superset ça doit passer le superset entier
 - [x] Ajouter le numéro de version dans le menu settings
-- [ ] Ajouter un MCP Momentum
 - [x] Epic 3 - Stories 3.1 & 3.2 : Trackables CRUD backend + Configuration UI
 - [x] Suggestions d'icônes IA (gpt-4o-mini) pour les trackables personnalisés
 - [x] Support @lucide/lab pour icônes étendues (flower-lotus, etc.)
-- [ ] Le popover de la sélection de couleur n'est pas de la bonne taille (l'input du hex est trop large)
+- [x] Le popover de la sélection de couleur n'est pas de la bonne taille (l'input du hex est trop large)
+- [x] Séance on the fly (définir au fur et à mesure)
+- [x] cf capture, le sélecteur de repos est orange au lieu de la couleur d'accentuation
 - [ ] Pour la vue calendrier dans le dashboard, mettre tout en haut à droite une icon calendar comme pour les séances, et faire en sorte que ce soit cliquable pour accéder à la vue calendrier complète ; ou alors mettre simplement "aujourd'hui", et mettre des flèches pour naviguer entre les jours
+- [ ] Pouvoir ajouter une série pendant la séance
+- [ ] Récapitulatif mensuel en partant des données de la bdd
+- [ ] Pouvoir avoir un trackable "au moins X fois par Y" ou "pas plus de X fois par Y"
+- [ ] Stats lorsque poids du corps afficher les reps
+- [ ] Vérifier si les stats prennent bien les vraies reps et pas les objectifs
+- [ ] Lorsqu'on ajoute une mesure il placeholder 75kg au lieu du poids précédent
+- [ ] MCP server pour pouvoir poser des questions en langage naturel sur mes séances, et que l'IA puisse ajouter des séances en fonction de mes résultats passés

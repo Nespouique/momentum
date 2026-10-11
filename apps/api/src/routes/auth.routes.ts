@@ -1,20 +1,13 @@
 import { Router, Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
-import {
-  hashPassword,
-  comparePassword,
-  generateToken,
-} from "../services/auth.service.js";
+import { hashPassword, comparePassword, generateToken } from "../services/auth.service.js";
 import {
   registerSchema,
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
 } from "../schemas/auth.schema.js";
-import {
-  requestPasswordReset,
-  resetPassword,
-} from "../services/password-reset.service.js";
+import { requestPasswordReset, resetPassword } from "../services/password-reset.service.js";
 import { authMiddleware, AuthRequest } from "../middleware/auth.middleware.js";
 import { ZodError } from "zod";
 
@@ -70,6 +63,7 @@ router.post("/register", async (req: Request, res: Response) => {
         id: true,
         email: true,
         name: true,
+        accentColor: true,
         birthDate: true,
         createdAt: true,
       },
@@ -126,10 +120,7 @@ router.post("/login", async (req: Request, res: Response) => {
     }
 
     // Verify password
-    const isValidPassword = await comparePassword(
-      data.password,
-      user.passwordHash
-    );
+    const isValidPassword = await comparePassword(data.password, user.passwordHash);
 
     if (!isValidPassword) {
       return res.status(401).json({
@@ -151,6 +142,7 @@ router.post("/login", async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        accentColor: user.accentColor,
       },
       accessToken: token,
       expiresAt: expiresAt.toISOString(),
@@ -191,6 +183,7 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
         id: true,
         email: true,
         name: true,
+        accentColor: true,
         createdAt: true,
       },
     });
@@ -222,7 +215,9 @@ router.post("/forgot-password", async (req: Request, res: Response) => {
     const data = forgotPasswordSchema.parse(req.body);
     await requestPasswordReset(data.email);
     // Always return 200 — don't reveal if email exists
-    return res.json({ message: "If an account exists with this email, a reset link has been sent." });
+    return res.json({
+      message: "If an account exists with this email, a reset link has been sent.",
+    });
   } catch (error) {
     if (error instanceof ZodError) {
       return res.status(400).json({

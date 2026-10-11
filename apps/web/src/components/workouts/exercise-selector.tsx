@@ -4,13 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Search, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { MuscleGroupFilter, MuscleGroupBadge } from "@/components/exercises";
 import { useAuthStore } from "@/stores/auth";
 import { getExercises, type Exercise } from "@/lib/api/exercises";
@@ -28,6 +22,8 @@ interface ExerciseSelectorProps {
   initialSelection?: Exercise[];
   initialMuscleGroups?: MuscleGroup[];
   footerMessage?: string;
+  disabledExerciseIds?: readonly string[];
+  isSubmitting?: boolean;
 }
 
 export function ExerciseSelector({
@@ -40,6 +36,8 @@ export function ExerciseSelector({
   initialSelection = [],
   initialMuscleGroups = [],
   footerMessage,
+  disabledExerciseIds = [],
+  isSubmitting = false,
 }: ExerciseSelectorProps) {
   const { token } = useAuthStore();
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -90,9 +88,7 @@ export function ExerciseSelector({
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter((exercise) =>
-        exercise.name.toLowerCase().includes(query)
-      );
+      result = result.filter((exercise) => exercise.name.toLowerCase().includes(query));
     }
 
     return result.sort((a, b) => a.name.localeCompare(b.name, "fr"));
@@ -100,6 +96,7 @@ export function ExerciseSelector({
 
   // Handle exercise toggle
   const handleExerciseToggle = (exercise: Exercise) => {
+    if (isSubmitting || disabledExerciseIds.includes(exercise.id)) return;
     if (mode === "single") {
       // Don't close here - let the parent handle closing after async work completes
       onSelect([exercise]);
@@ -122,12 +119,15 @@ export function ExerciseSelector({
     }
   };
 
-  const isSelected = (exercise: Exercise) =>
-    selectedExercises.some((e) => e.id === exercise.id);
+  const isSelected = (exercise: Exercise) => selectedExercises.some((e) => e.id === exercise.id);
 
-  const defaultTitle = mode === "single"
-    ? "Sélectionner un exercice"
-    : `Sélectionner des exercices (${minSelection} min.)`;
+  const isDisabled = (exercise: Exercise) =>
+    isSubmitting || disabledExerciseIds.includes(exercise.id);
+
+  const defaultTitle =
+    mode === "single"
+      ? "Sélectionner un exercice"
+      : `Sélectionner des exercices (${minSelection} min.)`;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -160,10 +160,7 @@ export function ExerciseSelector({
 
         {/* Muscle group filter */}
         <div className="shrink-0 mb-4">
-          <MuscleGroupFilter
-            selected={selectedMuscleGroups}
-            onChange={setSelectedMuscleGroups}
-          />
+          <MuscleGroupFilter selected={selectedMuscleGroups} onChange={setSelectedMuscleGroups} />
         </div>
 
         {/* Exercise list */}
@@ -175,21 +172,21 @@ export function ExerciseSelector({
               ))}
             </div>
           ) : filteredExercises.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Aucun exercice trouvé
-            </div>
+            <div className="text-center py-8 text-muted-foreground">Aucun exercice trouvé</div>
           ) : (
             <div className="space-y-3">
               {filteredExercises.map((exercise) => (
                 <button
                   key={exercise.id}
                   onClick={() => handleExerciseToggle(exercise)}
+                  disabled={isDisabled(exercise)}
                   className={cn(
                     "w-full rounded-lg border p-4 text-left",
                     "transition-all duration-200",
                     isSelected(exercise)
-                      ? "bg-zinc-100/10 border-zinc-100/50"
-                      : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900"
+                      ? "bg-primary/10 border-primary/50"
+                      : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900",
+                    isDisabled(exercise) && "opacity-50 cursor-not-allowed"
                   )}
                 >
                   <div className="flex items-center gap-3">
@@ -197,29 +194,26 @@ export function ExerciseSelector({
                       <div
                         className={cn(
                           "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0",
-                          isSelected(exercise)
-                            ? "bg-zinc-100 border-zinc-100"
-                            : "border-zinc-600"
+                          isSelected(exercise) ? "bg-primary border-primary" : "border-zinc-600"
                         )}
                       >
                         {isSelected(exercise) && (
-                          <Check className="h-3 w-3 text-zinc-900" />
+                          <Check className="h-3 w-3 text-primary-foreground" />
                         )}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-zinc-100 truncate">
-                        {exercise.name}
-                      </h3>
+                      <h3 className="font-semibold text-zinc-100 truncate">{exercise.name}</h3>
+                      {disabledExerciseIds.includes(exercise.id) && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Déjà présent dans cette séance
+                        </p>
+                      )}
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {[...exercise.muscleGroups]
                           .sort((a, b) => a.localeCompare(b, "fr"))
                           .map((group) => (
-                            <MuscleGroupBadge
-                              key={group}
-                              group={group as MuscleGroup}
-                              size="sm"
-                            />
+                            <MuscleGroupBadge key={group} group={group as MuscleGroup} size="sm" />
                           ))}
                       </div>
                     </div>
@@ -243,10 +237,7 @@ export function ExerciseSelector({
             <div className="flex-1 text-sm text-muted-foreground">
               {selectedExercises.length} sélectionné{selectedExercises.length > 1 ? "s" : ""}
             </div>
-            <Button
-              onClick={handleConfirm}
-              disabled={selectedExercises.length < minSelection}
-            >
+            <Button onClick={handleConfirm} disabled={selectedExercises.length < minSelection}>
               Confirmer
             </Button>
           </SheetFooter>

@@ -1,4 +1,4 @@
-import { prisma } from "../lib/prisma";
+import { prisma } from "../lib/prisma.js";
 import {
   SuggestionType,
   SuggestionStatus,
@@ -6,13 +6,7 @@ import {
 } from "../generated/prisma/client.js";
 
 // Major muscle groups that indicate compound exercises
-const COMPOUND_MUSCLE_GROUPS = [
-  "pectoraux",
-  "dos",
-  "quadriceps",
-  "ischios",
-  "fessiers",
-];
+const COMPOUND_MUSCLE_GROUPS = ["pectoraux", "dos", "quadriceps", "ischios", "fessiers"];
 
 // Weight increments based on exercise type
 const WEIGHT_INCREMENT_COMPOUND = 5; // kg
@@ -46,18 +40,14 @@ interface SessionSetData {
  * Determines if an exercise is a compound movement based on muscle groups
  */
 function isCompoundExercise(muscleGroups: string[]): boolean {
-  return muscleGroups.some((g) =>
-    COMPOUND_MUSCLE_GROUPS.includes(g.toLowerCase())
-  );
+  return muscleGroups.some((g) => COMPOUND_MUSCLE_GROUPS.includes(g.toLowerCase()));
 }
 
 /**
  * Get the weight increment based on exercise type
  */
 function getWeightIncrement(muscleGroups: string[]): number {
-  return isCompoundExercise(muscleGroups)
-    ? WEIGHT_INCREMENT_COMPOUND
-    : WEIGHT_INCREMENT_ISOLATION;
+  return isCompoundExercise(muscleGroups) ? WEIGHT_INCREMENT_COMPOUND : WEIGHT_INCREMENT_ISOLATION;
 }
 
 /**
@@ -210,17 +200,13 @@ export async function evaluateExercise(
   }
 
   // Check if this is a bodyweight exercise (no weight targets)
-  const hasWeightTargets = completedSets.some(
-    (s) => s.targetWeight !== null && s.targetWeight > 0
-  );
+  const hasWeightTargets = completedSets.some((s) => s.targetWeight !== null && s.targetWeight > 0);
 
   // RG1: Check if ALL sets in current session met their targets
   const allSetsMetTarget = completedSets.every((s) => {
     const repsOk = (s.actualReps as number) >= s.targetReps;
     const weightOk =
-      s.targetWeight === null ||
-      s.actualWeight === null ||
-      s.actualWeight >= s.targetWeight;
+      s.targetWeight === null || s.actualWeight === null || s.actualWeight >= s.targetWeight;
     return repsOk && weightOk;
   });
 
@@ -229,11 +215,7 @@ export async function evaluateExercise(
   }
 
   // RG2: Check cooldown (no recently dismissed suggestion)
-  const recentlyDismissed = await checkRecentDismissed(
-    userId,
-    exerciseId,
-    COOLDOWN_SESSIONS
-  );
+  const recentlyDismissed = await checkRecentDismissed(userId, exerciseId, COOLDOWN_SESSIONS);
 
   if (recentlyDismissed) {
     return noSuggestion;
@@ -290,9 +272,7 @@ export async function evaluateExercise(
  * Evaluate all exercises in a session and create suggestions
  * Works for both in_progress (on summary screen) and completed sessions
  */
-export async function evaluateSession(
-  sessionId: string
-): Promise<ProgressionSuggestion[]> {
+export async function evaluateSession(sessionId: string): Promise<ProgressionSuggestion[]> {
   // Get the session with all exercise data
   // Note: We don't filter on exercise status because it may stay "pending" even when sets are done
   // Instead, we check if sets have actualReps (meaning they were completed)
@@ -313,7 +293,7 @@ export async function evaluateSession(
   });
 
   // Allow in_progress (summary screen) and completed sessions
-  if (!session || session.status === "abandoned") {
+  if (!session || session.status === "abandoned" || session.type === "ad_hoc") {
     return [];
   }
 
@@ -330,12 +310,7 @@ export async function evaluateSession(
       actualWeight: set.actualWeight,
     }));
 
-    const analysis = await evaluateExercise(
-      session.userId,
-      exerciseId,
-      setsData,
-      muscleGroups
-    );
+    const analysis = await evaluateExercise(session.userId, exerciseId, setsData, muscleGroups);
 
     if (analysis.shouldSuggest && analysis.suggestionType) {
       // Try to create, handle race condition by fetching existing if duplicate
@@ -383,9 +358,7 @@ export async function evaluateSession(
  */
 export async function getSessionSuggestions(
   sessionId: string
-): Promise<
-  (ProgressionSuggestion & { exercise: { name: string; muscleGroups: string[] } })[]
-> {
+): Promise<(ProgressionSuggestion & { exercise: { name: string; muscleGroups: string[] } })[]> {
   return prisma.progressionSuggestion.findMany({
     where: { sessionId },
     include: {
@@ -407,64 +380,76 @@ export async function respondToSuggestion(
   suggestionId: string,
   status: "accepted" | "dismissed"
 ): Promise<ProgressionSuggestion> {
-  const suggestion = await prisma.progressionSuggestion.findUnique({
-    where: { id: suggestionId },
-    include: {
-      session: {
-        include: {
-          exercises: {
-            include: {
-              workoutItemExercise: {
-                include: {
-                  sets: true,
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`
+      SELECT "id"
+      FROM "progression_suggestions"
+      WHERE "id" = ${suggestionId}
+      FOR UPDATE
+    `;
+
+    const suggestion = await tx.progressionSuggestion.findUnique({
+      where: { id: suggestionId },
+      include: {
+        session: {
+          include: {
+            exercises: {
+              include: {
+                workoutItemExercise: {
+                  include: {
+                    sets: true,
+                  },
                 },
               },
             },
           },
         },
       },
-    },
-  });
+    });
 
-  if (!suggestion) {
-    throw new Error("Suggestion not found");
-  }
+    if (!suggestion) {
+      throw new Error("Suggestion not found");
+    }
 
-  // If accepted, update the workout template
-  if (status === "accepted") {
-    // Find the corresponding workout sets to update
-    const sessionExercise = suggestion.session.exercises.find(
-      (e) => e.exerciseId === suggestion.exerciseId
-    );
+    if (suggestion.session.type === "ad_hoc" || !suggestion.session.workoutId) {
+      throw new Error("Progression is not available for ad-hoc sessions");
+    }
 
-    if (sessionExercise?.workoutItemExercise) {
-      const workoutItemExerciseId = sessionExercise.workoutItemExercise.id;
+    if (suggestion.status !== SuggestionStatus.pending) {
+      return suggestion;
+    }
 
-      // Calculate the increment (difference between suggested and current)
-      const increment = suggestion.suggestedValue - suggestion.currentValue;
+    // If accepted, update the workout template
+    if (status === "accepted") {
+      const sessionExercise = suggestion.session.exercises.find(
+        (exercise) => exercise.exerciseId === suggestion.exerciseId
+      );
 
-      // Update all workout sets for this exercise in the template
-      // Use increment to preserve each set's individual value
-      if (suggestion.suggestionType === SuggestionType.increase_weight) {
-        await prisma.workoutSet.updateMany({
-          where: { workoutItemExerciseId },
-          data: { targetWeight: { increment } },
-        });
-      } else if (suggestion.suggestionType === SuggestionType.increase_reps) {
-        await prisma.workoutSet.updateMany({
-          where: { workoutItemExerciseId },
-          data: { targetReps: { increment: Math.round(increment) } },
-        });
+      if (sessionExercise?.workoutItemExercise) {
+        const workoutItemExerciseId = sessionExercise.workoutItemExercise.id;
+
+        const increment = suggestion.suggestedValue - suggestion.currentValue;
+
+        if (suggestion.suggestionType === SuggestionType.increase_weight) {
+          await tx.workoutSet.updateMany({
+            where: { workoutItemExerciseId },
+            data: { targetWeight: { increment } },
+          });
+        } else if (suggestion.suggestionType === SuggestionType.increase_reps) {
+          await tx.workoutSet.updateMany({
+            where: { workoutItemExerciseId },
+            data: { targetReps: { increment: Math.round(increment) } },
+          });
+        }
       }
     }
-  }
 
-  // Update the suggestion status
-  return prisma.progressionSuggestion.update({
-    where: { id: suggestionId },
-    data: {
-      status: status === "accepted" ? SuggestionStatus.accepted : SuggestionStatus.dismissed,
-      respondedAt: new Date(),
-    },
+    return tx.progressionSuggestion.update({
+      where: { id: suggestionId },
+      data: {
+        status: status === "accepted" ? SuggestionStatus.accepted : SuggestionStatus.dismissed,
+        respondedAt: new Date(),
+      },
+    });
   });
 }

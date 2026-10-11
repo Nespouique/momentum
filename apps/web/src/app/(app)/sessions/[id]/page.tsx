@@ -22,9 +22,9 @@ export default function SessionDetailPage() {
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [modifications, setModifications] = useState<
-    Map<string, { reps: number; weight: number }>
-  >(new Map());
+  const [modifications, setModifications] = useState<Map<string, { reps: number; weight: number }>>(
+    new Map()
+  );
 
   // Load session
   const loadSession = useCallback(async () => {
@@ -83,10 +83,7 @@ export default function SessionDetailPage() {
     ) => {
       setModifications((prev) => {
         const next = new Map(prev);
-        if (
-          newValue.reps !== originalValue.reps ||
-          newValue.weight !== originalValue.weight
-        ) {
+        if (newValue.reps !== originalValue.reps || newValue.weight !== originalValue.weight) {
           next.set(setId, newValue);
         } else {
           next.delete(setId);
@@ -117,12 +114,11 @@ export default function SessionDetailPage() {
     setIsSaving(true);
     try {
       // Update each modified set
-      const updatePromises = Array.from(modifications.entries()).map(
-        ([setId, value]) =>
-          updateSet(token, session.id, setId, {
-            actualReps: value.reps,
-            actualWeight: value.weight,
-          })
+      const updatePromises = Array.from(modifications.entries()).map(([setId, value]) =>
+        updateSet(token, session.id, setId, {
+          actualReps: value.reps,
+          actualWeight: value.weight,
+        })
       );
 
       await Promise.all(updatePromises);
@@ -177,7 +173,7 @@ export default function SessionDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {session.workout.name}
+            {session.workout?.name || "À la volée"}
           </h1>
         </div>
 
@@ -214,21 +210,14 @@ export default function SessionDetailPage() {
 
       {/* Save button - at bottom when there are modifications */}
       {hasModifications && (
-        <Button
-          onClick={handleSave}
-          disabled={isSaving}
-          size="xl"
-          className="w-full gap-2"
-        >
+        <Button onClick={handleSave} disabled={isSaving} size="xl" className="w-full gap-2">
           {isSaving ? (
             <span className="flex items-center gap-2">
               <span className="animate-spin h-4 w-4 border-2 border-zinc-900/30 border-t-zinc-900 rounded-full" />
               Enregistrement...
             </span>
           ) : (
-            <>
-              Enregistrer les modifications
-            </>
+            <>Enregistrer les modifications</>
           )}
         </Button>
       )}
@@ -238,9 +227,7 @@ export default function SessionDetailPage() {
 
 interface ExerciseCardProps {
   exercise: SessionExercise;
-  getSetValue: (
-    set: SessionExercise["sets"][number]
-  ) => { reps: number; weight: number };
+  getSetValue: (set: SessionExercise["sets"][number]) => { reps: number; weight: number };
   onSetChange: (
     setId: string,
     originalValue: { reps: number; weight: number },
@@ -248,11 +235,7 @@ interface ExerciseCardProps {
   ) => void;
 }
 
-function ExerciseCard({
-  exercise,
-  getSetValue,
-  onSetChange,
-}: ExerciseCardProps) {
+function ExerciseCard({ exercise, getSetValue, onSetChange }: ExerciseCardProps) {
   // Only show completed sets
   const completedSets = exercise.sets.filter((s) => s.actualReps !== null);
 
@@ -264,8 +247,8 @@ function ExerciseCard({
       <div className="px-4 py-3 border-b border-zinc-800/50">
         <h3 className="font-semibold text-zinc-100">{exercise.exercise.name}</h3>
         <p className="text-xs text-zinc-500 mt-0.5">
-          {completedSets.length} série{completedSets.length > 1 ? "s" : ""}{" "}
-          complétée{completedSets.length > 1 ? "s" : ""}
+          {completedSets.length} série{completedSets.length > 1 ? "s" : ""} complétée
+          {completedSets.length > 1 ? "s" : ""}
         </p>
       </div>
 

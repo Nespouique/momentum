@@ -2,17 +2,25 @@
 
 import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Brain, Lightbulb, MessageSquare, AlertCircle, Loader2, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  Brain,
+  Lightbulb,
+  MessageSquare,
+  AlertCircle,
+  Loader2,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout";
 import { ResultInput } from "@/components/session/result-input";
 import { useAuthStore } from "@/stores/auth";
+import { useSessionStore } from "@/stores/session";
 import { toast } from "sonner";
 import {
   generateAICoaching,
   applyAICoaching,
   getSession,
-  updateSession,
   type AIProposal,
   type AICoachingResponse,
 } from "@/lib/api/sessions";
@@ -37,8 +45,7 @@ export default function AICoachPage({ params }: AICoachPageProps) {
   const { id: sessionId } = use(params);
   const router = useRouter();
   const { token } = useAuthStore();
-  // Note: We don't use useSessionStore here because the session may not be loaded in the store
-  // when navigating directly to the AI coach page. We use direct API calls instead.
+  const { session, loadSession, completeSession } = useSessionStore();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +53,14 @@ export default function AICoachPage({ params }: AICoachPageProps) {
   const [proposals, setProposals] = useState<EditableProposal[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workoutName, setWorkoutName] = useState<string>("");
+
+  const finalizeSession = useCallback(async () => {
+    if (!token) return;
+    if (session?.id !== sessionId) {
+      await loadSession(token, sessionId);
+    }
+    await completeSession(token);
+  }, [token, session?.id, sessionId, loadSession, completeSession]);
 
   // Load session info and generate coaching advice
   useEffect(() => {
@@ -58,7 +73,12 @@ export default function AICoachPage({ params }: AICoachPageProps) {
       try {
         // Get session info for workout name
         const sessionResponse = await getSession(token, sessionId);
-        setWorkoutName(sessionResponse.data.workout?.name || "Workout");
+        if (sessionResponse.data.type === "ad_hoc") {
+          toast.error("Le coach IA n’est pas disponible pour une séance à la volée");
+          router.push(`/session/${sessionId}`);
+          return;
+        }
+        setWorkoutName(sessionResponse.data.workout?.name || "Séance");
 
         // Generate AI coaching advice
         const response = await generateAICoaching(token, sessionId);
@@ -81,9 +101,7 @@ export default function AICoachPage({ params }: AICoachPageProps) {
         setProposals(editableProposals);
       } catch (err) {
         console.error("Failed to load AI coaching:", err);
-        setError(
-          err instanceof Error ? err.message : "Une erreur est survenue lors de l'analyse"
-        );
+        setError(err instanceof Error ? err.message : "Une erreur est survenue lors de l'analyse");
       } finally {
         setIsLoading(false);
       }
@@ -129,8 +147,7 @@ export default function AICoachPage({ params }: AICoachPageProps) {
           })),
         })),
       });
-      // Complete the session directly via API (store may not have session loaded)
-      await updateSession(token, sessionId, { status: "completed" });
+      await finalizeSession();
       toast.success("Objectifs mis à jour !");
       router.push("/");
     } catch (err) {
@@ -139,15 +156,14 @@ export default function AICoachPage({ params }: AICoachPageProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [token, sessionId, proposals, router]);
+  }, [token, sessionId, proposals, router, finalizeSession]);
 
   // Ignore and complete session
   const handleIgnore = useCallback(async () => {
     if (!token) return;
     setIsSubmitting(true);
     try {
-      // Complete the session directly via API (store may not have session loaded)
-      await updateSession(token, sessionId, { status: "completed" });
+      await finalizeSession();
       router.push("/");
     } catch (err) {
       console.error("Failed to complete session:", err);
@@ -155,7 +171,7 @@ export default function AICoachPage({ params }: AICoachPageProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [token, sessionId, router]);
+  }, [token, router, finalizeSession]);
 
   // Go back
   const handleBack = useCallback(() => {
@@ -171,9 +187,7 @@ export default function AICoachPage({ params }: AICoachPageProps) {
           <p className="text-zinc-100 font-medium">
             Analyse des {coachingData?.analyzedSessionsCount || 10} dernières
           </p>
-          <p className="text-zinc-100 font-medium">
-            séances &quot;{workoutName || "..."}&quot;...
-          </p>
+          <p className="text-zinc-100 font-medium">séances &quot;{workoutName || "..."}&quot;...</p>
         </div>
       </div>
     );
@@ -186,16 +200,10 @@ export default function AICoachPage({ params }: AICoachPageProps) {
         <AlertCircle className="h-16 w-16 text-red-400" />
         <div className="text-center space-y-2">
           <p className="text-zinc-100 font-medium">Oups, une erreur est survenue</p>
-          <p className="text-zinc-400 text-sm">
-            Le coach IA n&apos;a pas pu analyser ta séance.
-          </p>
+          <p className="text-zinc-400 text-sm">Le coach IA n&apos;a pas pu analyser ta séance.</p>
         </div>
         <div className="flex flex-col gap-3 w-full max-w-xs">
-          <Button
-            onClick={() => window.location.reload()}
-            variant="default"
-            className="w-full"
-          >
+          <Button onClick={() => window.location.reload()} variant="default" className="w-full">
             Réessayer
           </Button>
           <button
@@ -259,9 +267,9 @@ export default function AICoachPage({ params }: AICoachPageProps) {
           <div className="flex gap-3">
             <Lightbulb className="h-5 w-5 text-violet-400 shrink-0 mt-0.5" />
             <p className="text-sm text-zinc-300">
-              J&apos;ai analysé tes {coachingData.analyzedSessionsCount} dernières
-              séances. Voici mes recommandations pour débloquer ta progression. Tu
-              peux ajuster les valeurs avant de valider.
+              J&apos;ai analysé tes {coachingData.analyzedSessionsCount} dernières séances. Voici
+              mes recommandations pour débloquer ta progression. Tu peux ajuster les valeurs avant
+              de valider.
             </p>
           </div>
         </div>
@@ -279,12 +287,7 @@ export default function AICoachPage({ params }: AICoachPageProps) {
 
         {/* Actions - at bottom */}
         <div className="pt-4 space-y-3">
-          <Button
-            onClick={handleApply}
-            disabled={isSubmitting}
-            size="xl"
-            className="w-full"
-          >
+          <Button onClick={handleApply} disabled={isSubmitting} size="xl" className="w-full">
             {isSubmitting ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -313,7 +316,11 @@ export default function AICoachPage({ params }: AICoachPageProps) {
 // Proposal Card Component
 interface ProposalCardProps {
   proposal: EditableProposal;
-  onSetChange: (exerciseId: string, setNumber: number, value: { reps: number; weight: number }) => void;
+  onSetChange: (
+    exerciseId: string,
+    setNumber: number,
+    value: { reps: number; weight: number }
+  ) => void;
 }
 
 function ProposalCard({ proposal, onSetChange }: ProposalCardProps) {
@@ -370,8 +377,15 @@ function ProposalCard({ proposal, onSetChange }: ProposalCardProps) {
                       ) : (
                         <TrendingDown className="h-3 w-3 text-amber-500" />
                       )}
-                      <span className={repsDiff > 0 ? "text-emerald-400 font-medium" : "text-amber-400 font-medium"}>
-                        {repsDiff > 0 ? "+" : ""}{repsDiff}
+                      <span
+                        className={
+                          repsDiff > 0
+                            ? "text-emerald-400 font-medium"
+                            : "text-amber-400 font-medium"
+                        }
+                      >
+                        {repsDiff > 0 ? "+" : ""}
+                        {repsDiff}
                       </span>
                     </>
                   ) : (
@@ -388,8 +402,15 @@ function ProposalCard({ proposal, onSetChange }: ProposalCardProps) {
                       ) : (
                         <TrendingDown className="h-3 w-3 text-amber-500" />
                       )}
-                      <span className={weightDiff > 0 ? "text-emerald-400 font-medium" : "text-amber-400 font-medium"}>
-                        {weightDiff > 0 ? "+" : ""}{weightDiff}kg
+                      <span
+                        className={
+                          weightDiff > 0
+                            ? "text-emerald-400 font-medium"
+                            : "text-amber-400 font-medium"
+                        }
+                      >
+                        {weightDiff > 0 ? "+" : ""}
+                        {weightDiff}kg
                       </span>
                     </>
                   ) : (
