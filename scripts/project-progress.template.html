@@ -1,0 +1,1318 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Momentum · Avancement du projet</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0e14;
+        --panel: #121722;
+        --line: #252d3c;
+        --muted: #a0aec1;
+        --text: #edf2fa;
+        --accent: #a8f078;
+        --done: #a8f078;
+        --review: #82b4ff;
+        --active: #f3c56c;
+        --ready: #c5a0ff;
+        --backlog: #8b98ac;
+        --deferred: #e1a8cc;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          15px/1.6 system-ui,
+          sans-serif;
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+      button,
+      select,
+      input[type="search"] {
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 14px;
+      }
+      button,
+      select,
+      summary {
+        cursor: pointer;
+      }
+      button:hover,
+      a:hover {
+        color: var(--accent);
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 4px;
+      }
+      a {
+        color: #b9d2fb;
+        text-underline-offset: 4px;
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+      h1 {
+        font-size: clamp(30px, 5vw, 48px);
+        letter-spacing: -2px;
+        line-height: 1.2;
+        margin: 14px 0;
+      }
+      h2 {
+        font-size: 22px;
+        letter-spacing: -0.5px;
+      }
+      h3 {
+        font-size: 17px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .shell {
+        max-width: 1320px;
+        padding: 32px;
+        margin: auto;
+      }
+      .topbar,
+      .heading,
+      .section-heading,
+      .epic-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+      .topbar {
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--line);
+        flex-wrap: wrap;
+      }
+      .brand {
+        font-weight: 800;
+        letter-spacing: 3px;
+        font-size: 17px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .mark {
+        color: var(--bg);
+        background: var(--accent);
+        border-radius: 8px;
+        width: 32px;
+        height: 32px;
+        display: grid;
+        place-items: center;
+        letter-spacing: -3px;
+        padding-right: 3px;
+      }
+      .eyebrow {
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+      .heading {
+        margin: 36px 0 28px;
+        align-items: flex-end;
+      }
+      .heading p {
+        max-width: 680px;
+      }
+      .snapshot {
+        font-size: 12px;
+        text-align: right;
+        white-space: nowrap;
+      }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      .metric,
+      .panel,
+      .epic {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--panel);
+      }
+      .metric {
+        padding: 22px;
+      }
+      .metric strong {
+        display: block;
+        font-size: 36px;
+        letter-spacing: -1.5px;
+        margin: 8px 0 0;
+      }
+      .metric small {
+        color: var(--muted);
+      }
+      .overview {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 16px;
+        margin: 16px 0 32px;
+      }
+      .panel {
+        padding: 24px;
+      }
+      .section-heading {
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+      }
+      .bar {
+        display: flex;
+        overflow: hidden;
+        height: 12px;
+        background: #242c3a;
+        border-radius: 20px;
+        margin: 16px 0;
+      }
+      .bar > span {
+        min-width: 0;
+      }
+      .legend {
+        display: flex;
+        gap: 12px 22px;
+        flex-wrap: wrap;
+        font-size: 12px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        display: inline-block;
+        border-radius: 50%;
+        background: var(--status-color);
+        margin-right: 6px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        color: var(--status-color);
+        font-size: 11px;
+        font-weight: 600;
+        border: 1px solid var(--status-color);
+        border-radius: 6px;
+        padding: 2px 8px;
+        white-space: nowrap;
+      }
+      .note {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 16px;
+      }
+      .focus-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .focus-list li + li {
+        margin-top: 10px;
+      }
+      .text-button {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        text-align: left;
+      }
+      .filters {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin: 18px 0 24px;
+      }
+      .filters input[type="search"] {
+        flex: 1;
+        min-width: 220px;
+      }
+      .toggle {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        font-size: 13px;
+        color: var(--muted);
+        cursor: pointer;
+      }
+      input[type="checkbox"] {
+        accent-color: var(--accent);
+        width: 16px;
+        height: 16px;
+      }
+      .epics {
+        display: grid;
+        gap: 16px;
+      }
+      .epic {
+        overflow: hidden;
+      }
+      .epic > summary {
+        list-style: none;
+        padding: 24px;
+      }
+      .epic > summary::-webkit-details-marker {
+        display: none;
+      }
+      .epic-heading {
+        align-items: flex-start;
+      }
+      .epic-name {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+      }
+      .epic-number {
+        background: #202938;
+        color: var(--muted);
+        border-radius: 10px;
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+        font-weight: 700;
+      }
+      .epic-goal {
+        margin: 12px 0;
+        max-width: 920px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .epic-stats {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .epic-percent {
+        text-align: right;
+        white-space: nowrap;
+      }
+      .epic-percent strong {
+        font-size: 25px;
+        display: block;
+      }
+      .epic-percent small {
+        color: var(--muted);
+      }
+      .story-list {
+        border-top: 1px solid var(--line);
+      }
+      .story {
+        display: grid;
+        grid-template-columns: 56px 1fr auto 100px;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 24px;
+      }
+      .story + .story {
+        border-top: 1px solid var(--line);
+      }
+      .story-id {
+        font-size: 12px;
+        font-family: monospace;
+        color: var(--muted);
+      }
+      .story-title {
+        font-weight: 500;
+      }
+      .story-title small {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .task-count {
+        font-size: 12px;
+        color: var(--muted);
+        text-align: right;
+      }
+      .empty {
+        padding: 36px;
+        text-align: center;
+        border: 1px dashed var(--line);
+        border-radius: 16px;
+      }
+      .method {
+        margin-top: 28px;
+        font-size: 13px;
+      }
+      .method summary {
+        font-weight: 600;
+      }
+      .method li {
+        margin: 6px 0;
+        color: var(--muted);
+      }
+      footer {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        border-top: 1px solid var(--line);
+        margin-top: 32px;
+        padding-top: 20px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      code {
+        background: #202938;
+        padding: 2px 5px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      dialog {
+        color: var(--text);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 28px;
+        width: min(800px, calc(100% - 32px));
+        max-height: 85vh;
+      }
+      dialog::backdrop {
+        background: #000a;
+        backdrop-filter: blur(4px);
+      }
+      .dialog-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 20px;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+      .dialog-header h2 {
+        margin-top: 8px;
+      }
+      .dialog-links {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin: 20px 0;
+        font-size: 13px;
+      }
+      .summary-text {
+        white-space: pre-wrap;
+        font-size: 14px;
+        margin: 20px 0;
+        color: var(--muted);
+      }
+      .tasks {
+        list-style: none;
+        padding: 0;
+        font-size: 13px;
+      }
+      .tasks li {
+        padding: 6px 0;
+        display: flex;
+        gap: 10px;
+      }
+      .tasks .nested {
+        padding-left: 20px;
+        color: var(--muted);
+      }
+      .task-check {
+        color: var(--accent);
+        flex-shrink: 0;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .warning {
+        color: var(--active);
+        margin-top: 12px;
+        font-size: 13px;
+      }
+      @media (max-width: 850px) {
+        .metrics {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .overview {
+          grid-template-columns: 1fr;
+        }
+        .heading {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .snapshot {
+          text-align: left;
+        }
+      }
+      @media (max-width: 600px) {
+        .shell {
+          padding: 20px 16px;
+        }
+        .metric {
+          padding: 16px;
+        }
+        .metric strong {
+          font-size: 30px;
+        }
+        .panel {
+          padding: 20px;
+        }
+        .epic > summary {
+          padding: 18px;
+        }
+        .epic-name {
+          align-items: flex-start;
+        }
+        .epic-percent strong {
+          font-size: 20px;
+        }
+        .story {
+          grid-template-columns: 36px 1fr;
+          gap: 8px 12px;
+          padding: 16px 18px;
+        }
+        .story .badge {
+          grid-column: 2;
+          justify-self: start;
+        }
+        .task-count {
+          grid-column: 2;
+          text-align: left;
+        }
+        .filters select {
+          flex: 1;
+          min-width: 140px;
+        }
+        .epic-heading {
+          gap: 12px;
+        }
+      }
+      @media print {
+        body {
+          background: white;
+          color: black;
+        }
+        .shell {
+          max-width: none;
+        }
+        .filters,
+        button,
+        dialog,
+        .method {
+          display: none;
+        }
+        .metric,
+        .panel,
+        .epic {
+          background: white;
+          break-inside: avoid;
+        }
+        :root {
+          --text: #111;
+          --muted: #555;
+          --line: #ccc;
+        }
+      }
+      .history-section {
+        margin-top: 32px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .view-toggle {
+        display: flex;
+        gap: 6px;
+      }
+      .view-toggle button[aria-pressed="true"] {
+        background: var(--accent);
+        color: var(--bg);
+        border-color: var(--accent);
+      }
+      .board {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 260px;
+        overflow-x: auto;
+        gap: 14px;
+        padding-bottom: 16px;
+        align-items: start;
+      }
+      .board-column {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #101520;
+        padding: 12px;
+      }
+      .board-column-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 2px 14px;
+        border-bottom: 2px solid var(--status-color);
+        margin-bottom: 12px;
+      }
+      .board-column-header h3 {
+        font-size: 13px;
+      }
+      .board-count {
+        font-size: 12px;
+        color: var(--muted);
+        background: #202938;
+        border-radius: 6px;
+        padding: 0 8px;
+      }
+      .board-cards {
+        display: grid;
+        gap: 10px;
+      }
+      .board-card {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 14px;
+        background: var(--panel);
+      }
+      .board-card:hover {
+        border-color: var(--status-color);
+        color: var(--text);
+      }
+      .board-card strong {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        margin: 8px 0 12px;
+      }
+      .board-card-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .board-card-epic {
+        color: var(--muted);
+        font-size: 11px;
+        display: block;
+      }
+      .board-empty {
+        color: var(--muted);
+        font-size: 12px;
+        text-align: center;
+        padding: 22px 0;
+      }
+      @media print {
+        .board {
+          grid-auto-flow: row;
+          grid-template-columns: repeat(3, 1fr);
+          overflow: visible;
+        }
+        .board-card {
+          display: block;
+        }
+        .view-toggle {
+          display: none;
+        }
+      }
+      .timeline-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin: 18px 0;
+      }
+      .timeline-controls label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .timeline-controls input {
+        min-width: 0;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 10px;
+      }
+      .history-chart svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .history-chart {
+        margin-bottom: 20px;
+      }
+      .history-stats {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .timeline-month {
+        margin: 28px 0 12px;
+        color: var(--muted);
+        font-size: 13px;
+        text-transform: capitalize;
+      }
+      .timeline-event {
+        border-left: 2px solid var(--line);
+        margin-left: 7px;
+        padding: 0 0 22px 22px;
+        position: relative;
+      }
+      .timeline-event::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--status-color);
+        position: absolute;
+        left: -6px;
+        top: 6px;
+      }
+      .timeline-event h3 {
+        font-size: 14px;
+        margin: 8px 0;
+        overflow-wrap: anywhere;
+      }
+      .event-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .event-stories {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .event-stories button {
+        padding: 4px 8px;
+        font-size: 12px;
+      }
+      .history-detail {
+        border-top: 1px solid var(--line);
+        padding-top: 20px;
+        margin: 20px 0;
+      }
+      @media (max-width: 600px) {
+        .timeline-controls select {
+          width: 100%;
+        }
+        .timeline-controls label {
+          flex: 1;
+        }
+        .timeline-controls input {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <nav class="topbar" aria-label="Documentation">
+        <div class="brand"><span class="mark" aria-hidden="true">M</span>MOMENTUM</div>
+        <div class="legend">
+          <a href="README.md">Documentation ↗</a><a href="prd.md">PRD ↗</a
+          ><a href="epics.md">Epics ↗</a><button id="print" type="button">Imprimer / PDF</button>
+        </div>
+      </nav>
+      <header class="heading">
+        <div>
+          <div class="eyebrow">Pilotage du projet</div>
+          <h1>Chaque story compte.</h1>
+          <p class="muted">
+            Une vue d’ensemble du backlog Momentum, de ses livraisons et des prochaines étapes,
+            basée sur les statuts documentés.
+          </p>
+        </div>
+        <div class="snapshot" id="snapshot"></div>
+      </header>
+      <section class="metrics" id="metrics" aria-label="Indicateurs globaux"></section>
+      <div class="overview">
+        <section class="panel">
+          <div class="section-heading">
+            <h2>État du backlog</h2>
+            <span class="muted" id="scope-count"></span>
+          </div>
+          <div id="distribution"></div>
+          <p class="note">
+            Le pourcentage mesure les stories terminées, avec le même poids pour chaque story. Les
+            stories en revue restent à valider.
+          </p>
+        </section>
+        <section class="panel">
+          <div class="section-heading">
+            <h2>Prochaines étapes</h2>
+            <span class="eyebrow">À suivre</span>
+          </div>
+          <ul class="focus-list" id="focus-list"></ul>
+        </section>
+      </div>
+      <section aria-labelledby="epics-title">
+        <div class="section-heading">
+          <h2 id="epics-title">Board des stories</h2>
+          <div class="view-toggle" role="group" aria-label="Vue des stories">
+            <button id="view-board" type="button" aria-pressed="true">Board</button
+            ><button id="view-epics" type="button" aria-pressed="false">Par epic</button>
+          </div>
+          <span class="muted" id="results" role="status" aria-live="polite"></span>
+        </div>
+        <div class="filters">
+          <input
+            id="search"
+            type="search"
+            placeholder="Rechercher une story, un epic…"
+            aria-label="Rechercher une story ou un epic"
+          />
+          <select id="epic-filter" aria-label="Filtrer par epic">
+            <option value="all">Tous les epics</option>
+          </select>
+          <select id="status-filter" aria-label="Filtrer par statut">
+            <option value="all">Tous les statuts</option>
+          </select>
+          <label class="toggle"
+            ><input id="optional" type="checkbox" />Inclure les optionnelles</label
+          >
+          <button id="reset" type="button">Réinitialiser</button>
+        </div>
+        <p class="note" id="board-note">
+          Une colonne par statut documenté · Cliquer sur une carte pour consulter la story ·
+          Défilement horizontal pour parcourir le board.
+        </p>
+        <div
+          class="board"
+          id="board"
+          tabindex="0"
+          role="region"
+          aria-label="Board des stories par statut"
+        ></div>
+        <div class="epics" id="epics" hidden></div>
+      </section>
+      <section class="history-section" aria-labelledby="history-title">
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">Historique Git</div>
+            <h2 id="history-title">De l’implémentation à l’aboutissement</h2>
+          </div>
+          <span class="muted" id="history-results" role="status" aria-live="polite"></span>
+        </div>
+        <p class="note">
+          Les commits d’implémentation et la clôture documentaire sont deux jalons distincts. Les
+          dates correspondent à l’enregistrement des commits dans Git.
+        </p>
+        <div class="timeline-controls">
+          <select id="history-epic" aria-label="Epic de la chronologie">
+            <option value="all">Tous les epics</option>
+          </select>
+          <select id="history-kind" aria-label="Type de jalon">
+            <option value="milestones">Jalons principaux</option>
+            <option value="implementation">Implémentations</option>
+            <option value="status">Changements de statut</option>
+            <option value="release">Releases</option>
+            <option value="fix">Corrections</option>
+            <option value="all">Tous les événements</option>
+          </select>
+          <label>Du <input type="date" id="history-from" aria-label="Date de début" /></label>
+          <label>Au <input type="date" id="history-to" aria-label="Date de fin" /></label>
+          <button id="history-reset" type="button">Toute la période</button>
+        </div>
+        <div class="panel history-chart" id="history-chart"></div>
+        <div id="history-events"></div>
+      </section>
+      <details class="panel method">
+        <summary>Sources et règles de calcul</summary>
+        <ul>
+          <li>
+            Les titres et objectifs des epics 1 à 4 viennent du <a href="prd.md">PRD</a>. L’epic 5
+            est regroupé depuis ses stories Health Sync et la
+            <a href="specs/momentum-companion-prd.md">spécification Companion</a> ; les stories
+            Android du dépôt compagnon ne sont pas comptées ici.
+          </li>
+          <li>
+            Les fichiers canoniques <code>stories/N.N.nom.md</code> fournissent les statuts. Les
+            wireframes et notes d’implémentation sont des compléments, jamais des stories
+            supplémentaires.
+          </li>
+          <li>
+            Un statut explicite du <a href="stories/sprint-status.yaml">sprint</a> est prioritaire
+            uniquement pour la story concernée. Ce sprint est limité à 3.8. Les métadonnées de
+            workflow de <code>epics.md</code> ne constituent pas une validation de tout le projet.
+          </li>
+          <li>
+            <strong>Terminé</strong> = Done / Completed ; <strong>En revue</strong> = Ready for
+            Review ; <strong>Backlog</strong> = Draft / To Do. Les éléments reportés sont distingués
+            et les optionnels exclus par défaut.
+          </li>
+          <li>
+            Les tâches cochées sont affichées séparément du statut de la story : une checklist
+            complète ne transforme pas une story en « Terminé ».
+          </li>
+          <li>
+            Les indicateurs globaux suivent l’option d’inclusion des stories optionnelles. La
+            recherche et les filtres n’affectent que la liste ; les pourcentages des epics restent
+            calculés sur leur périmètre complet.
+          </li>
+          <li>
+            Cette page est un instantané documentaire. Elle ne certifie pas un déploiement en
+            production. Régénération : <code>npm run docs:progress</code>, puis recharger la page.
+          </li>
+          <li>
+            La chronologie parcourt les commits accessibles depuis <code>HEAD</code> et utilise leur
+            date de commit (UTC). Les associations viennent des références Story/Stories dans les
+            messages, y compris les plages de numéros. Un commit de release ajoutant du code et une
+            nouvelle story déjà terminée constitue aussi un jalon d’implémentation. La navigation
+            3.8 est associée explicitement au commit <code>226f0de</code>.
+          </li>
+          <li>
+            La courbe bleue compte les stories distinctes possédant un commit d’implémentation
+            associé (y compris WIP), sans présumer leur validation. La courbe verte compte les
+            statuts Done/Completed présents dans les versions historiques des stories. Un statut
+            déjà terminé à la création est daté à son premier enregistrement. Les modifications non
+            commitées ne sont pas datées.
+          </li>
+          <li>
+            Les fonctionnalités et corrections sans référence de story restent visibles dans la vue
+            globale. La sélection d’un epic conserve seulement les événements associés à ses stories
+            ; les releases globales y sont masquées. Les filtres temporels s’appliquent à la
+            chronologie, et la courbe conserve le cumul antérieur au début de période. L’option des
+            stories optionnelles s’applique aussi à la chronologie.
+          </li>
+        </ul>
+        <div id="data-warnings"></div>
+      </details>
+      <footer>
+        <span id="footer-version"></span
+        ><span>Sources locales · Sans dépendance externe · Lecture hors ligne</span>
+      </footer>
+      <noscript><p>Activez JavaScript pour afficher les indicateurs et les stories.</p></noscript>
+    </main>
+    <dialog id="story-dialog" aria-labelledby="dialog-title">
+      <div id="dialog-content"></div>
+    </dialog>
+    <script id="project-data" type="application/json">
+      __PROJECT_DATA__
+    </script>
+    <script>
+      "use strict";
+      const data = JSON.parse(document.getElementById("project-data").textContent);
+      const statusInfo = {
+        done: { label: "Terminé", color: "var(--done)" },
+        review: { label: "En revue", color: "var(--review)" },
+        active: { label: "En cours", color: "var(--active)" },
+        ready: { label: "Prêt à développer", color: "var(--ready)" },
+        backlog: { label: "Backlog", color: "var(--backlog)" },
+        deferred: { label: "Reporté", color: "var(--deferred)" },
+        unknown: { label: "Non renseigné", color: "var(--backlog)" },
+      };
+      const $ = (id) => document.getElementById(id);
+      const escape = (value) =>
+        String(value).replace(
+          /[&<>"']/g,
+          (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]
+        );
+      const normalize = (value) =>
+        value
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase();
+      const count = (stories, status) => stories.filter((story) => story.status === status).length;
+      const percentage = (part, total) => (total ? Math.round((part / total) * 100) : 0);
+      const badge = (status) =>
+        `<span class="badge" style="--status-color:${statusInfo[status].color}">${statusInfo[status].label}</span>`;
+      const distribution = (stories) => {
+        const segments = Object.entries(statusInfo).filter(([status]) => count(stories, status));
+        return `<div class="bar" role="img" aria-label="${escape(segments.map(([status, info]) => `${info.label} : ${count(stories, status)}`).join(", "))}">${segments.map(([status, info]) => `<span style="width:${(count(stories, status) / stories.length) * 100}%;background:${info.color}"></span>`).join("")}</div>`;
+      };
+      const scoped = () => data.stories.filter((story) => $("optional").checked || !story.optional);
+      const generated = new Intl.DateTimeFormat("fr-FR", {
+        dateStyle: "long",
+        timeStyle: "short",
+      }).format(new Date(data.generatedAt));
+      $("snapshot").innerHTML =
+        `<div class="eyebrow">Instantané documentaire</div><div>${escape(generated)}</div><span class="muted">${data.epics.length} epics · ${data.stories.length} stories recensées</span>`;
+      $("footer-version").textContent = `Momentum v${data.version} · Généré depuis docs/`;
+      for (const epic of data.epics)
+        $("epic-filter").add(new Option(`Epic ${epic.id} · ${epic.title}`, String(epic.id)));
+      for (const epic of data.epics)
+        $("history-epic").add(new Option(`Epic ${epic.id} · ${epic.title}`, String(epic.id)));
+      for (const [status, info] of Object.entries(statusInfo))
+        if (data.stories.some((story) => story.status === status))
+          $("status-filter").add(new Option(info.label, status));
+
+      function renderOverview() {
+        const stories = scoped();
+        const done = count(stories, "done");
+        const review = count(stories, "review");
+        const remaining = stories.length - done - review;
+        $("metrics").innerHTML = [
+          [
+            "Progression globale",
+            `${percentage(done, stories.length)} %`,
+            `${done} stories terminées sur ${stories.length}`,
+          ],
+          ["Terminées", done, "Statut Done ou Completed"],
+          ["En revue", review, "À valider selon les documents"],
+          ["Autres stories", remaining, "Backlog, en cours, prêtes ou reportées"],
+        ]
+          .map(
+            ([label, value, description]) =>
+              `<article class="metric"><span class="muted">${label}</span><strong>${value}</strong><small>${description}</small></article>`
+          )
+          .join("");
+        $("scope-count").textContent = `${stories.length} stories dans le périmètre`;
+        $("distribution").innerHTML =
+          distribution(stories) +
+          `<div class="legend">${Object.entries(statusInfo)
+            .filter(([status]) => count(stories, status))
+            .map(
+              ([status, info]) =>
+                `<span style="--status-color:${info.color}"><i class="dot"></i>${info.label} <strong>${count(stories, status)}</strong></span>`
+            )
+            .join("")}</div>`;
+        const next = stories
+          .filter((story) => ["backlog", "active", "ready"].includes(story.status))
+          .slice(0, 4);
+        $("focus-list").innerHTML =
+          `<li class="muted">${review} stories en attente de revue documentaire.</li>` +
+          next
+            .map(
+              (story) =>
+                `<li><button class="text-button" data-story="${story.id}"><span class="story-id">${story.id}</span> · ${escape(story.title)}</button></li>`
+            )
+            .join("") +
+          (next.length
+            ? ""
+            : `<li class="muted">Aucune story à développer dans ce périmètre.</li>`);
+      }
+
+      function renderEpics() {
+        const stories = scoped();
+        const query = normalize($("search").value.trim());
+        const selectedEpic = $("epic-filter").value;
+        const selectedStatus = $("status-filter").value;
+        const previousOpen = new Set(
+          [...$("epics").querySelectorAll("details[open]")].map((el) => el.dataset.epic)
+        );
+        const firstRender = !$("epics").dataset.rendered;
+        let visibleCount = 0;
+        const html = data.epics
+          .map((epic) => {
+            if (selectedEpic !== "all" && Number(selectedEpic) !== epic.id) return "";
+            const all = stories.filter((story) => story.epic === epic.id);
+            const visible = all.filter(
+              (story) =>
+                (selectedStatus === "all" || selectedStatus === story.status) &&
+                normalize(
+                  `${story.id} ${story.title} ${epic.title} ${statusInfo[story.status].label}`
+                ).includes(query)
+            );
+            if (!visible.length) return "";
+            visibleCount += visible.length;
+            const done = count(all, "done");
+            const complete = done === all.length && all.length > 0;
+            const label =
+              epic.explicitStatus === "in-progress"
+                ? "En cours · statut sprint"
+                : complete
+                  ? "Terminé · calculé"
+                  : "Non clôturé · calculé";
+            const open =
+              firstRender || query || selectedStatus !== "all" || previousOpen.has(String(epic.id));
+            return `<details class="epic" data-epic="${epic.id}" ${open ? "open" : ""}><summary><div class="epic-heading"><div class="epic-name"><span class="epic-number">0${epic.id}</span><div><span class="eyebrow">Epic ${epic.id}</span><h3>${escape(epic.title)}</h3><span class="epic-stats">${label}</span></div></div><div class="epic-percent"><strong>${percentage(done, all.length)} %</strong><small>terminé</small></div></div><p class="epic-goal">${escape(epic.goal)}</p>${distribution(all)}<div class="epic-stats">${done}/${all.length} terminées · ${count(all, "review")} en revue · ${visible.length} affichées <span aria-hidden="true">⌄</span></div></summary><div class="story-list">${visible.map((story) => `<div class="story"><span class="story-id">${story.id}</span><button class="text-button story-title" data-story="${story.id}">${escape(story.title)}${story.optional ? "<small>Optionnelle · exclue du périmètre par défaut</small>" : ""}${story.conflict ? "<small>Écart entre statut story et sprint</small>" : ""}</button>${badge(story.status)}<span class="task-count">${story.tasks.length ? `${story.tasks.filter((task) => task.done).length}/${story.tasks.length} tâches` : "Sans checklist"}</span></div>`).join("")}</div></details>`;
+          })
+          .join("");
+        $("epics").innerHTML =
+          html || '<div class="empty">Aucune story ne correspond aux filtres.</div>';
+        $("epics").dataset.rendered = "true";
+        $("results").textContent = `${visibleCount} / ${stories.length} stories affichées`;
+        renderBoard();
+      }
+
+      function renderBoard() {
+        const query = normalize($("search").value.trim());
+        const stories = scoped().filter((story) => {
+          const epic = data.epics.find((epic) => epic.id === story.epic);
+          return (
+            ($("epic-filter").value === "all" || story.epic === Number($("epic-filter").value)) &&
+            ($("status-filter").value === "all" || story.status === $("status-filter").value) &&
+            normalize(
+              `${story.id} ${story.title} ${epic.title} ${statusInfo[story.status].label}`
+            ).includes(query)
+          );
+        });
+        const columns = [
+          "backlog",
+          "ready",
+          "active",
+          "review",
+          "done",
+          "deferred",
+          "unknown",
+        ].filter(
+          (status) =>
+            ($("status-filter").value === "all" || $("status-filter").value === status) &&
+            ((status !== "unknown" && status !== "deferred") ||
+              scoped().some((story) => story.status === status))
+        );
+        $("board").innerHTML = columns
+          .map((status) => {
+            const entries = stories.filter((story) => story.status === status);
+            return `<section class="board-column" style="--status-color:${statusInfo[status].color}" aria-labelledby="column-${status}"><header class="board-column-header"><h3 id="column-${status}"><i class="dot" aria-hidden="true"></i>${statusInfo[status].label}</h3><span class="board-count">${entries.length}</span></header><div class="board-cards">${
+              entries
+                .map((story) => {
+                  const epic = data.epics.find((epic) => epic.id === story.epic);
+                  const checked = story.tasks.filter((task) => task.done).length;
+                  return `<button type="button" class="board-card" data-story="${story.id}"><span class="story-id">MOM-${story.id}</span><strong>${escape(story.title)}</strong><span class="board-card-epic">Epic ${story.epic} · ${escape(epic.title)}</span><span class="board-card-meta"><span>${story.tasks.length ? `${checked}/${story.tasks.length} tâches` : "Sans checklist"}</span><span>${story.optional ? "Optionnelle" : story.conflict ? "Écart de statut" : ""}</span></span></button>`;
+                })
+                .join("") || '<p class="board-empty">Aucune story</p>'
+            }</div></section>`;
+          })
+          .join("");
+      }
+      function setStoryView(view) {
+        const board = view === "board";
+        $("board").hidden = !board;
+        $("board-note").hidden = !board;
+        $("epics").hidden = board;
+        $("view-board").setAttribute("aria-pressed", String(board));
+        $("view-epics").setAttribute("aria-pressed", String(!board));
+        $("epics-title").textContent = board ? "Board des stories" : "Avancement par epic";
+      }
+      $("view-board").addEventListener("click", () => setStoryView("board"));
+      $("view-epics").addEventListener("click", () => setStoryView("epics"));
+
+      const dateLabel = (date) =>
+        new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeZone: "UTC" }).format(
+          new Date(date)
+        );
+      const eventInfo = (event) => {
+        if (event.kind === "status")
+          return {
+            label: `Statut · ${statusInfo[event.status].label}`,
+            color: statusInfo[event.status].color,
+          };
+        return {
+          implementation: { label: "Implémentation", color: "var(--review)" },
+          release: { label: "Release", color: "var(--ready)" },
+          fix: { label: "Correction", color: "var(--active)" },
+        }[event.kind];
+      };
+      function eventMarkup(event) {
+        const info = eventInfo(event);
+        return `<article class="timeline-event" style="--status-color:${info.color}"><div class="event-meta"><time datetime="${event.date}">${dateLabel(event.date)}</time><span class="badge" style="--status-color:${info.color}">${info.label}</span><a href="${escape(event.url)}" target="_blank" rel="noopener"><code>${event.sha.slice(0, 7)}</code> ↗</a></div><h3>${escape(event.subject)}</h3><div class="event-stories">${event.storyIds
+          .map((id) => {
+            const story = data.stories.find((story) => story.id === id);
+            return `<button type="button" data-story="${id}">${id} · ${escape(story.title)}</button>`;
+          })
+          .join(
+            ""
+          )}</div>${event.kind === "status" ? `<p class="note">${event.previousStatus ? `${statusInfo[event.previousStatus].label} → ${statusInfo[event.status].label}` : "Premier statut enregistré dans Git"}</p>` : event.kind === "implementation" && !event.storyIds.length ? '<p class="note">Fonctionnalité sans référence explicite à une story.</p>' : ""}</article>`;
+      }
+      function renderHistory() {
+        const stories = scoped().filter(
+          (story) =>
+            $("history-epic").value === "all" || story.epic === Number($("history-epic").value)
+        );
+        const ids = new Set(stories.map((story) => story.id));
+        const all = data.history.events.filter(
+          (event) =>
+            event.storyIds.some((id) => ids.has(id)) ||
+            (!event.storyIds.length && $("history-epic").value === "all")
+        );
+        const from = $("history-from").value;
+        const to = $("history-to").value;
+        const kind = $("history-kind").value;
+        const visible = all
+          .filter(
+            (event) =>
+              (!from || event.date.slice(0, 10) >= from) &&
+              (!to || event.date.slice(0, 10) <= to) &&
+              (kind === "all" ||
+                (kind === "milestones"
+                  ? event.kind === "implementation" ||
+                    event.kind === "release" ||
+                    (event.kind === "status" && event.status === "done")
+                  : event.kind === kind))
+          )
+          .map((event) => ({ ...event, storyIds: event.storyIds.filter((id) => ids.has(id)) }))
+          .reverse();
+        $("history-results").textContent =
+          `${visible.length} événements · ${data.history.commitCount} commits analysés`;
+        let lastMonth = "";
+        $("history-events").innerHTML =
+          visible
+            .map((event) => {
+              const month = event.date.slice(0, 7);
+              const heading =
+                month !== lastMonth
+                  ? `<h3 class="timeline-month">${new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(event.date))}</h3>`
+                  : "";
+              lastMonth = month;
+              return heading + eventMarkup(event);
+            })
+            .join("") ||
+          '<div class="empty">Aucun événement dans cette période et ce périmètre.</div>';
+        renderHistoryChart(all, stories, from, to);
+      }
+      function renderHistoryChart(events, stories, from, to) {
+        const start = Date.parse(from ? `${from}T00:00:00Z` : data.history.firstDate);
+        const end = Date.parse(to ? `${to}T23:59:59Z` : data.history.lastDate);
+        if (end < start) {
+          $("history-chart").innerHTML =
+            '<p class="warning">La date de fin doit être postérieure à la date de début.</p>';
+          return;
+        }
+        const ids = new Set(stories.map((story) => story.id));
+        const implementation = new Set();
+        const statuses = new Map();
+        const points = [];
+        let implemented = 0;
+        let completed = 0;
+        const doneCount = () => [...statuses.values()].filter((status) => status === "done").length;
+        for (const event of [...events].sort((a, b) => Date.parse(a.date) - Date.parse(b.date))) {
+          const timestamp = Date.parse(event.date);
+          if (timestamp > end) break;
+          for (const id of event.storyIds.filter((id) => ids.has(id))) {
+            if (event.kind === "implementation") implementation.add(id);
+            if (event.kind === "status") statuses.set(id, event.status);
+          }
+          if (timestamp < start) {
+            implemented = implementation.size;
+            completed = doneCount();
+          } else
+            points.push({ timestamp, implemented: implementation.size, completed: doneCount() });
+        }
+        points.unshift({ timestamp: start, implemented, completed });
+        const last = points.at(-1);
+        points.push({ ...last, timestamp: end });
+        const x = (timestamp) => 48 + ((timestamp - start) / Math.max(1, end - start)) * 900;
+        const y = (value) => 240 - (value / Math.max(1, stories.length)) * 200;
+        const path = (key) =>
+          points
+            .map(
+              (point, index) =>
+                `${index ? "H" : "M"}${x(point.timestamp).toFixed(2)}${index ? "V" : ","}${y(point[key]).toFixed(2)}`
+            )
+            .join(" ");
+        const ticks = [0, Math.round(stories.length / 2), stories.length];
+        const grid = [...new Set(ticks)]
+          .map(
+            (value) =>
+              `<line x1="48" x2="948" y1="${y(value)}" y2="${y(value)}" stroke="var(--line)"/><text x="35" y="${y(value) + 4}" fill="var(--muted)" text-anchor="end" font-size="12">${value}</text>`
+          )
+          .join("");
+        const dateTicks = Array.from(
+          { length: 5 },
+          (_, index) => start + ((end - start) * index) / 4
+        )
+          .map(
+            (timestamp, index) =>
+              `<text x="${x(timestamp)}" y="270" text-anchor="${index === 0 ? "start" : index === 4 ? "end" : "middle"}" fill="var(--muted)" font-size="12">${dateLabel(new Date(timestamp).toISOString())}</text>`
+          )
+          .join("");
+        $("history-chart").innerHTML =
+          `<h3>Évolution cumulée des stories</h3><p class="note">Axe temporel proportionnel · ${stories.length} stories dans ce périmètre · ${dateLabel(new Date(start).toISOString())} → ${dateLabel(new Date(end).toISOString())}</p><svg viewBox="0 0 980 290" role="img" aria-labelledby="chart-title chart-desc"><title id="chart-title">Stories implémentées et terminées dans le temps</title><desc id="chart-desc">À la fin de la période, ${last.implemented} stories ont un commit d’implémentation associé et ${last.completed} ont un statut historique terminé sur ${stories.length}.</desc>${grid}<path d="${path("implemented")}" fill="none" stroke="var(--review)" stroke-width="3"/><path d="${path("completed")}" fill="none" stroke="var(--done)" stroke-width="3"/>${dateTicks}</svg><div class="legend"><span style="--status-color:var(--review)"><i class="dot"></i>Commit d’implémentation associé : <strong>${last.implemented}</strong></span><span style="--status-color:var(--done)"><i class="dot"></i>Statut historique terminé : <strong>${last.completed}</strong></span></div><p class="note">La courbe utilise tous les types d’événements du périmètre ; le filtre de type ne limite que la liste. ${data.history.shallow ? "Historique Git partiel (clone shallow)." : ""}</p>`;
+      }
+      function storyHistory(story) {
+        const events = data.history.events.filter((event) => event.storyIds.includes(story.id));
+        return `<section class="history-detail"><h3>Jalons Git de la story</h3><p class="note">Première implémentation : ${story.firstImplementation ? dateLabel(story.firstImplementation) : "Non identifiée"}<br>Dernier commit d’implémentation associé : ${story.lastImplementation ? dateLabel(story.lastImplementation) : "Non identifié"}<br>Premier statut terminé enregistré : ${story.completedAt ? dateLabel(story.completedAt) : "Non enregistré"}</p>${events.length ? events.map(eventMarkup).join("") : '<p class="note">Aucun commit explicitement associé à cette story.</p>'}</section>`;
+      }
+      function openStory(id) {
+        const story = data.stories.find((entry) => entry.id === id);
+        if (!story) return;
+        $("dialog-content").innerHTML =
+          `<div class="dialog-header"><div><span class="eyebrow">Epic ${story.epic} · Story ${story.id}</span><h2 id="dialog-title">${escape(story.title)}</h2></div><button type="button" id="close-dialog" aria-label="Fermer le détail">Fermer</button></div>${badge(story.status)}<p class="note">Statut du document : ${escape(story.rawStatus)}${story.sprintStatus ? ` · Sprint : ${escape(story.sprintStatus)}` : ""}<br>Source retenue : ${escape(story.statusSource)}</p>${story.conflict ? '<p class="warning">Le statut du sprint est prioritaire ; le fichier de story présente un statut différent.</p>' : ""}<div class="summary-text">${escape(story.summary || "Consulter le document pour le détail de cette story.")}</div><div class="dialog-links"><a href="${escape(story.path)}" target="_blank" rel="noopener">Ouvrir la story ↗</a>${story.artifacts.map((path) => `<a href="${escape(path)}" target="_blank" rel="noopener">${escape(path.split("/").pop())} ↗</a>`).join("")}</div><h3>Checklist documentée</h3>${story.tasks.length ? `<p class="note">${story.tasks.filter((task) => task.done).length} / ${story.tasks.length} tâches et sous-tâches cochées.</p><ul class="tasks">${story.tasks.map((task) => `<li class="${task.nested ? "nested" : ""}"><span class="task-check" aria-label="${task.done ? "Cochée" : "Non cochée"}">${task.done ? "☑" : "☐"}</span><span>${escape(task.text)}</span></li>`).join("")}</ul>` : '<p class="note">Aucune checklist de tâches dans ce document.</p>'}<details><summary>Lire le document source (Markdown)</summary><pre>${escape(story.content)}</pre></details>`;
+        $("dialog-content").insertAdjacentHTML("beforeend", storyHistory(story));
+        $("close-dialog").addEventListener("click", () => $("story-dialog").close());
+        if (!$("story-dialog").open) $("story-dialog").showModal();
+      }
+      document.addEventListener("click", (event) => {
+        const trigger = event.target.closest("[data-story]");
+        if (trigger) openStory(trigger.dataset.story);
+      });
+      $("story-dialog").addEventListener("click", (event) => {
+        if (event.target !== $("story-dialog")) return;
+        const box = $("story-dialog").getBoundingClientRect();
+        if (
+          event.clientX < box.left ||
+          event.clientX > box.right ||
+          event.clientY < box.top ||
+          event.clientY > box.bottom
+        )
+          $("story-dialog").close();
+      });
+      $("search").addEventListener("input", renderEpics);
+      for (const id of ["epic-filter", "status-filter"])
+        $(id).addEventListener("change", renderEpics);
+      $("optional").addEventListener("change", () => {
+        renderOverview();
+        renderEpics();
+        renderHistory();
+      });
+      $("reset").addEventListener("click", () => {
+        $("search").value = "";
+        $("epic-filter").value = "all";
+        $("status-filter").value = "all";
+        $("optional").checked = false;
+        delete $("epics").dataset.rendered;
+        renderOverview();
+        renderEpics();
+        renderHistory();
+      });
+      for (const id of ["history-epic", "history-kind", "history-from", "history-to"])
+        $(id).addEventListener("change", renderHistory);
+      $("history-reset").addEventListener("click", () => {
+        $("history-from").value = "";
+        $("history-to").value = "";
+        $("history-epic").value = "all";
+        $("history-kind").value = "milestones";
+        renderHistory();
+      });
+      const printOpen = [];
+      window.addEventListener("beforeprint", () => {
+        printOpen.length = 0;
+        for (const detail of document.querySelectorAll(".epic")) {
+          printOpen.push([detail, detail.open]);
+          detail.open = true;
+        }
+      });
+      window.addEventListener("afterprint", () => {
+        for (const [detail, open] of printOpen) detail.open = open;
+      });
+      $("print").addEventListener("click", () => window.print());
+      const warnings = [
+        ...data.missingStories.map(
+          (id) => `Story ${id} présente dans le PRD sans fichier canonique.`
+        ),
+        ...data.stories
+          .filter((story) => story.status === "unknown")
+          .map((story) => `Statut inconnu pour ${story.id} : ${story.rawStatus}.`),
+      ];
+      $("data-warnings").innerHTML = warnings
+        .map((warning) => `<p class="warning">${escape(warning)}</p>`)
+        .join("");
+      renderOverview();
+      renderEpics();
+      renderHistory();
+    </script>
+  </body>
+</html>

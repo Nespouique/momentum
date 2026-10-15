@@ -19,6 +19,7 @@
     "db:stop": "docker compose -f docker/docker-compose.dev.yml down",
     "db:reset": "docker compose -f docker/docker-compose.dev.yml down -v && docker compose -f docker/docker-compose.dev.yml up -d",
     "generate-icons": "node scripts/generate-icon-list.mjs",
+    "docs:progress": "node scripts/generate-project-progress.mjs",
     "postinstall": "node scripts/generate-icon-list.mjs"
   },
   "devDependencies": {

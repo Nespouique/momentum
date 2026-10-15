@@ -3,6 +3,31 @@
 All project specifications and BMAD-generated artifacts live under `docs/`.
 The framework and its internal configuration remain under `_bmad/`.
 
+## Project Progress Dashboard
+
+Open [progress.html](./progress.html) in a browser to view epic progress, story statuses,
+task checklists, and searchable story details. The standalone page works offline, with all
+data embedded; source-document links require keeping it alongside the rest of `docs/`.
+
+The default story view is a status-column board (Backlog, Ready, In progress, Review,
+Done, and Deferred when included). Cards open story details. Switch to the epic view
+to see progress bars; both views share search, epic/status filters, and optional scope.
+
+The Git timeline shows implementation commits, historical story status transitions,
+releases, and fixes, with date/epic filters and cumulative story curves. Implementation
+and documentary completion are separate milestones. Commit dates use UTC; history is
+limited to commits reachable from local `HEAD`. GitHub commit links require connectivity.
+
+Regenerate the snapshot after updating the documentation:
+
+```bash
+npm run docs:progress
+```
+
+The generator reads canonical story files, the PRD epic list, and scoped sprint statuses.
+Completed and review statuses are counted separately. Optional stories are excluded by
+default. This is documentation-based progress, not a production deployment audit.
+
 ## Specification Entry Points
 
 | Document               | Location                                         | Scope                                                                 |
