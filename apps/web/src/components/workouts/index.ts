@@ -1,5 +1,6 @@
 export { WorkoutBuilder } from "./workout-builder";
 export { ExerciseSelector } from "./exercise-selector";
+export { AdHocExerciseConfigSheet } from "./ad-hoc-exercise-config-sheet";
 export { AddItemDialog } from "./add-item-dialog";
 export { ExerciseConfigDrawer } from "./exercise-config-drawer";
 export { SupersetConfigDrawer } from "./superset-config-drawer";

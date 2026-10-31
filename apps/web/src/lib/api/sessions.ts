@@ -154,9 +154,15 @@ export async function startSession(token: string, workoutId: string): Promise<Se
   return handleResponse<SessionResponse>(response);
 }
 
+export interface AdHocExerciseConfig {
+  sets: number;
+  reps: number;
+}
+
 export async function startAdHocSession(
   token: string,
-  exerciseId: string
+  exerciseId: string,
+  config?: AdHocExerciseConfig
 ): Promise<SessionResponse> {
   const response = await fetch(`${API_URL}/sessions/ad-hoc`, {
     method: "POST",
@@ -164,7 +170,7 @@ export async function startAdHocSession(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ exerciseId }),
+    body: JSON.stringify({ exerciseId, ...config }),
   });
 
   return handleResponse<SessionResponse>(response);
@@ -266,7 +272,8 @@ export async function deleteSession(token: string, id: string): Promise<void> {
 export async function addAdHocExercise(
   token: string,
   sessionId: string,
-  exerciseId: string
+  exerciseId: string,
+  config?: AdHocExerciseConfig
 ): Promise<{ data: SessionExercise }> {
   const response = await fetch(`${API_URL}/sessions/${sessionId}/exercises`, {
     method: "POST",
@@ -274,7 +281,7 @@ export async function addAdHocExercise(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ exerciseId }),
+    body: JSON.stringify({ exerciseId, ...config }),
   });
 
   return handleResponse<{ data: SessionExercise }>(response);

@@ -64,7 +64,18 @@ const sessionInclude = {
   },
 };
 
-async function getAdHocSetTargets(userId: string, exerciseId: string) {
+interface AdHocTargetOptions {
+  sets?: number | undefined;
+  reps?: number | undefined;
+}
+
+// Targets default to the latest completed performance (or 3x10 without history).
+// Explicit set/rep counts override the defaults; weights still come from history.
+async function getAdHocSetTargets(
+  userId: string,
+  exerciseId: string,
+  options: AdHocTargetOptions = {}
+) {
   const previousExercise = await prisma.sessionExercise.findFirst({
     where: {
       exerciseId,
@@ -81,19 +92,21 @@ async function getAdHocSetTargets(userId: string, exerciseId: string) {
     },
   });
 
-  if (!previousExercise) {
-    return Array.from({ length: 3 }, (_, index) => ({
-      setNumber: index + 1,
-      targetReps: 10,
-      targetWeight: 0,
-    }));
-  }
-
-  return previousExercise.sets.map((set) => ({
-    setNumber: set.setNumber,
-    targetReps: set.actualReps!,
-    targetWeight: set.actualWeight ?? set.targetWeight ?? 0,
+  const history = (previousExercise?.sets ?? []).map((set) => ({
+    reps: set.actualReps!,
+    weight: set.actualWeight ?? set.targetWeight ?? 0,
   }));
+  const lastHistorySet = history[history.length - 1];
+  const setCount = options.sets ?? (history.length > 0 ? history.length : 3);
+
+  return Array.from({ length: setCount }, (_, index) => {
+    const source = history[index] ?? lastHistorySet;
+    return {
+      setNumber: index + 1,
+      targetReps: options.reps ?? source?.reps ?? 10,
+      targetWeight: source?.weight ?? 0,
+    };
+  });
 }
 
 function isUniqueConstraintError(error: unknown): boolean {
@@ -269,7 +282,10 @@ router.post(
         });
       }
 
-      const targets = await getAdHocSetTargets(userId, data.exerciseId);
+      const targets = await getAdHocSetTargets(userId, data.exerciseId, {
+        sets: data.sets,
+        reps: data.reps,
+      });
       const session = await prisma.workoutSession.create({
         data: {
           userId,
@@ -701,7 +717,10 @@ router.post(
         });
       }
 
-      const targets = await getAdHocSetTargets(userId, data.exerciseId);
+      const targets = await getAdHocSetTargets(userId, data.exerciseId, {
+        sets: data.sets,
+        reps: data.reps,
+      });
       const createdExercise = await prisma.$transaction(async (tx) => {
         await tx.$queryRaw`
           SELECT "id"

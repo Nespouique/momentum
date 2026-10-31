@@ -6,7 +6,12 @@ import { X, Plus, Play, History, CalendarDays, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
-import { WorkoutCard, SessionHistorySheet, SessionCalendarSheet } from "@/components/workouts";
+import {
+  WorkoutCard,
+  SessionHistorySheet,
+  SessionCalendarSheet,
+  AdHocExerciseConfigSheet,
+} from "@/components/workouts";
 import { ExerciseSelector } from "@/components/workouts/exercise-selector";
 import { useAuthStore } from "@/stores/auth";
 import { getWorkouts, deleteWorkout, duplicateWorkout, type Workout } from "@/lib/api/workouts";
@@ -16,6 +21,7 @@ import {
   getActiveSession,
   updateSession,
   SessionError,
+  type AdHocExerciseConfig,
   type WorkoutSession,
 } from "@/lib/api/sessions";
 import { toast } from "sonner";
@@ -48,6 +54,7 @@ export default function WorkoutsPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showAdHocSelector, setShowAdHocSelector] = useState(false);
+  const [adHocExercise, setAdHocExercise] = useState<{ id: string; name: string } | null>(null);
   const [isStartingSession, setIsStartingSession] = useState(false);
   const startSessionLockRef = useRef(false);
 
@@ -156,18 +163,24 @@ export default function WorkoutsPage() {
     }
   };
 
-  const handleStartAdHoc = async (exercises: { id: string }[]) => {
+  const handleSelectAdHocExercise = (exercises: { id: string; name: string }[]) => {
     const exercise = exercises[0];
-    if (!token || activeSession || !exercise || startSessionLockRef.current) return;
+    if (!exercise) return;
+    setAdHocExercise({ id: exercise.id, name: exercise.name });
+    setShowAdHocSelector(false);
+  };
+
+  const handleStartAdHoc = async (exercise: { id: string }, config: AdHocExerciseConfig) => {
+    if (!token || activeSession || startSessionLockRef.current) return;
     startSessionLockRef.current = true;
     setIsStartingSession(true);
     try {
-      const result = await startAdHocSession(token, exercise.id);
-      setShowAdHocSelector(false);
+      const result = await startAdHocSession(token, exercise.id, config);
+      setAdHocExercise(null);
       router.push(`/session/${result.data.id}`);
     } catch (error) {
       if (error instanceof SessionError && error.code === "SESSION_ALREADY_ACTIVE") {
-        setShowAdHocSelector(false);
+        setAdHocExercise(null);
         loadActiveSession();
       } else {
         console.error("Failed to start ad-hoc session:", error);
@@ -378,9 +391,20 @@ export default function WorkoutsPage() {
         open={showAdHocSelector}
         onOpenChange={setShowAdHocSelector}
         mode="single"
-        onSelect={handleStartAdHoc}
+        onSelect={handleSelectAdHocExercise}
         title="Premier exercice"
-        footerMessage="Choisissez votre premier exercice."
+        footerMessage="Choisissez votre premier exercice, vous réglerez les séries ensuite."
+        isSubmitting={isStartingSession}
+      />
+
+      <AdHocExerciseConfigSheet
+        open={adHocExercise !== null}
+        onOpenChange={(open) => {
+          if (!open) setAdHocExercise(null);
+        }}
+        exercise={adHocExercise}
+        onConfirm={handleStartAdHoc}
+        confirmLabel="Démarrer la séance"
         isSubmitting={isStartingSession}
       />
     </div>

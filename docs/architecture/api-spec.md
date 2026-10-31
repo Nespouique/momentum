@@ -251,10 +251,10 @@ Sources: [all session handlers](../../apps/api/src/routes/session.routes.ts),
 | GET `/sessions/last` | Required UUID `workoutId` | `{data:Session|null}`, last completed by completedAt |
 | GET `/sessions/:id` | none | `{data:Session,lastSession:Session|null}` |
 | POST `/sessions` | `{workoutId:UUID}` | 201 `{data:Session,lastSession:Session|null}` |
-| POST `/sessions/ad-hoc` | `{exerciseId:UUID}` | 201 `{data:Session,lastSession:null}` |
+| POST `/sessions/ad-hoc` | `{exerciseId:UUID,sets?:1-10,reps?:1-100}` | 201 `{data:Session,lastSession:null}` |
 | PATCH `/sessions/:id` | `{status?:"completed"|"abandoned",notes?:string}` (≤1000) | `{data:Session}` |
 | DELETE `/sessions/:id` | none | 204 |
-| POST `/sessions/:id/exercises` | `{exerciseId:UUID}` | 201 `{data:SessionExercise}`; active ad-hoc only |
+| POST `/sessions/:id/exercises` | `{exerciseId:UUID,sets?:1-10,reps?:1-100}` | 201 `{data:SessionExercise}`; active ad-hoc only |
 | PATCH `/sessions/:id/exercises/:exerciseId` | `{status:"skipped"}` | `{data:SessionExercise}` |
 | POST `/sessions/:id/exercises/:exerciseId/substitute` | `{newExerciseId:UUID}` | 201 `{data:SessionExercise}` |
 | PUT `/sessions/:id/exercises/reorder` | `{exerciseIds:UUID[]}` nonempty | `{data:SessionExercise[]}` |

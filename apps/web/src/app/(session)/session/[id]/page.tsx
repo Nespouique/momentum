@@ -18,6 +18,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useTimerAudio } from "@/hooks/use-timer-audio";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { ExerciseSelector } from "@/components/workouts/exercise-selector";
+import { AdHocExerciseConfigSheet } from "@/components/workouts/ad-hoc-exercise-config-sheet";
 import { MuscleGroup } from "@/lib/constants/muscle-groups";
 import {
   updateSet,
@@ -26,6 +27,7 @@ import {
   updateProgressionSuggestion,
   addAdHocExercise,
   SessionError,
+  type AdHocExerciseConfig,
 } from "@/lib/api/sessions";
 import { toast } from "sonner";
 import { type ProgressionSuggestion } from "@/components/session";
@@ -99,6 +101,10 @@ export default function SessionPage({ params }: SessionPageProps) {
   const [showOverviewReorderScreen, setShowOverviewReorderScreen] = useState(false);
   const [showOverviewSubstituteSheet, setShowOverviewSubstituteSheet] = useState(false);
   const [showAdHocExerciseSelector, setShowAdHocExerciseSelector] = useState(false);
+  const [pendingAdHocExercise, setPendingAdHocExercise] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const addExerciseLockRef = useRef(false);
 
@@ -398,15 +404,21 @@ export default function SessionPage({ params }: SessionPageProps) {
     [token, session, completeSession, router]
   );
 
+  const handleSelectAdHocExercise = useCallback((exercises: { id: string; name: string }[]) => {
+    const exercise = exercises[0];
+    if (!exercise) return;
+    setPendingAdHocExercise({ id: exercise.id, name: exercise.name });
+    setShowAdHocExerciseSelector(false);
+  }, []);
+
   const handleAddAdHocExercise = useCallback(
-    async (exercises: { id: string }[]) => {
-      const exercise = exercises[0];
-      if (!token || !session || !exercise || addExerciseLockRef.current) return;
+    async (exercise: { id: string }, config: AdHocExerciseConfig) => {
+      if (!token || !session || addExerciseLockRef.current) return;
       addExerciseLockRef.current = true;
       setIsSubmitting(true);
       try {
-        await addAdHocExercise(token, session.id, exercise.id);
-        setShowAdHocExerciseSelector(false);
+        await addAdHocExercise(token, session.id, exercise.id, config);
+        setPendingAdHocExercise(null);
         await loadSession(token, session.id);
       } catch (error) {
         console.error("Failed to add ad-hoc exercise:", error);
@@ -422,6 +434,19 @@ export default function SessionPage({ params }: SessionPageProps) {
     },
     [token, session, loadSession]
   );
+
+  // End of an ad-hoc exercise: leave the rest screen, then let the user chain another exercise.
+  const handleAdHocAddFromRest = useCallback(async () => {
+    cancelScheduledNotification();
+    await skipRest();
+    setShowAdHocExerciseSelector(true);
+  }, [cancelScheduledNotification, skipRest]);
+
+  const handleAdHocFinishFromRest = useCallback(async () => {
+    cancelScheduledNotification();
+    await skipRest();
+    useSessionStore.setState({ currentScreen: "summary" });
+  }, [cancelScheduledNotification, skipRest]);
 
   // Progression suggestion handlers
   const handleAcceptSuggestion = useCallback(
@@ -955,6 +980,14 @@ export default function SessionPage({ params }: SessionPageProps) {
             defaultReps={defaultResult.reps}
             defaultWeight={defaultResult.weight}
             onResultChange={handleResultChange}
+            // Ad-hoc: after the last set, offer to chain another exercise or finish
+            {...(!nextSet &&
+              session.type === "ad_hoc" && {
+                adHoc: {
+                  onAddExercise: handleAdHocAddFromRest,
+                  onFinish: handleAdHocFinishFromRest,
+                },
+              })}
             // Only pass next set props if there's a next set
             {...(nextSet && {
               nextSetNumber: currentSetIndex + 2,
@@ -1202,10 +1235,21 @@ export default function SessionPage({ params }: SessionPageProps) {
         open={showAdHocExerciseSelector}
         onOpenChange={setShowAdHocExerciseSelector}
         mode="single"
-        onSelect={handleAddAdHocExercise}
+        onSelect={handleSelectAdHocExercise}
         title="Ajouter un exercice"
-        footerMessage="Les objectifs reprennent votre dernière performance."
+        footerMessage="Vous réglerez les séries et les reps à l’étape suivante."
         disabledExerciseIds={session?.exercises.map((exercise) => exercise.exerciseId) ?? []}
+        isSubmitting={isSubmitting}
+      />
+
+      <AdHocExerciseConfigSheet
+        open={pendingAdHocExercise !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingAdHocExercise(null);
+        }}
+        exercise={pendingAdHocExercise}
+        onConfirm={handleAddAdHocExercise}
+        confirmLabel="Ajouter à la séance"
         isSubmitting={isSubmitting}
       />
 

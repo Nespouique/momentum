@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { TimerBlock } from "../timer-block";
 import { ResultInput } from "../result-input";
 import { NextPreview } from "../next-preview";
@@ -58,6 +60,11 @@ interface CommonRestProps {
   nextTargetWeight?: number | null;
   lastReps?: number | null;
   lastWeight?: number | null;
+  // Ad-hoc sessions: actions offered after the last set of the last exercise
+  adHoc?: {
+    onAddExercise: () => void;
+    onFinish: () => void;
+  };
 }
 
 type RestScreenProps = CommonRestProps & (StandardRestProps | SupersetRestProps);
@@ -76,6 +83,7 @@ export function RestScreen(props: RestScreenProps) {
     nextTargetWeight,
     lastReps,
     lastWeight,
+    adHoc,
   } = props;
 
   // State for standard mode
@@ -204,6 +212,19 @@ export function RestScreen(props: RestScreenProps) {
             lastWeight,
           }}
         />
+      ) : adHoc && !props.isSuperset ? (
+        <div className="space-y-3">
+          <p className="text-center text-sm text-zinc-400">
+            Exercice terminé. Enchaînez avec un autre exercice ou terminez la séance.
+          </p>
+          <Button size="lg" className="w-full gap-2" onClick={adHoc.onAddExercise}>
+            <Plus className="h-5 w-5" />
+            Ajouter un exercice
+          </Button>
+          <Button size="lg" variant="outline" className="w-full" onClick={adHoc.onFinish}>
+            Finir la séance
+          </Button>
+        </div>
       ) : (
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 text-center">
           <p className="text-sm text-zinc-400">

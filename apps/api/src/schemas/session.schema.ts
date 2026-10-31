@@ -7,6 +7,8 @@ export const createSessionSchema = z.object({
 
 export const adHocExerciseSchema = z.object({
   exerciseId: z.string().uuid("Invalid exercise ID"),
+  sets: z.number().int().min(1, "At least 1 set").max(10, "At most 10 sets").optional(),
+  reps: z.number().int().min(1, "At least 1 rep").max(100, "At most 100 reps").optional(),
 });
 
 // Update session (status change or notes)
