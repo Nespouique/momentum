@@ -29,7 +29,8 @@
 - [x] Séance on the fly (définir au fur et à mesure)
 - [x] cf capture, le sélecteur de repos est orange au lieu de la couleur d'accentuation
 - [ ] Pour la vue calendrier dans le dashboard, mettre tout en haut à droite une icon calendar comme pour les séances, et faire en sorte que ce soit cliquable pour accéder à la vue calendrier complète ; ou alors mettre simplement "aujourd'hui", et mettre des flèches pour naviguer entre les jours
-- [ ] Pouvoir ajouter une série pendant la séance
+- [x] Pouvoir ajouter une série pendant la séance
+  - Bouton « Ajouter une série (1 more) » sur l'écran de repos de fin d'exercice (séances planifiées et à la volée, hors superset) ; la série reprend le dernier résultat saisi. Non testé en conditions réelles.
 - [ ] Récapitulatif mensuel en partant des données de la bdd
 - [ ] Pouvoir avoir un trackable "au moins X fois par Y" ou "pas plus de X fois par Y"
 - [ ] Stats lorsque poids du corps afficher les reps

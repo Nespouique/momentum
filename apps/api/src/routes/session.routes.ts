@@ -34,6 +34,10 @@ class SessionNotActiveError extends Error {}
 class DuplicateSessionExerciseError extends Error {}
 class SessionExerciseNotFoundError extends Error {}
 class SessionSetNotFoundError extends Error {}
+class ExerciseNotExtendableError extends Error {}
+class SetLimitReachedError extends Error {}
+
+const MAX_SETS_PER_EXERCISE = 20;
 
 function formatZodError(error: ZodError) {
   return error.issues.map((issue) => ({
@@ -1469,6 +1473,92 @@ router.post(
           code: ErrorCodes.INTERNAL_ERROR,
           message: "An unexpected error occurred",
         },
+      });
+    }
+  })
+);
+
+// POST /sessions/:id/exercises/:exerciseId/extra-set - Append one more set to an exercise
+router.post(
+  "/:id/exercises/:exerciseId/extra-set",
+  withSessionLogging(async (req: AuthRequest, res: Response) => {
+    try {
+      const sessionId = req.params["id"] as string;
+      const exerciseId = req.params["exerciseId"] as string;
+      const userId = req.userId!;
+
+      const createdSet = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`
+          SELECT "id"
+          FROM "workout_sessions"
+          WHERE "id" = ${sessionId} AND "user_id" = ${userId}
+          FOR UPDATE
+        `;
+
+        const session = await tx.workoutSession.findFirst({ where: { id: sessionId, userId } });
+        if (!session) throw new SessionNotFoundError();
+        if (session.status !== "in_progress") throw new SessionNotActiveError();
+
+        const exercise = await tx.sessionExercise.findFirst({
+          where: { id: exerciseId, sessionId },
+          include: { sets: { orderBy: { setNumber: "asc" } } },
+        });
+        if (!exercise) throw new SessionExerciseNotFoundError();
+        if (exercise.status === "skipped" || exercise.status === "substituted") {
+          throw new ExerciseNotExtendableError();
+        }
+        if (exercise.sets.length >= MAX_SETS_PER_EXERCISE) throw new SetLimitReachedError();
+
+        // The extra set repeats what was just done: last recorded result, else last target.
+        const lastSet = exercise.sets[exercise.sets.length - 1];
+        const nextSetNumber = Math.max(0, ...exercise.sets.map((set) => set.setNumber)) + 1;
+
+        return tx.sessionSet.create({
+          data: {
+            sessionExerciseId: exerciseId,
+            setNumber: nextSetNumber,
+            targetReps: lastSet?.actualReps ?? lastSet?.targetReps ?? 10,
+            targetWeight: lastSet?.actualWeight ?? lastSet?.targetWeight ?? 0,
+          },
+        });
+      });
+
+      return res.status(201).json({ data: createdSet });
+    } catch (error) {
+      if (error instanceof SessionNotFoundError) {
+        return res.status(404).json({
+          error: { code: ErrorCodes.NOT_FOUND, message: "Session not found" },
+        });
+      }
+      if (error instanceof SessionNotActiveError) {
+        return res.status(400).json({
+          error: { code: ErrorCodes.SESSION_NOT_ACTIVE, message: "Session is not active" },
+        });
+      }
+      if (error instanceof SessionExerciseNotFoundError) {
+        return res.status(404).json({
+          error: { code: ErrorCodes.NOT_FOUND, message: "Exercise not found in session" },
+        });
+      }
+      if (error instanceof ExerciseNotExtendableError) {
+        return res.status(409).json({
+          error: {
+            code: ErrorCodes.CONFLICT,
+            message: "Sets cannot be added to a skipped or substituted exercise",
+          },
+        });
+      }
+      if (error instanceof SetLimitReachedError) {
+        return res.status(409).json({
+          error: {
+            code: ErrorCodes.CONFLICT,
+            message: `An exercise cannot have more than ${MAX_SETS_PER_EXERCISE} sets`,
+          },
+        });
+      }
+      console.error("Add extra set error:", error);
+      return res.status(500).json({
+        error: { code: ErrorCodes.INTERNAL_ERROR, message: "An unexpected error occurred" },
       });
     }
   })

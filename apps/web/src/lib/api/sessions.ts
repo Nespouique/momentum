@@ -387,6 +387,24 @@ export async function recordSetResult(
   return handleResponse<{ data: SessionSet }>(response);
 }
 
+export async function addExtraSet(
+  token: string,
+  sessionId: string,
+  exerciseId: string
+): Promise<{ data: SessionSet }> {
+  const response = await fetch(
+    `${API_URL}/sessions/${sessionId}/exercises/${exerciseId}/extra-set`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return handleResponse<{ data: SessionSet }>(response);
+}
+
 export async function updateSet(
   token: string,
   sessionId: string,

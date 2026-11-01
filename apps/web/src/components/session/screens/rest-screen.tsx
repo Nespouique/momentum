@@ -60,6 +60,8 @@ interface CommonRestProps {
   nextTargetWeight?: number | null;
   lastReps?: number | null;
   lastWeight?: number | null;
+  // Offered after the last set of a standard exercise: append one more set
+  onAddSet?: () => void;
   // Ad-hoc sessions: actions offered after the last set of the last exercise
   adHoc?: {
     onAddExercise: () => void;
@@ -84,6 +86,7 @@ export function RestScreen(props: RestScreenProps) {
     lastReps,
     lastWeight,
     adHoc,
+    onAddSet,
   } = props;
 
   // State for standard mode
@@ -192,6 +195,14 @@ export function RestScreen(props: RestScreenProps) {
           onChange={handleStandardResultChange}
           showObjective={true}
         />
+      )}
+
+      {/* One more set at the end of the exercise */}
+      {onAddSet && !props.isSuperset && (
+        <Button variant="outline" className="w-full gap-2" onClick={onAddSet}>
+          <Plus className="h-4 w-4" />
+          Ajouter une série (1 more)
+        </Button>
       )}
 
       {/* Separator */}

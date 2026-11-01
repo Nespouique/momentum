@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check } from "lucide-react";
+import { Check, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { TimerBlock } from "../timer-block";
 import { ResultInput } from "../result-input";
 import { NextPreview, type SupersetPreviewData } from "../next-preview";
@@ -63,6 +64,8 @@ interface CommonTransitionProps {
   } | null;
   // Next superset preview props (mutually exclusive with nextExercise)
   nextSuperset?: SupersetPreviewData | null;
+  // Append one more set to the exercise that was just completed
+  onAddSet?: () => void;
   // Options bar props (optional - not shown when no next exercise)
   onSkipExercise?: () => void;
   onPostponeExercise?: () => void;
@@ -84,6 +87,7 @@ export function TransitionScreen(props: TransitionScreenProps) {
     onSkipExercise,
     onPostponeExercise,
     onSubstituteExercise,
+    onAddSet,
   } = props;
 
   const hasNextItem = nextExercise || nextSuperset;
@@ -189,6 +193,14 @@ export function TransitionScreen(props: TransitionScreenProps) {
           onChange={setStandardResult}
           showObjective={true}
         />
+      )}
+
+      {/* One more set at the end of the exercise */}
+      {onAddSet && !props.isSuperset && (
+        <Button variant="outline" className="w-full gap-2" onClick={onAddSet}>
+          <Plus className="h-4 w-4" />
+          Ajouter une série (1 more)
+        </Button>
       )}
 
       {/* Separator */}

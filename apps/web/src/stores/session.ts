@@ -9,6 +9,7 @@ import {
   updateSession as apiUpdateSession,
   recordSetResult as apiRecordSetResult,
   skipExercise as apiSkipExercise,
+  addExtraSet as apiAddExtraSet,
   substituteExercise as apiSubstituteExercise,
   reorderExercises as apiReorderExercises,
   SessionError,
@@ -223,6 +224,7 @@ interface SessionState {
   substituteFirstExercise: (token: string, newExerciseId: string) => Promise<void>;
   completeSet: (token: string, result: PendingResult) => Promise<void>;
   skipRest: () => Promise<void>;
+  addExtraSet: (token: string) => Promise<boolean>;
   adjustRestTime: (delta: number) => void;
   skipExercise: (token: string) => Promise<void>;
   postponeExercise: (token: string, exerciseIds: string[]) => Promise<void>;
@@ -356,6 +358,54 @@ async function flushPendingResultUpdate(state: SessionState, key: string): Promi
   }
 
   return true;
+}
+
+// Flush results edited during rest (single exercise or whole superset round) to the API.
+// Failed writes stay persisted so the next retry does not drop user input.
+async function flushRestResults(
+  state: SessionState,
+  currentExercise: SessionExercise | null,
+  get: () => SessionState,
+  set: (partial: Partial<SessionState>) => void
+): Promise<void> {
+  if (!state.session || !state.token || !currentExercise) return;
+
+  // Handle single exercise pending result
+  const pendingResultKey = `${currentExercise.id}-${state.currentSetIndex}`;
+  const flushedKeys = new Set<string>();
+  if (await flushPendingResultUpdate(state, pendingResultKey)) {
+    flushedKeys.add(pendingResultKey);
+  }
+
+  // Handle superset: flush all exercises in the superset round
+  if (state.isInSuperset) {
+    for (const exId of state.supersetExerciseIds) {
+      if (exId === currentExercise.id) continue; // Already handled above
+      const key = `${exId}-${state.currentSetIndex}`;
+      if (await flushPendingResultUpdate(get(), key)) {
+        flushedKeys.add(key);
+      }
+    }
+  }
+
+  // Keep failed writes persisted for the next retry instead of dropping user input.
+  const newPendingResults = new Map(get().pendingResults);
+  const newCompletedSetIds = new Map(get().completedSetIds);
+  const newSentResults = new Map(get().sentResults);
+  for (const key of flushedKeys) {
+    newPendingResults.delete(key);
+    newCompletedSetIds.delete(key);
+    newSentResults.delete(key);
+  }
+
+  set({
+    pendingResults: newPendingResults,
+    completedSetIds: newCompletedSetIds,
+    sentResults: newSentResults,
+  });
+  savePendingResults(newPendingResults);
+  saveCompletedSetIds(newCompletedSetIds);
+  saveSentResults(newSentResults);
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -1247,6 +1297,50 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
+  addExtraSet: async (token: string) => {
+    const state = get();
+    const currentExercise = state.getCurrentExercise();
+
+    // Only at the end of a standard exercise, from its rest/transition screen
+    if (!state.session || !currentExercise || state.isInSuperset) return false;
+    if (state.currentScreen !== "rest" && state.currentScreen !== "transition") return false;
+    if (state.currentSetIndex < currentExercise.sets.length - 1) return false;
+    if (!state.restEndAt) return false;
+
+    // Freeze the rest timer so tick() cannot trigger skipRest while we work
+    const previousRestEndAt = state.restEndAt;
+    set({ restEndAt: null });
+    clearRestState();
+
+    try {
+      // The server derives the new set's targets from the last recorded result
+      await flushRestResults(state, currentExercise, get, set);
+      const response = await apiAddExtraSet(token, state.session.id, currentExercise.id);
+
+      const latest = get();
+      if (!latest.session) return false;
+      const newSetIndex = currentExercise.sets.length;
+      const updatedExercises = latest.session.exercises.map((ex) =>
+        ex.id === currentExercise.id ? { ...ex, sets: [...ex.sets, response.data] } : ex
+      );
+
+      set({
+        session: { ...latest.session, exercises: updatedExercises },
+        currentSetIndex: newSetIndex,
+        currentScreen: "exercise",
+        isResting: false,
+        restEndAt: null,
+        restTimeRemaining: 0,
+      });
+      return true;
+    } catch (error) {
+      console.error("Failed to add extra set:", error);
+      // Resume the rest timer where it was
+      set({ restEndAt: previousRestEndAt });
+      return false;
+    }
+  },
+
   skipRest: async () => {
     const state = get();
 
@@ -1263,44 +1357,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     clearRestState();
 
     // Check if user modified the result during rest and send a PUT if so
-    if (state.session && state.token && currentExercise) {
-      // Handle single exercise pending result
-      const pendingResultKey = `${currentExercise.id}-${state.currentSetIndex}`;
-      const flushedKeys = new Set<string>();
-      if (await flushPendingResultUpdate(state, pendingResultKey)) {
-        flushedKeys.add(pendingResultKey);
-      }
-
-      // Handle superset: flush all exercises in the superset round
-      if (state.isInSuperset) {
-        for (const exId of state.supersetExerciseIds) {
-          if (exId === currentExercise.id) continue; // Already handled above
-          const key = `${exId}-${state.currentSetIndex}`;
-          if (await flushPendingResultUpdate(get(), key)) {
-            flushedKeys.add(key);
-          }
-        }
-      }
-
-      // Keep failed writes persisted for the next retry instead of dropping user input.
-      const newPendingResults = new Map(get().pendingResults);
-      const newCompletedSetIds = new Map(get().completedSetIds);
-      const newSentResults = new Map(get().sentResults);
-      for (const key of flushedKeys) {
-        newPendingResults.delete(key);
-        newCompletedSetIds.delete(key);
-        newSentResults.delete(key);
-      }
-
-      set({
-        pendingResults: newPendingResults,
-        completedSetIds: newCompletedSetIds,
-        sentResults: newSentResults,
-      });
-      savePendingResults(newPendingResults);
-      saveCompletedSetIds(newCompletedSetIds);
-      saveSentResults(newSentResults);
-    }
+    await flushRestResults(state, currentExercise, get, set);
 
     if (state.currentScreen === "rest") {
       // Check if this is the last set of the last exercise

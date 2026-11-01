@@ -99,6 +99,9 @@ Rest expires or is skipped → flush changed result(s) with PUT, retry POST if n
   successful keys → clear recovery entries
   failed keys → keep recovery entries
   → next set / next round / next exercise / summary / ad-hoc decision
+"1 more" on the end-of-exercise rest/transition screen (standard exercises only)
+  → stop timer, flush pending result, POST extra-set, append returned set locally
+  → resume the same exercise on the new set; failure → timer resumes, error toast
 ```
 
 Results are associated with **session-exercise ID + set index**, not only the exercise-library ID.

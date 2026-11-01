@@ -75,6 +75,7 @@ export default function SessionPage({ params }: SessionPageProps) {
     skipFirstExercise,
     completeSet,
     skipRest,
+    addExtraSet,
     adjustRestTime,
     skipExercise,
     postponeExercise,
@@ -447,6 +448,14 @@ export default function SessionPage({ params }: SessionPageProps) {
     await skipRest();
     useSessionStore.setState({ currentScreen: "summary" });
   }, [cancelScheduledNotification, skipRest]);
+
+  // "1 more": append a set to the exercise that was just completed and resume it.
+  const handleAddExtraSet = useCallback(async () => {
+    if (!token) return;
+    cancelScheduledNotification();
+    const added = await addExtraSet(token);
+    if (!added) toast.error("Impossible d’ajouter une série");
+  }, [token, cancelScheduledNotification, addExtraSet]);
 
   // Progression suggestion handlers
   const handleAcceptSuggestion = useCallback(
@@ -980,6 +989,7 @@ export default function SessionPage({ params }: SessionPageProps) {
             defaultReps={defaultResult.reps}
             defaultWeight={defaultResult.weight}
             onResultChange={handleResultChange}
+            {...(!nextSet && { onAddSet: handleAddExtraSet })}
             // Ad-hoc: after the last set, offer to chain another exercise or finish
             {...(!nextSet &&
               session.type === "ad_hoc" && {
@@ -1025,6 +1035,7 @@ export default function SessionPage({ params }: SessionPageProps) {
             onResultChange={handleResultChange}
             nextExercise={nextExData}
             nextSuperset={nextSupersetData}
+            onAddSet={handleAddExtraSet}
             // Only pass options bar handlers if there's a next item
             {...(hasNextItem && {
               onSkipExercise: handleSkipExercise,

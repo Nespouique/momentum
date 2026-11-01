@@ -260,6 +260,7 @@ Sources: [all session handlers](../../apps/api/src/routes/session.routes.ts),
 | PUT `/sessions/:id/exercises/reorder` | `{exerciseIds:UUID[]}` nonempty | `{data:SessionExercise[]}` |
 | POST `/sessions/:id/superset/:workoutItemId/replace` | `{exerciseIds:UUID[]}` nonempty | 201 `{data:SessionExercise[]}` |
 | POST `/sessions/:id/exercises/:exerciseId/sets` | `{setNumber,actualReps,actualWeight,rpe?}` | 200 `{data:SessionSet}`; updates existing target set |
+| POST `/sessions/:id/exercises/:exerciseId/extra-set` | none | 201 `{data:SessionSet}`; appends one set ("1 more") |
 | PUT `/sessions/:id/sets/:setId` | `{actualReps?,actualWeight?,rpe?}` | `{data:SessionSet}` |
 | DELETE `/sessions/:id/sets/:setId` | none | 204 |
 | GET `/sessions/:id/logs` | none | `{data:{session:{id,status,startedAt,completedAt},totalCalls,logs}}` |
@@ -283,6 +284,10 @@ SessionSets. List responses instead include workout `{id,name}|null` and exercis
   universally to route parameters; body/query validation is endpoint-specific.
 - Appending requires active ad-hoc, locks the session row, rejects an already-present library
   exercise (409 CONFLICT), and appends after maximum position.
+- Extra set ("1 more") locks the session row, requires an in-progress session and a non-skipped,
+  non-substituted exercise, caps an exercise at 20 sets (409 CONFLICT), and creates the next
+  `setNumber` with targets copied from the last set's recorded result (else its target). The
+  session template is never modified. 404 NOT_FOUND / 400 SESSION_NOT_ACTIVE as for set recording.
 - Skip/substitute/reorder/superset replacement/record/delete-set require an active session;
   most use 400 SESSION_NOT_ACTIVE. PUT result update has **no active-session restriction**.
   PATCH session itself allows terminal status/notes updates without an active-only guard.
