@@ -22,9 +22,11 @@ Les deux donnent le même scope `momentum:read` et sont révocables immédiateme
 2. Faire pointer cet hôte en HTTPS vers le conteneur API (port 3001 du LXC 197) via Nginx Proxy Manager.
    Le serveur répond en JSON (pas de SSE long), aucun réglage de buffering particulier n'est requis.
    Routes à exposer : `/mcp`, `/oauth/*` et `/.well-known/oauth-*`.
-3. Derrière Nginx Proxy Manager (un saut), `TRUST_PROXY=1` est la valeur par défaut en production ; elle
+3. Désactiver « Block Common Exploits » sur cet hôte NPM : sa règle anti-RFI bloque (403) les requêtes dont
+   la query string contient `param=https://…`, ce que font `redirect_uri` et `resource` dans `/oauth/authorize`.
+4. Derrière Nginx Proxy Manager (un saut), `TRUST_PROXY=1` est la valeur par défaut en production ; elle
    sert à identifier l'IP cliente pour les limites de débit.
-4. Les migrations sont appliquées au démarrage de l'API (`20261031120000_add_mcp_access`).
+5. Les migrations sont appliquées au démarrage de l'API (`20261031120000_add_mcp_access`).
 
 Un sous-domaine pointant vers l'API expose aussi les autres routes de l'API (déjà joignables via le proxy
 `/backend` du site). Pour ne publier que le MCP, ajouter dans l'hôte NPM une configuration avancée qui ne
