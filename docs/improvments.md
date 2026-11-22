@@ -37,4 +37,5 @@
 - [x] Vérifier si les stats prennent bien les vraies reps et pas les objectifs
   - Vérifié le 11/10/2026 : volume, 1RM estimé et reps au poids maximal utilisent `actualReps` et `actualWeight`, sans recours aux objectifs. Validation de la route `/exercises/stats` avec données simulées : 8 reps à 50 kg (objectif 12) et 15 reps à 40 kg (objectif 10) donnent un volume de 1 000 kg, un 1RM estimé de 63,3 kg et 8 reps au poids maximal. Modifier uniquement les objectifs ne change pas les résultats ; 0 rep reste 0 et les séries sans résultat sont exclues.
 - [x] Lorsqu'on ajoute une mesure il placeholder 75kg au lieu du poids précédent
-- [ ] MCP server pour pouvoir poser des questions en langage naturel sur mes séances, et que l'IA puisse ajouter des séances en fonction de mes résultats passés
+- [x] MCP server authentifié pour poser des questions sur mes séances/perfs et générer des dashboards ou synthèses depuis mes données de prod — [Story 6.1](./stories/6.1.authenticated-mcp-server.md) (implémenté en local, lecture seule ; déploiement et validation avec les vrais clients LLM à faire)
+  - Évolution ultérieure : permettre à l'IA de créer des séances en fonction des résultats passés, avec des permissions d'écriture dédiées.

@@ -246,6 +246,9 @@ momentum/
 ### Epic 4: Migration Hercules → Momentum ✅
 **Goal:** Migrer l'intégralité des données depuis l'application Hercules (exercices, programmes, historique des séances, mensurations) via des scripts CLI idempotents.
 
+### Epic 6: MCP & Personal Analytics
+**Goal:** Connecter un LLM compatible MCP au compte Momentum pour consulter ses données de production et générer des analyses, dashboards et synthèses personnalisés avec un accès authentifié et isolé par utilisateur.
+
 ---
 
 ## Epic 1: Foundation & Infrastructure
@@ -684,6 +687,32 @@ Génère `scripts/hercules-workout-mapping.json`.
 **Script:** `scripts/hercules-import-measurements.ts`
 
 2 mensurations importées (28/04/2024, 16/06/2024) avec 18 champs chacune.
+
+---
+
+## Epic 6: MCP & Personal Analytics
+
+### Story 6.1: Authenticated MCP Server for Personal Analytics
+
+**Status:** Ready for Review
+**Canonical story:** [6.1.authenticated-mcp-server.md](./stories/6.1.authenticated-mcp-server.md)
+
+**As a** Momentum user,
+**I want** to connect an MCP-compatible LLM application using my Momentum account,
+**so that** I can ask natural-language questions about my sessions and performances and generate dashboards or summaries from my own production data.
+
+**Acceptance Criteria (summary):**
+
+1. Serve a remote HTTPS MCP endpoint with Streamable HTTP, verified with the Inspector and an actual LLM client.
+2. Sign in through the existing Momentum account using browser-based OAuth authorization with PKCE; passwords are never supplied to the LLM.
+3. Issue user-bound, audience/scope-validated, read-only access and allow immediate connection revocation from settings.
+4. Enforce ownership on all reads, nested records, aggregates and caches.
+5. Expose session history and actual performance data, including planned/ad-hoc sessions and bodyweight repetitions.
+6. Return traceable summaries and time-series datasets for French LLM answers and dashboard artifacts, with explicit periods, units, timezone and missing-data handling.
+7. Bound and validate production reads; expose neither arbitrary SQL nor write operations.
+8. Document production routing and French onboarding; verify metrics and cross-user isolation locally before authorized read-only production checks.
+
+The canonical story specifies the full acceptance criteria, tasks, dependencies and verification scenarios. Persisting generated dashboards inside Momentum and LLM-driven workout creation are separate future features.
 
 ---
 

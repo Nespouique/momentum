@@ -32,6 +32,8 @@ model User {
   healthActivities       HealthActivity[]
   syncDevices            SyncDevice[]
   trackableItems         TrackableItem[]
+  mcpConnections         McpConnection[]
+  mcpAuthorizationCodes  McpAuthorizationCode[]
 
   @@map("users")
 }
@@ -388,4 +390,77 @@ model ProgressionSuggestion {
   @@unique([sessionId, exerciseId])
   @@index([userId, exerciseId])
   @@map("progression_suggestions")
+}
+
+// ============================================
+// MCP SERVER ACCESS MODELS (Story 6.1)
+// ============================================
+
+model McpClient {
+  id           String   @id @default(uuid())
+  name         String
+  redirectUris String[] @map("redirect_uris")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  connections        McpConnection[]
+  authorizationCodes McpAuthorizationCode[]
+
+  @@map("mcp_clients")
+}
+
+// A grant of read access to one user: either an OAuth authorization (kind "oauth")
+// or a personal access token created from the settings page (kind "personal_token").
+model McpConnection {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId   String?   @map("client_id")
+  client     McpClient? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  kind       String    // "oauth" | "personal_token"
+  label      String
+  scope      String    @default("momentum:read")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastUsedAt DateTime? @map("last_used_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  tokens McpToken[]
+
+  @@index([userId, revokedAt])
+  @@map("mcp_connections")
+}
+
+// Only SHA-256 hashes of opaque tokens are stored.
+model McpToken {
+  id           String        @id @default(uuid())
+  connectionId String        @map("connection_id")
+  connection   McpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  kind         String        // "access" | "refresh" | "personal"
+  tokenHash    String        @unique @map("token_hash")
+  tokenPrefix  String?       @map("token_prefix")
+  expiresAt    DateTime?     @map("expires_at")
+  usedAt       DateTime?     @map("used_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  @@index([connectionId])
+  @@index([expiresAt])
+  @@map("mcp_tokens")
+}
+
+model McpAuthorizationCode {
+  id            String    @id @default(uuid())
+  codeHash      String    @unique @map("code_hash")
+  clientId      String    @map("client_id")
+  client        McpClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId        String    @map("user_id")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  redirectUri   String    @map("redirect_uri")
+  codeChallenge String    @map("code_challenge")
+  scope         String
+  expiresAt     DateTime  @map("expires_at")
+  usedAt        DateTime? @map("used_at")
+  connectionId  String?   @map("connection_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@map("mcp_authorization_codes")
 }

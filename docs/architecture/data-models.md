@@ -401,3 +401,13 @@ Useful external references: [Prisma schema](https://www.prisma.io/docs/orm/prism
 [referential actions](https://www.prisma.io/docs/orm/prisma-schema/data-model/relations/referential-actions),
 [PostgreSQL constraints](https://www.postgresql.org/docs/16/ddl-constraints.html),
 [Health Connect data types](https://developer.android.com/health-and-fitness/guides/health-connect/data-and-data-types/data-types).
+
+## 10. MCP access models (Story 6.1)
+
+`McpClient` (dynamically registered OAuth public clients and their redirect URIs), `McpConnection`
+(one grant per user: `kind` `oauth` or `personal_token`, `scope` `momentum:read`, `lastUsedAt`, `revokedAt`),
+`McpToken` (kind `access` | `refresh` | `personal`; only the SHA-256 `tokenHash` and a short display prefix
+are stored; refresh tokens carry `usedAt` for rotation/reuse detection) and `McpAuthorizationCode`
+(single-use, 5 minutes, bound to client, redirect URI and PKCE challenge). Connections and codes cascade
+with their `User`. Migration `20261031120000_add_mcp_access`. See [api-spec.md](./api-spec.md#11-mcp-server-and-oauth-endpoints-story-61).
+

@@ -16,13 +16,30 @@ import aiCoachingRoutes from "./routes/ai-coaching.routes.js";
 import healthSyncRoutes from "./routes/health-sync.routes.js";
 import trackableRoutes from "./routes/trackable.routes.js";
 import trackingRoutes from "./routes/tracking.routes.js";
+import mcpConnectionRoutes from "./routes/mcp-connections.routes.js";
+import { createMcpRouter } from "./routes/mcp.routes.js";
+import { getMcpConfig } from "./mcp/config.js";
 
 const app = express();
 const PORT = process.env["PORT"] || 3001;
 const defaultHost = process.env["NODE_ENV"] === "production" ? "0.0.0.0" : "localhost";
 const HOST = process.argv.includes("--host") ? "0.0.0.0" : (process.env["HOST"] || defaultHost);
 
+if (process.env["TRUST_PROXY"] || process.env["NODE_ENV"] === "production") {
+  app.set("trust proxy", Number(process.env["TRUST_PROXY"] ?? 1));
+}
+
 app.use(helmet());
+
+// MCP server + OAuth endpoints: mounted before the global CORS/body parsers and before
+// the "/" progression router, because they use their own CORS policy and parsers.
+const mcpConfig = getMcpConfig();
+if (mcpConfig.enabled) {
+  app.use(createMcpRouter(mcpConfig));
+  console.log(`MCP server enabled at ${mcpConfig.resourceUrl}`);
+} else {
+  console.warn("MCP server disabled: set MCP_PUBLIC_URL to enable it");
+}
 
 // Configure allowed origins for CORS
 const allowedOrigins = [
@@ -92,6 +109,7 @@ app.use("/sessions", aiCoachingRoutes);
 app.use("/health-sync", healthSyncRoutes);
 app.use("/trackables", trackableRoutes);
 app.use("/tracking", trackingRoutes);
+app.use("/mcp-connections", mcpConnectionRoutes);
 
 app.listen(Number(PORT), HOST, () => {
   console.log(`Server running on http://${HOST}:${PORT}`);

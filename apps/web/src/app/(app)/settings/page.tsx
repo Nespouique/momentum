@@ -9,6 +9,7 @@ import { applyAccentColor } from "@/components/theme/accent-color-provider";
 import { useAuthStore } from "@/stores/auth";
 import { getPreferences, updatePreferences } from "@/lib/api/profile";
 import { toast } from "sonner";
+import { McpConnectionsSection } from "@/components/settings";
 
 const DEFAULT_ACCENT_COLOR = "#FAFAFA";
 
@@ -88,6 +89,8 @@ export default function SettingsPage() {
           </Button>
         </div>
       </section>
+
+      <McpConnectionsSection />
     </div>
   );
 }

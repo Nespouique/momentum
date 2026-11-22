@@ -25,7 +25,7 @@ export function authMiddleware(
   const token = authHeader.substring(7);
   const payload = verifyToken(token);
 
-  if (!payload) {
+  if (!payload || !payload.userId) {
     return res.status(401).json({
       error: {
         code: "INVALID_TOKEN",

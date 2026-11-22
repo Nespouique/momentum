@@ -26,6 +26,7 @@ services:
       - DATABASE_URL=postgresql://momentum:${DB_PASSWORD}@postgres:5432/momentum
       - JWT_SECRET=${JWT_SECRET}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - MCP_PUBLIC_URL=${MCP_PUBLIC_URL:-}
       - NODE_ENV=production
     depends_on:
       postgres:

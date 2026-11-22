@@ -71,6 +71,7 @@ There is no root development `.env.example` to copy.
 | `FRONTEND_URL` | API allowed-origin list and password-reset links. Production binding currently activates permissive CORS. |
 | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | Email client is constructed at module import. A non-empty key is currently a startup prerequisite; sender has a default. Example key is empty; reference production Compose passes neither setting. |
 | `OPENAI_API_KEY` | Coaching client is constructed at module import. An absent key can block startup, independently of feature use; provision a non-empty key for operation. Example key is empty; reference production Compose does not pass it. |
+| `MCP_PUBLIC_URL`, `TRUST_PROXY`, `MCP_DEFAULT_TIMEZONE` | Optional MCP server (Story 6.1). `MCP_PUBLIC_URL` is the public origin serving `/mcp`, `/oauth/*` and `/.well-known/oauth-*`; in production the feature stays disabled until it is set. `TRUST_PROXY` (hops, default 1 in production) gives rate limits the client IP; `MCP_DEFAULT_TIMEZONE` defaults to `Europe/Paris`. See [mcp-server.md](../features/mcp-server.md). |
 | `API_URL` | Server-side Next `/backend` forwarding, default `http://localhost:3001`; production Compose sets `http://api:3001`. |
 | `NEXT_PUBLIC_API_URL` | Present in web example but unused by current clients, which use `/backend`. It is not the proxy's runtime setting. |
 | `APP_VERSION` | Injected from root package version by `next.config.mjs`; build-time value. |

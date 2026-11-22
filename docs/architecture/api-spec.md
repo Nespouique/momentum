@@ -609,7 +609,31 @@ progression uses `pectoraux` vs `pecs` and historical-session counting needs ind
 These are recorded, not repaired by Story 3.8. Its implementation does not imply changes to other
 endpoint contracts or a broader tracking redesign.
 
-## 11. Exact handled errors and security boundaries
+## 11. MCP server and OAuth endpoints (Story 6.1)
+
+Mounted by `createMcpRouter` before the global CORS/body parsers because they use their own CORS policy
+(`*`, bearer tokens only, no cookies) and parsers. Served from `MCP_PUBLIC_URL` (an origin, typically a
+dedicated host proxied to the API); disabled in production while that variable is empty. Full guide:
+[mcp-server.md](../features/mcp-server.md).
+
+| Method + path | Auth | Purpose |
+| --- | --- | --- |
+| `POST /mcp` | MCP bearer token (OAuth access token or personal token) | Stateless Streamable HTTP (JSON responses); `GET`/`DELETE` return 405 |
+| `GET /.well-known/oauth-protected-resource[/mcp]` | none | RFC 9728 resource metadata |
+| `GET /.well-known/oauth-authorization-server` | none | RFC 8414 metadata (PKCE `S256` only, public clients) |
+| `POST /oauth/register` | none (IP rate limited) | RFC 7591 dynamic client registration (public clients) |
+| `GET/POST /oauth/authorize` | HTML login + consent with Momentum email/password | Authorization code + PKCE; per-IP and per-email attempt limits |
+| `POST /oauth/token` | PKCE | `authorization_code` and rotating `refresh_token` grants |
+| `POST /oauth/revoke` | token possession | RFC 7009 revocation (revokes the whole connection) |
+| `GET/POST/DELETE /mcp-connections` | web JWT | List connections, create a personal token (secret returned once), revoke |
+
+Unauthenticated `/mcp` calls return 401 with `WWW-Authenticate: Bearer resource_metadata="..."`. OAuth
+errors use RFC 6749 JSON bodies; `/mcp-connections` uses the standard Momentum error format
+(`VALIDATION_ERROR`, `MCP_NOT_CONFIGURED` 503, `TOO_MANY_TOKENS` 409, `NOT_FOUND`). Tools are read-only
+(`readOnlyHint`) and derive ownership exclusively from the token. Tables: `mcp_clients`,
+`mcp_connections`, `mcp_tokens` (SHA-256 hashes only), `mcp_authorization_codes`.
+
+## 12. Exact handled errors and security boundaries
 
 Structured handler errors usually use:
 
