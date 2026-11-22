@@ -4,15 +4,19 @@ A full-featured fitness tracking application for managing workouts, tracking bod
 
 ## Features
 
-- **Exercise Library**: Custom exercise database with muscle group categorization
+- **Exercise Library**: Shared exercise database with muscle group categorization
 - **Workout Builder**: Create workout templates with supersets and customizable sets
-- **Active Sessions**: Real-time workout tracking with timer, rest periods, and set logging
-- **Historical Comparison**: Compare current performance with previous sessions
+- **Active Sessions**: Real-time workout tracking with timer, rest periods, set logging, extra sets and exercise reordering/replacement
+- **Ad-hoc Sessions**: Start a free "À la volée" session without a workout and chain exercises as you go
+- **Historical Comparison**: Compare current performance with previous sessions, with session history and exercise statistics (volume, estimated 1RM, charts)
 - **Progressive Overload**: Automatic detection of stagnation and smart progression suggestions
 - **AI Coach**: Personalized training advice powered by OpenAI to break through plateaus
+- **Daily Tracking**: Configurable daily habits (yoga, steps, sleep, custom trackables) with goals, and a home dashboard you can navigate day by day
+- **Health Sync**: Companion Android app (`momentum-companion`) syncing Health Connect data (steps, active minutes, calories, sleep, activities) to the API
 - **Body Measurements**: Track and visualize body measurements over time
 - **MCP Server**: Let ChatGPT, Claude, Claude Code, OpenCode or any MCP agent read your stats in natural language (read-only, optional)
-- **Dark Mode**: Full dark theme support
+- **Hercules Import**: CLI scripts (`scripts/hercules-*`) to migrate exercises, workouts, history and measurements from the Hercules app
+- **Personalization**: Per-user accent color, installable PWA, French UI, dark theme
 
 ## MCP Server (optional)
 
@@ -30,6 +34,7 @@ inside the API and is **disabled until `MCP_PUBLIC_URL` is set** in production.
 
 Access is limited to the connected user's own data and can be revoked at any time from *Settings > Connexions MCP*.
 See [docs/features/mcp-server.md](docs/features/mcp-server.md) for client setup, deployment and security details.
+An icon for connector screens is available in `apps/web/public/momentum-mcp-icon.png` (also `-square` and `.svg` variants).
 
 ### What the MCP exposes
 
@@ -56,8 +61,8 @@ The results of the tools are sent to the provider of the LLM you connect, so onl
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14+ with App Router, TypeScript, Tailwind CSS, Shadcn UI
-- **Backend**: Express.js with TypeScript, Prisma ORM 7
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, Shadcn UI, Zustand
+- **Backend**: Express.js 4 with TypeScript, Prisma ORM 7, Zod, MCP SDK
 - **Database**: PostgreSQL 16
 - **Shared**: TypeScript types shared between frontend and backend
 - **Deployment**: Docker, GitHub Actions CI/CD
@@ -72,7 +77,8 @@ momentum/
 ├── docker/           # Dockerfiles and docker-compose
 ├── packages/
 │   └── shared/       # Shared TypeScript types
-├── docs/             # Stories and documentation
+├── scripts/          # Hercules import scripts, docs/progress generators
+├── docs/             # PRD, stories, architecture, feature guides
 ├── package.json      # Workspaces root
 └── tsconfig.base.json
 ```
@@ -127,6 +133,11 @@ momentum/
 - `npm run db:start` - Start PostgreSQL container
 - `npm run db:stop` - Stop PostgreSQL container
 - `npm run db:reset` - Reset database (delete all data)
+- `npm run docs:progress` - Regenerate the project progress dashboard (`docs/progress.html`)
+
+### Tests
+- `npm run test -w @momentum/api` - API unit tests; the MCP integration tests also run when `DATABASE_URL` points to a migrated, disposable database
+- `npm run test -w @momentum/web` - Web unit tests
 
 ### API Scripts (run from `apps/api`)
 - `npm run db:migrate` - Run Prisma migrations
@@ -149,10 +160,20 @@ cp apps/api/.env.example apps/api/.env
 | `NODE_ENV` | Environment | `development` |
 | `JWT_SECRET` | Secret key for JWT tokens | (required) |
 | `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:3000` |
-| `OPENAI_API_KEY` | OpenAI API key for AI Coach feature | (optional) |
+| `RESEND_API_KEY` | Resend API key for password reset emails (the API refuses to start without a non-empty value) | (required) |
+| `RESEND_FROM_EMAIL` | Sender address for emails | `noreply@hallais.bzh` |
+| `OPENAI_API_KEY` | OpenAI API key for the AI Coach and trackable icon suggestions. The variable must be defined at startup; AI features fail without a real key | (required to be defined) |
 | `MCP_PUBLIC_URL` | Public origin serving `/mcp`, `/oauth/*` and `/.well-known/oauth-*` (e.g. `https://momentum-mcp.yourdomain.com`). Enables the MCP server; in production it stays disabled when empty | `http://localhost:3001` in development |
 | `TRUST_PROXY` | Number of reverse proxies in front of the API (client IP for rate limits) | `1` in production |
 | `MCP_DEFAULT_TIMEZONE` | Timezone used by MCP tools to delimit days and periods | `Europe/Paris` |
+
+## Documentation
+
+- [docs/prd.md](docs/prd.md) - Product requirements and epics
+- [docs/stories/](docs/stories/) - Story specifications and implementation records
+- [docs/architecture/](docs/architecture/index.md) - Architecture (API spec, data models, deployment)
+- [docs/features/mcp-server.md](docs/features/mcp-server.md) - MCP server guide
+- [docs/progress.html](docs/progress.html) - Project progress dashboard
 
 ## Development
 
@@ -256,6 +277,8 @@ npm run db:migrate
          - FRONTEND_URL=https://momentum.yourdomain.com
          - MCP_PUBLIC_URL=https://momentum-mcp.yourdomain.com  # optional, enables the MCP server
          - NODE_ENV=production
+         - RESEND_API_KEY=YOUR_RESEND_API_KEY
+         - OPENAI_API_KEY=YOUR_OPENAI_API_KEY
        depends_on:
          postgres:
            condition: service_healthy
@@ -303,6 +326,7 @@ npm run db:migrate
    - `YOUR_DB_PASSWORD`: Strong database password
    - `YOUR_JWT_SECRET_MIN_32_CHARS`: JWT secret (generate with `openssl rand -base64 32`)
    - `https://momentum.yourdomain.com`: Your actual frontend domain
+   - `YOUR_RESEND_API_KEY` / `YOUR_OPENAI_API_KEY`: API keys (both clients are created at API startup)
 
 4. **Start services**
    ```bash
@@ -394,8 +418,10 @@ Configure these secrets in your GitHub repository settings:
 
 ### Image Tags
 
-- `latest`: Most recent build from main branch
-- `<short-sha>`: Specific commit (e.g., `abc1234`)
+Images are only built and pushed when a `v*` tag is pushed:
+
+- `latest`: Most recent tagged release
+- `<short-sha>`: Specific commit of that release (e.g., `abc1234`)
 
 ## Release Process
 
