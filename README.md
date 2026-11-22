@@ -11,7 +11,48 @@ A full-featured fitness tracking application for managing workouts, tracking bod
 - **Progressive Overload**: Automatic detection of stagnation and smart progression suggestions
 - **AI Coach**: Personalized training advice powered by OpenAI to break through plateaus
 - **Body Measurements**: Track and visualize body measurements over time
+- **MCP Server**: Let ChatGPT, Claude, Claude Code, OpenCode or any MCP agent read your stats in natural language (read-only, optional)
 - **Dark Mode**: Full dark theme support
+
+## MCP Server (optional)
+
+Momentum embeds a **read-only [MCP](https://modelcontextprotocol.io) server** so an LLM or agent can answer
+questions about your training in natural language ("how many sessions this month?", "what are my favorite
+exercises?", "how did my bench press progress this year?") and generate summaries or dashboards. It runs
+inside the API and is **disabled until `MCP_PUBLIC_URL` is set** in production.
+
+### Connecting a client
+
+| Client | Authentication |
+|--------|----------------|
+| ChatGPT (web/desktop), Claude (web/desktop) | Add a custom MCP connector with `https://<mcp-host>/mcp`, then sign in with your Momentum email and password (OAuth 2.1 + PKCE). The password is only entered on Momentum's own page. |
+| Claude Code, OpenCode, scripts, agents | Create a **personal token** in *Settings > Connexions MCP* and send it as `Authorization: Bearer <token>` (expiry 30 days / 90 days / 1 year / never). |
+
+Access is limited to the connected user's own data and can be revoked at any time from *Settings > Connexions MCP*.
+See [docs/features/mcp-server.md](docs/features/mcp-server.md) for client setup, deployment and security details.
+
+### What the MCP exposes
+
+Everything is **read-only**. Each result is returned with its period, units and metric definitions, and set
+results always come with their **targets** (planned reps/weight, sets that met the target, volume vs target).
+
+| Data | Tools | Examples |
+|------|-------|----------|
+| Training summary | `get_stats_summary`, `get_activity_timeseries` | Sessions, active days, sets, reps, volume, duration, comparison with the previous period, series by day/week/month |
+| Sessions | `list_sessions`, `get_session` | History with filters (period, status, planned/ad-hoc, exercise, workout), detail of every set (target vs actual, RPE, notes) |
+| Exercises | `search_exercises`, `get_exercise_history`, `get_favorite_exercises`, `get_personal_records` | Progression per session, favorite exercises, max weight, estimated 1RM, max reps, best session volume |
+| Muscle groups | `get_muscle_group_breakdown` | Sets, reps and volume per muscle group |
+| Workout programs | `list_workouts` | Programs, their exercises and targets, completed sessions, last performed |
+| Body measurements | `get_body_measurements` | Weight and measurements over time, evolution |
+| Daily tracking | `get_daily_tracking` | Habits, steps, sleep and custom trackables with goals, days logged and goals met |
+| Profile | `get_profile` | Name, age, height, goal, latest weight, number of sessions |
+
+Two prompts are also provided: `synthese_mensuelle` (monthly review) and `dashboard_performances`
+(3-month dashboard).
+
+**Not exposed:** email, password and any authentication data, other users' data, health sync raw activities,
+and every write operation (no session, workout or measurement can be created or modified through the MCP).
+The results of the tools are sent to the provider of the LLM you connect, so only connect clients you trust.
 
 ## Tech Stack
 
@@ -109,6 +150,9 @@ cp apps/api/.env.example apps/api/.env
 | `JWT_SECRET` | Secret key for JWT tokens | (required) |
 | `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:3000` |
 | `OPENAI_API_KEY` | OpenAI API key for AI Coach feature | (optional) |
+| `MCP_PUBLIC_URL` | Public origin serving `/mcp`, `/oauth/*` and `/.well-known/oauth-*` (e.g. `https://momentum-mcp.yourdomain.com`). Enables the MCP server; in production it stays disabled when empty | `http://localhost:3001` in development |
+| `TRUST_PROXY` | Number of reverse proxies in front of the API (client IP for rate limits) | `1` in production |
+| `MCP_DEFAULT_TIMEZONE` | Timezone used by MCP tools to delimit days and periods | `Europe/Paris` |
 
 ## Development
 
@@ -139,7 +183,7 @@ npm run db:migrate
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Reverse Proxy (Nginx)                        │
-│         momentum.domain.com    api.momentum.domain.com          │
+│  momentum.domain.com   api.momentum.domain.com   mcp.domain.com │
 └──────────────┬────────────────────────────┬─────────────────────┘
                │                            │
                ▼                            ▼
@@ -210,6 +254,7 @@ npm run db:migrate
          - DATABASE_URL=postgresql://momentum:YOUR_DB_PASSWORD@postgres:5432/momentum
          - JWT_SECRET=YOUR_JWT_SECRET_MIN_32_CHARS
          - FRONTEND_URL=https://momentum.yourdomain.com
+         - MCP_PUBLIC_URL=https://momentum-mcp.yourdomain.com  # optional, enables the MCP server
          - NODE_ENV=production
        depends_on:
          postgres:
@@ -286,7 +331,14 @@ npm run db:migrate
    - Forward port: `3001`
    - Enable SSL with Let's Encrypt
 
-3. **Prisma Studio** (optional, secure access recommended):
+3. **MCP server** (optional, required to use the MCP):
+   - Domain: the host set in `MCP_PUBLIC_URL`, e.g. `momentum-mcp.yourdomain.com`
+   - Forward hostname/IP: server IP, forward port: `3001` (the API)
+   - Enable SSL with Let's Encrypt and Force SSL
+   - Disable "Block Common Exploits": it blocks OAuth requests whose query string contains URLs
+   - Recommended: only publish `/mcp`, `/oauth/` and `/.well-known/oauth-` (see [docs/features/mcp-server.md](docs/features/mcp-server.md))
+
+4. **Prisma Studio** (optional, secure access recommended):
    - Domain: `studio.momentum.yourdomain.com`
    - Forward port: `5555`
    - Add access control or keep internal only
