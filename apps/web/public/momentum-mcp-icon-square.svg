@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Momentum">
+  <defs>
+    <linearGradient id="momentum-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fafafa" />
+      <stop offset="100%" stop-color="#828282" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#momentum-bg)" />
+  <path
+    d="M170 336V176H211L256 287L301 176H342V336H310V231L268 336H244L202 231V336Z"
+    fill="#0a0a0a"
+  />
+</svg>
