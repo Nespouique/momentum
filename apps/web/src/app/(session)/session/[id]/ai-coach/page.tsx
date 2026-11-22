@@ -12,6 +12,8 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PageHeader } from "@/components/layout";
 import { ResultInput } from "@/components/session/result-input";
 import { useAuthStore } from "@/stores/auth";
@@ -22,6 +24,7 @@ import {
   applyAICoaching,
   getSession,
   type AIProposal,
+  type AIProposalStrategy,
   type AICoachingResponse,
 } from "@/lib/api/sessions";
 
@@ -38,8 +41,32 @@ interface EditableSet {
 }
 
 interface EditableProposal extends Omit<AIProposal, "sets"> {
+  selected: boolean;
   editedSets: EditableSet[];
 }
+
+const STRATEGY_LABELS: Record<AIProposalStrategy, { label: string; className: string }> = {
+  increase_weight: {
+    label: "Surcharge poids",
+    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+  },
+  increase_reps: {
+    label: "Surcharge reps",
+    className: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+  },
+  volume_phase: {
+    label: "Phase volume",
+    className: "border-violet-500/30 bg-violet-500/10 text-violet-300",
+  },
+  deload: {
+    label: "Deload",
+    className: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+  },
+  align_target: {
+    label: "Alignement cible",
+    className: "border-zinc-500/30 bg-zinc-500/10 text-zinc-300",
+  },
+};
 
 export default function AICoachPage({ params }: AICoachPageProps) {
   const { id: sessionId } = use(params);
@@ -84,12 +111,14 @@ export default function AICoachPage({ params }: AICoachPageProps) {
         const response = await generateAICoaching(token, sessionId);
         setCoachingData(response.data);
 
-        // Initialize editable proposals with per-set values
+        // Initialize editable proposals with per-set values (all selected by default)
         const editableProposals: EditableProposal[] = response.data.proposals.map((p) => ({
           exerciseId: p.exerciseId,
           exerciseName: p.exerciseName,
+          strategy: p.strategy,
           analysis: p.analysis,
           justification: p.justification,
+          selected: true,
           editedSets: p.sets.map((s) => ({
             setNumber: s.setNumber,
             currentReps: s.currentReps,
@@ -108,7 +137,14 @@ export default function AICoachPage({ params }: AICoachPageProps) {
     };
 
     loadData();
-  }, [token, sessionId]);
+  }, [token, sessionId, router]);
+
+  // Toggle proposal selection
+  const handleToggleSelect = useCallback((exerciseId: string, selected: boolean) => {
+    setProposals((prev) =>
+      prev.map((p) => (p.exerciseId === exerciseId ? { ...p, selected } : p))
+    );
+  }, []);
 
   // Handle set value change
   const handleSetChange = useCallback(
@@ -131,14 +167,16 @@ export default function AICoachPage({ params }: AICoachPageProps) {
     []
   );
 
-  // Apply proposals
+  const selectedProposals = proposals.filter((p) => p.selected);
+
+  // Apply selected proposals
   const handleApply = useCallback(async () => {
-    if (!token || proposals.length === 0) return;
+    if (!token || selectedProposals.length === 0) return;
 
     setIsSubmitting(true);
     try {
       await applyAICoaching(token, sessionId, {
-        proposals: proposals.map((p) => ({
+        proposals: selectedProposals.map((p) => ({
           exerciseId: p.exerciseId,
           sets: p.editedSets.map((s) => ({
             setNumber: s.setNumber,
@@ -156,7 +194,7 @@ export default function AICoachPage({ params }: AICoachPageProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [token, sessionId, proposals, router, finalizeSession]);
+  }, [token, sessionId, selectedProposals, router, finalizeSession]);
 
   // Ignore and complete session
   const handleIgnore = useCallback(async () => {
@@ -245,6 +283,11 @@ export default function AICoachPage({ params }: AICoachPageProps) {
     );
   }
 
+  const applyButtonLabel =
+    selectedProposals.length === proposals.length
+      ? "Appliquer et terminer"
+      : `Appliquer (${selectedProposals.length}/${proposals.length}) et terminer`;
+
   // Success state with proposals
   return (
     <div className="flex flex-col h-full overflow-y-auto pb-6">
@@ -262,15 +305,20 @@ export default function AICoachPage({ params }: AICoachPageProps) {
         {/* Workout name as subtitle */}
         <h3 className="text-base text-zinc-400 text-center mb-6">{workoutName}</h3>
 
-        {/* Introduction card */}
+        {/* Coach message card */}
         <div className="rounded-xl bg-violet-950/30 border border-violet-500/20 p-4 mb-6">
           <div className="flex gap-3">
             <Lightbulb className="h-5 w-5 text-violet-400 shrink-0 mt-0.5" />
-            <p className="text-sm text-zinc-300">
-              J&apos;ai analysé tes {coachingData.analyzedSessionsCount} dernières séances. Voici
-              mes recommandations pour débloquer ta progression. Tu peux ajuster les valeurs avant
-              de valider.
-            </p>
+            <div className="space-y-1.5">
+              <p className="text-sm text-zinc-200 leading-relaxed">
+                {coachingData.coachMessage ||
+                  `J'ai analysé tes ${coachingData.analyzedSessionsCount} dernières séances. Voici mes recommandations pour débloquer ta progression.`}
+              </p>
+              <p className="text-xs text-zinc-400">
+                {coachingData.analyzedSessionsCount} séances analysées · Décoche ou ajuste avant de
+                valider
+              </p>
+            </div>
           </div>
         </div>
 
@@ -280,6 +328,7 @@ export default function AICoachPage({ params }: AICoachPageProps) {
             <ProposalCard
               key={proposal.exerciseId}
               proposal={proposal}
+              onToggleSelect={handleToggleSelect}
               onSetChange={handleSetChange}
             />
           ))}
@@ -287,14 +336,19 @@ export default function AICoachPage({ params }: AICoachPageProps) {
 
         {/* Actions - at bottom */}
         <div className="pt-4 space-y-3">
-          <Button onClick={handleApply} disabled={isSubmitting} size="xl" className="w-full">
+          <Button
+            onClick={handleApply}
+            disabled={isSubmitting || selectedProposals.length === 0}
+            size="xl"
+            className="w-full"
+          >
             {isSubmitting ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Application...
               </span>
             ) : (
-              "Appliquer et terminer"
+              applyButtonLabel
             )}
           </Button>
 
@@ -316,6 +370,7 @@ export default function AICoachPage({ params }: AICoachPageProps) {
 // Proposal Card Component
 interface ProposalCardProps {
   proposal: EditableProposal;
+  onToggleSelect: (exerciseId: string, selected: boolean) => void;
   onSetChange: (
     exerciseId: string,
     setNumber: number,
@@ -323,13 +378,36 @@ interface ProposalCardProps {
   ) => void;
 }
 
-function ProposalCard({ proposal, onSetChange }: ProposalCardProps) {
+function ProposalCard({ proposal, onToggleSelect, onSetChange }: ProposalCardProps) {
+  const strategyInfo = proposal.strategy ? STRATEGY_LABELS[proposal.strategy] : null;
+
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 overflow-hidden">
-      {/* Exercise header */}
-      <div className="px-4 py-3 border-b border-zinc-800/50">
-        <h3 className="font-semibold text-zinc-100">{proposal.exerciseName}</h3>
-        <p className="text-xs text-zinc-500 mt-0.5">Nouveaux objectifs proposés</p>
+    <div
+      className={`rounded-xl border border-zinc-800 bg-zinc-900/30 overflow-hidden transition-opacity ${
+        proposal.selected ? "opacity-100" : "opacity-50"
+      }`}
+    >
+      {/* Exercise header with selection checkbox & strategy badge */}
+      <div className="px-4 py-3 border-b border-zinc-800/50 flex items-start justify-between gap-3">
+        <label className="flex items-start gap-3 cursor-pointer flex-1 min-w-0">
+          <Checkbox
+            checked={proposal.selected}
+            onCheckedChange={(checked) => onToggleSelect(proposal.exerciseId, checked === true)}
+            className="mt-0.5"
+            aria-label={`Appliquer la proposition pour ${proposal.exerciseName}`}
+          />
+          <div className="min-w-0">
+            <h3 className="font-semibold text-zinc-100 leading-tight">{proposal.exerciseName}</h3>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              {proposal.selected ? "Nouveaux objectifs proposés" : "Proposition ignorée"}
+            </p>
+          </div>
+        </label>
+        {strategyInfo && (
+          <Badge variant="outline" className={`shrink-0 font-medium ${strategyInfo.className}`}>
+            {strategyInfo.label}
+          </Badge>
+        )}
       </div>
 
       {/* Analysis text */}
@@ -337,99 +415,103 @@ function ProposalCard({ proposal, onSetChange }: ProposalCardProps) {
         <p className="text-sm text-zinc-400">{proposal.analysis}</p>
       </div>
 
-      {/* Editable sets */}
-      <div className="divide-y divide-zinc-800/50">
-        {proposal.editedSets.map((set) => {
-          const weightDiff = set.editedWeight - (set.currentWeight ?? 0);
-          const repsDiff = set.editedReps - set.currentReps;
+      {/* Editable sets (collapsed when deselected) */}
+      {proposal.selected && (
+        <>
+          <div className="divide-y divide-zinc-800/50">
+            {proposal.editedSets.map((set) => {
+              const weightDiff = Math.round((set.editedWeight - (set.currentWeight ?? 0)) * 100) / 100;
+              const repsDiff = set.editedReps - set.currentReps;
 
-          return (
-            <div key={set.setNumber} className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                {/* Set number badge */}
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 text-xs font-semibold text-zinc-900">
-                  {set.setNumber}
-                </div>
+              return (
+                <div key={set.setNumber} className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    {/* Set number badge */}
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 text-xs font-semibold text-zinc-900">
+                      {set.setNumber}
+                    </div>
 
-                {/* Compact stepper controls */}
-                <div className="flex-1">
-                  <ResultInput
-                    exerciseName=""
-                    targetReps={set.currentReps}
-                    targetWeight={set.currentWeight}
-                    value={{ reps: set.editedReps, weight: set.editedWeight }}
-                    onChange={(value) => onSetChange(proposal.exerciseId, set.setNumber, value)}
-                    showObjective={false}
-                    compact
-                    hideHeader
-                  />
-                </div>
-              </div>
+                    {/* Compact stepper controls */}
+                    <div className="flex-1">
+                      <ResultInput
+                        exerciseName=""
+                        targetReps={set.currentReps}
+                        targetWeight={set.currentWeight}
+                        value={{ reps: set.editedReps, weight: set.editedWeight }}
+                        onChange={(value) => onSetChange(proposal.exerciseId, set.setNumber, value)}
+                        showObjective={false}
+                        compact
+                        hideHeader
+                      />
+                    </div>
+                  </div>
 
-              {/* Evolution indicator - aligned under inputs */}
-              <div className="mt-1.5 ml-9 flex items-center text-xs">
-                {/* Reps evolution - left side */}
-                <div className="flex-1 flex items-center justify-center gap-1">
-                  {repsDiff !== 0 ? (
-                    <>
-                      {repsDiff > 0 ? (
-                        <TrendingUp className="h-3 w-3 text-emerald-500" />
+                  {/* Evolution indicator - aligned under inputs */}
+                  <div className="mt-1.5 ml-9 flex items-center text-xs">
+                    {/* Reps evolution - left side */}
+                    <div className="flex-1 flex items-center justify-center gap-1">
+                      {repsDiff !== 0 ? (
+                        <>
+                          {repsDiff > 0 ? (
+                            <TrendingUp className="h-3 w-3 text-emerald-500" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3 text-amber-500" />
+                          )}
+                          <span
+                            className={
+                              repsDiff > 0
+                                ? "text-emerald-400 font-medium"
+                                : "text-amber-400 font-medium"
+                            }
+                          >
+                            {repsDiff > 0 ? "+" : ""}
+                            {repsDiff}
+                          </span>
+                        </>
                       ) : (
-                        <TrendingDown className="h-3 w-3 text-amber-500" />
+                        <span className="text-zinc-600">—</span>
                       )}
-                      <span
-                        className={
-                          repsDiff > 0
-                            ? "text-emerald-400 font-medium"
-                            : "text-amber-400 font-medium"
-                        }
-                      >
-                        {repsDiff > 0 ? "+" : ""}
-                        {repsDiff}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-zinc-600">—</span>
-                  )}
-                </div>
+                    </div>
 
-                {/* Weight evolution - right side */}
-                <div className="flex-1 flex items-center justify-center gap-1">
-                  {weightDiff !== 0 ? (
-                    <>
-                      {weightDiff > 0 ? (
-                        <TrendingUp className="h-3 w-3 text-emerald-500" />
+                    {/* Weight evolution - right side */}
+                    <div className="flex-1 flex items-center justify-center gap-1">
+                      {weightDiff !== 0 ? (
+                        <>
+                          {weightDiff > 0 ? (
+                            <TrendingUp className="h-3 w-3 text-emerald-500" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3 text-amber-500" />
+                          )}
+                          <span
+                            className={
+                              weightDiff > 0
+                                ? "text-emerald-400 font-medium"
+                                : "text-amber-400 font-medium"
+                            }
+                          >
+                            {weightDiff > 0 ? "+" : ""}
+                            {weightDiff}kg
+                          </span>
+                        </>
                       ) : (
-                        <TrendingDown className="h-3 w-3 text-amber-500" />
+                        <span className="text-zinc-600">—</span>
                       )}
-                      <span
-                        className={
-                          weightDiff > 0
-                            ? "text-emerald-400 font-medium"
-                            : "text-amber-400 font-medium"
-                        }
-                      >
-                        {weightDiff > 0 ? "+" : ""}
-                        {weightDiff}kg
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-zinc-600">—</span>
-                  )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              );
+            })}
+          </div>
+
+          {/* Justification */}
+          <div className="px-4 py-3 border-t border-zinc-800/50">
+            <div className="flex gap-2">
+              <MessageSquare className="h-4 w-4 text-violet-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-zinc-400 italic">&quot;{proposal.justification}&quot;</p>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Justification */}
-      <div className="px-4 py-3 border-t border-zinc-800/50">
-        <div className="flex gap-2">
-          <MessageSquare className="h-4 w-4 text-violet-400 shrink-0 mt-0.5" />
-          <p className="text-sm text-zinc-400 italic">&quot;{proposal.justification}&quot;</p>
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

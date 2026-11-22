@@ -503,6 +503,13 @@ export async function getStagnationInfo(
 }
 
 // AI Coaching types and endpoints
+export type AIProposalStrategy =
+  | "increase_weight"
+  | "increase_reps"
+  | "volume_phase"
+  | "deload"
+  | "align_target";
+
 export interface AIProposalSet {
   setNumber: number;
   currentReps: number;
@@ -514,6 +521,7 @@ export interface AIProposalSet {
 export interface AIProposal {
   exerciseId: string;
   exerciseName: string;
+  strategy?: AIProposalStrategy;
   analysis: string;
   justification: string;
   sets: AIProposalSet[];
